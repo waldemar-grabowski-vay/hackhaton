@@ -1,0 +1,12 @@
+outcome: complete
+delay_seconds: 1.0
+items:
+  - id: display_surface_reachable
+    status: working
+    raw_detail: "tcp 127.0.0.1:5900 connected"
+  - id: expected_input_devices_connected
+    status: working
+    raw_detail: "/dev/input/event0,event1,event2 present"
+  - id: telestation_config_valid
+    status: working
+    raw_detail: "telestation.yaml parsed; all required keys present"

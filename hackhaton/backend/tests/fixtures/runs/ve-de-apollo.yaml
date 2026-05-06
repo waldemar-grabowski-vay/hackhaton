@@ -1,0 +1,21 @@
+outcome: complete
+delay_seconds: 1.2
+items:
+  - id: main_can_bus_reachable
+    status: working
+    raw_detail: "candump can0: 1 frame in 47ms"
+  - id: expected_front_camera_connected
+    status: working
+    raw_detail: "lsusb: device LI_IMX490 JP2J0208 detected"
+  - id: expected_left_camera_connected
+    status: working
+    raw_detail: "lsusb: device LI_IMX490 JP2J0203 detected"
+  - id: expected_right_camera_connected
+    status: working
+    raw_detail: "lsusb: device LI_IMX490 JP2J0204 detected"
+  - id: vehicle_integration_config_valid
+    status: working
+    raw_detail: "config.yaml parsed; all required keys present"
+  - id: network_addresses_reachable
+    status: working
+    raw_detail: "ping 10.0.1.5: 4/4 received"
