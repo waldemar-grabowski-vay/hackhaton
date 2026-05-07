@@ -22,6 +22,7 @@ export type RepairStep = {
   title: string;
   body: string;
   physical?: true;
+  connectors?: Array<{ id: string; label: string }>;
 };
 
 export type ConnectorPhoto = {
