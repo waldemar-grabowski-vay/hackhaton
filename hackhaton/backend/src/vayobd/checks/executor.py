@@ -57,6 +57,28 @@ class Executor(ABC):
 # --- Fixture executor -------------------------------------------------------
 
 
+class HybridExecutor(Executor):
+    """Demo-mode wrapper: try the fixture first; if no fixture exists for
+    `host.id`, delegate to the real engine.
+
+    This lets a single backend run both the demo flow (fixture-backed
+    hosts like `ve-de-thor` showing the new repair-guide UI) AND the
+    live flow (real `ts-de-ber-00005` reachable via SSH) simultaneously.
+    """
+
+    def __init__(self, *, fixtures: "FixtureExecutor", live: Executor) -> None:
+        self._fixtures = fixtures
+        self._live = live
+
+    async def run(self, host: Host) -> ExecutorResult:
+        path = self._fixtures._dir / f"{host.id}.yaml"  # noqa: SLF001
+        if path.is_file():
+            log.info("hybrid_fixture_hit", host_id=host.id)
+            return await self._fixtures.run(host)
+        log.info("hybrid_fallthrough_to_live", host_id=host.id)
+        return await self._live.run(host)
+
+
 class FixtureExecutor(Executor):
     """Reads `<fixtures_dir>/<host_id>.yaml` and returns the canned result.
 

@@ -18,7 +18,7 @@ from pathlib import Path
 
 from fastapi import Depends
 
-from vayobd.checks.executor import Executor, FixtureExecutor
+from vayobd.checks.executor import Executor, FixtureExecutor, HybridExecutor
 from vayobd.checks.ree_cli import ReeCliConfig, ReeCliExecutor
 from vayobd.config import ExecutorMode, Settings, get_settings
 
@@ -72,6 +72,20 @@ def _build_executor(
         return ReeCliExecutor(
             config=ReeCliConfig(binary=ree_cli_bin, inventory_path=inventory_path),
             run_timeout_seconds=run_timeout_seconds,
+        )
+    if mode is ExecutorMode.HYBRID:
+        if ree_cli_bin is None:
+            raise RuntimeError(
+                "VAYOBD_EXECUTOR=hybrid but no ree-debug-cli binary found. "
+                "Run `cargo build --release --workspace` from `engine/`, "
+                "or set VAYOBD_REE_CLI_BIN."
+            )
+        return HybridExecutor(
+            fixtures=FixtureExecutor(fixtures_dir=fixtures_dir),
+            live=ReeCliExecutor(
+                config=ReeCliConfig(binary=ree_cli_bin, inventory_path=inventory_path),
+                run_timeout_seconds=run_timeout_seconds,
+            ),
         )
     raise RuntimeError(f"unknown executor mode: {mode!r}")
 

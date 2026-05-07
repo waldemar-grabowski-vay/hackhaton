@@ -21,6 +21,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class ExecutorMode(StrEnum):
     FIXTURE = "fixture"
     REE = "ree"  # production default — shells out to engine/target/release/ree-debug-cli
+    HYBRID = "hybrid"  # demo — fixture first, falls through to ree when no fixture exists
 
 
 def _default_inventory_path() -> Path:

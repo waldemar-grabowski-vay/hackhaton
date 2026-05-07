@@ -41,12 +41,12 @@ async def _engine_self_check(settings: Settings) -> tuple[str, str | None]:
     """T035 / FR-003a / FR-007 — ree-debug-cli startup probe.
 
     Returns `(engine_mode, engine_version)`:
-    - `engine_mode` ∈ {"live", "fixture", "engine_unavailable",
-      "engine_incompatible"}.
+    - `engine_mode` ∈ {"live", "fixture", "hybrid",
+      "engine_unavailable", "engine_incompatible"}.
     - `engine_version` is the SHA the binary self-reported, or
       None when the probe didn't succeed.
     """
-    if settings.executor is not ExecutorMode.REE:
+    if settings.executor is ExecutorMode.FIXTURE:
         return ("fixture", None)
 
     bin_path = _resolve_ree_cli_bin(settings)
@@ -82,6 +82,8 @@ async def _engine_self_check(settings: Settings) -> tuple[str, str | None]:
     # `ree-debug-cli --version` prints `ree-debug-cli <sha>`.
     sha = version.split()[-1] if version else None
     log.info("engine_ready", binary=str(bin_path), version=sha)
+    if settings.executor is ExecutorMode.HYBRID:
+        return ("hybrid", sha)
     return ("live", sha)
 
 

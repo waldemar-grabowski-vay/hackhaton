@@ -23,7 +23,13 @@ import { cn } from "@/lib/utils";
 interface EngineHealth {
   status: string;
   version: string;
-  engine_mode: "live" | "fixture" | "engine_unavailable" | "engine_incompatible" | "unknown";
+  engine_mode:
+    | "live"
+    | "fixture"
+    | "hybrid"
+    | "engine_unavailable"
+    | "engine_incompatible"
+    | "unknown";
   engine_version: string | null;
 }
 
@@ -88,6 +94,14 @@ function describe(mode: EngineHealth["engine_mode"]): {
         classes: "border-warning/40 bg-warning/10 text-warning",
         Icon: FlaskConical,
         tooltip: "Demo / CI mode — running canned fixtures, not real testbeds",
+      };
+    case "hybrid":
+      return {
+        label: "Hybrid",
+        classes: "border-warning/40 bg-warning/10 text-warning",
+        Icon: FlaskConical,
+        tooltip:
+          "Demo mode — fixtures first (ve-de-thor etc.), real engine for everything else",
       };
     case "engine_unavailable":
       return {
