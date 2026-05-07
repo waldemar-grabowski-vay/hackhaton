@@ -6,6 +6,17 @@ from pathlib import Path
 
 import pytest
 
+# Default X-Vay-User header for integration tests. Production sets this via
+# the SSO-terminating reverse proxy (R4); tests pass it explicitly so the
+# strict 401-on-missing behaviour from FR-026 doesn't break the suite.
+DEFAULT_TEST_USER = "test.operator@vay.io"
+AUTH_HEADERS = {"X-Vay-User": DEFAULT_TEST_USER}
+
+
+@pytest.fixture
+def auth_headers() -> dict[str, str]:
+    return dict(AUTH_HEADERS)
+
 
 def _write(path: Path, content: str = "") -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -40,15 +51,21 @@ def synthetic_inventory(tmp_path: Path) -> Path:
     # ve-de-thor: in-scope but the run fixture marks it unreachable, so the
     # integration test for the unreachable outcome can hit a real DE host id.
     _write(vehicles / "ve-de-thor.yaml", "")
+    # ve-de-saturn-slow: in-scope; paired with a sleep-heavy fixture so the
+    # FR-025 30 s timeout integration test (T086) has a real host id to
+    # POST against.
+    _write(vehicles / "ve-de-saturn-slow.yaml", "")
 
     # Filtered vehicles
     _write(vehicles / "ve-be-bxl.yaml", "")     # Belgium → FR-001b
+    _write(vehicles / "ve-us-01001.yaml", "")   # USA → DE-only Clarification 2026-05-07
 
     # In-scope telestations (Berlin only)
     _write(telestations / "ts-de-ber-zeus.yaml", "")
 
     # Filtered telestations
     _write(telestations / "ts-be-bxl-foo.yaml", "")       # Belgium → FR-001b
+    _write(telestations / "ts-us-las-00001.yaml", "")     # USA → DE-only Clarification 2026-05-07
     _write(telestations / "ts-de-ham-poseidon.yaml", "")  # Hamburg → not Berlin
 
     return root

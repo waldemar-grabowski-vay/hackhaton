@@ -29,21 +29,29 @@ def test_inventory_returns_in_scope_hosts(client: TestClient) -> None:
     resp = client.get("/api/inventory")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["meta"]["host_count"] == 4
+    assert body["meta"]["host_count"] == 5
     ids = {h["id"] for h in body["hosts"]}
     assert ids == {
         "ve-de-apollo",
         "ve-de-loki",
         "ve-de-thor",
+        "ve-de-saturn-slow",
         "ts-de-ber-zeus",
     }
     # Out-of-scope hosts are dropped at load.
     assert "ve-be-bxl" not in ids
     assert "ts-de-ham-poseidon" not in ids
+    assert "ve-us-01001" not in ids
+    assert "ts-us-las-00001" not in ids
     # Server-internal fields stripped.
     for host in body["hosts"]:
         assert "address" not in host or host["address"] is None
         assert "source_file" not in host or host["source_file"] is None
+    # New InventoryMeta fields are exposed (FR-027).
+    meta = body["meta"]
+    assert "consecutive_failed_refreshes" in meta
+    assert meta["consecutive_failed_refreshes"] == 0
+    assert "last_refresh_attempted_at" in meta
 
 
 def test_inventory_empty_returns_503(tmp_path: Path) -> None:

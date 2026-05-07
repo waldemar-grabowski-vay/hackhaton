@@ -12,11 +12,14 @@ export const strings = {
   },
   wizard: {
     backButton: "Back",
+    continueButton: "Continue",
     progressLabel: "Step",
     country: {
       title: "Where is the host?",
       subtitle: "Pick the country to narrow down what you're checking.",
       de: "Germany",
+      us: "United States",
+      usDisabled: "Coming soon",
     },
     type: {
       title: "What are you checking?",
@@ -53,6 +56,10 @@ export const strings = {
       title: "Inventory update failed",
       body: "We kept the previous list. Check your connection and try again.",
     },
+    refreshFailedBanner: {
+      title: "Inventory updates are failing",
+      body: "We're still using the last good copy. The host list may be out of date.",
+    },
     lastRefreshedPrefix: "Updated",
   },
   runs: {
@@ -69,8 +76,8 @@ export const strings = {
       body: "This host isn't in the current inventory. Try updating the inventory.",
     },
     noneYet: {
-      title: "No previous run",
-      body: "Pick a host from the wizard and run your first check.",
+      title: "Ready when you are",
+      body: "Click Run check to start the diagnostic against this host.",
     },
   },
   outcomes: {
@@ -119,6 +126,8 @@ export const strings = {
       "Something went wrong. Try again, and update the inventory if the problem persists.",
     network:
       "We couldn't reach the diagnostics service. Check your connection and try again.",
+    unauthenticated:
+      "We couldn't confirm who you are. Sign in through Vay corporate SSO and try again.",
   },
   // Per-item operator-visible names + descriptions + recommended actions.
   // Keys mirror catalog.py / data-model.md item ids.

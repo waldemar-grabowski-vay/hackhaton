@@ -1,7 +1,10 @@
-"""Inventory sync (T015, R2).
+"""Inventory sync (T015, R2, FR-027).
 
 `git fetch && git reset --hard origin/<branch>` shelled via subprocess.
-Refresh failure preserves the previously cached copy on disk.
+Refresh failure preserves the previously cached copy on disk; the meta
+file gains `last_refresh_attempted_at` + `consecutive_failed_refreshes`
+so the SPA can render the FR-027 banner once the failure count crosses
+the configured threshold.
 """
 
 from __future__ import annotations
@@ -26,8 +29,22 @@ class InventorySyncError(RuntimeError):
 @dataclass(frozen=True)
 class SyncResult:
     last_refreshed_at: datetime
+    last_refresh_attempted_at: datetime
+    consecutive_failed_refreshes: int  # Always 0 on success.
     source_revision: str
     host_count: int  # Caller fills this after re-loading.
+
+
+@dataclass(frozen=True)
+class FailureRecord:
+    """Returned in lieu of SyncResult when a refresh attempt fails but the
+    local cache is preserved. Used by the scheduler to update on-disk
+    meta tracking and to drive the exp-backoff schedule.
+    """
+
+    last_refresh_attempted_at: datetime
+    consecutive_failed_refreshes: int
+    error: str
 
 
 async def _run_git(args: list[str], cwd: Path) -> tuple[int, str, str]:
@@ -55,7 +72,8 @@ async def sync_inventory(*, inventory_path: Path, branch: str, meta_path: Path) 
     """Refresh the local checkout. Raises InventorySyncError on failure.
 
     The previously cached copy is left untouched on failure (the helper bails
-    before mutating the working tree if `git fetch` fails).
+    before mutating the working tree if `git fetch` fails). On success the
+    failure counter is reset to zero on disk via `_write_meta_success`.
     """
     if not inventory_path.exists():
         raise InventorySyncError(
@@ -78,8 +96,8 @@ async def sync_inventory(*, inventory_path: Path, branch: str, meta_path: Path) 
     rev_rc, rev_out, _ = await _run_git(["rev-parse", "--short", "HEAD"], inventory_path)
     revision = rev_out.strip() if rev_rc == 0 else "unknown"
 
-    last_refreshed_at = datetime.now(UTC)
-    _write_meta(meta_path, last_refreshed_at=last_refreshed_at, source_revision=revision)
+    now = datetime.now(UTC)
+    _write_meta_success(meta_path, last_refreshed_at=now, source_revision=revision)
 
     log.info(
         "inventory_synced",
@@ -88,19 +106,80 @@ async def sync_inventory(*, inventory_path: Path, branch: str, meta_path: Path) 
         revision=revision,
     )
     return SyncResult(
-        last_refreshed_at=last_refreshed_at,
+        last_refreshed_at=now,
+        last_refresh_attempted_at=now,
+        consecutive_failed_refreshes=0,
         source_revision=revision,
         host_count=0,  # Loader re-enumerates and updates this; carried for API meta.
     )
 
 
-def _write_meta(meta_path: Path, *, last_refreshed_at: datetime, source_revision: str) -> None:
+# --- Meta file I/O -----------------------------------------------------------
+
+
+def _read_meta(meta_path: Path) -> dict[str, object]:
+    if not meta_path.exists():
+        return {}
+    try:
+        with meta_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        log.warning("meta_read_failed", path=str(meta_path), error=str(exc))
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _write_meta(meta_path: Path, payload: dict[str, object]) -> None:
     meta_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "last_refreshed_at": last_refreshed_at.isoformat(),
-        "source_revision": source_revision,
-    }
     tmp = meta_path.with_suffix(meta_path.suffix + ".tmp")
     with tmp.open("w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2, sort_keys=True)
+        json.dump(payload, f, indent=2, sort_keys=True, default=str)
     tmp.replace(meta_path)
+
+
+def _write_meta_success(
+    meta_path: Path,
+    *,
+    last_refreshed_at: datetime,
+    source_revision: str,
+) -> None:
+    """Write meta after a successful refresh — counter resets to 0."""
+    payload = {
+        "last_refreshed_at": last_refreshed_at.isoformat(),
+        "last_refresh_attempted_at": last_refreshed_at.isoformat(),
+        "source_revision": source_revision,
+        "consecutive_failed_refreshes": 0,
+    }
+    _write_meta(meta_path, payload)
+
+
+def record_failure(meta_path: Path, *, attempted_at: datetime) -> FailureRecord:
+    """Increment the failure counter and update the attempted-at timestamp.
+
+    Preserves `last_refreshed_at` and `source_revision` from any prior
+    successful refresh, since the cache itself is untouched (FR-027).
+    """
+    existing = _read_meta(meta_path)
+    prior_count_raw = existing.get("consecutive_failed_refreshes", 0)
+    try:
+        prior_count = int(prior_count_raw)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        prior_count = 0
+    new_count = prior_count + 1
+    payload: dict[str, object] = {
+        "last_refreshed_at": existing.get("last_refreshed_at"),
+        "last_refresh_attempted_at": attempted_at.isoformat(),
+        "source_revision": existing.get("source_revision", "unknown"),
+        "consecutive_failed_refreshes": new_count,
+    }
+    if payload["last_refreshed_at"] is None:
+        # First-ever attempt failed before any successful refresh; surface
+        # the attempted-at as the freshness timestamp so the SPA isn't
+        # rendering an empty cell.
+        payload["last_refreshed_at"] = attempted_at.isoformat()
+    _write_meta(meta_path, payload)
+    return FailureRecord(
+        last_refresh_attempted_at=attempted_at,
+        consecutive_failed_refreshes=new_count,
+        error="inventory_refresh_failed",
+    )

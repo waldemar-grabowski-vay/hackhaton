@@ -82,7 +82,17 @@ class Host(BaseModel):
 
 
 class InventoryMeta(BaseModel):
+    """Inventory freshness summary returned to the SPA.
+
+    `last_refreshed_at` is the most recent **successful** refresh; the
+    `*_attempted_at` and `consecutive_failed_refreshes` fields track the
+    refresh-failure surfacing required by FR-027 so the SPA can decide
+    when to show the persistent banner.
+    """
+
     last_refreshed_at: datetime
+    last_refresh_attempted_at: datetime | None = None
+    consecutive_failed_refreshes: int = 0
     source_revision: str
     host_count: int
 
@@ -113,12 +123,32 @@ class DiagnosticItem(BaseModel):
         return self
 
 
+_SLUG_DISALLOWED_RE = re.compile(r"[^a-z0-9._-]+")
+
+
 class OperatorIdentity(BaseModel):
-    """Pulled from the X-Vay-User reverse-proxy header (R4). Never returned in
-    API responses — used for structured logging and persisted run audit only."""
+    """Pulled from the X-Vay-User reverse-proxy header (R4 + FR-026).
+
+    Load-bearing in v1: `slug` is used as a path segment when persisting
+    runs (`runs/<slug>/<host_id>.json`), so it must be sanitised.
+    Never returned in API responses — used for structured logging,
+    persisted run audit, and per-operator scoping only.
+    """
 
     model_config = ConfigDict(frozen=True)
     username: str
+    slug: str = Field(default="", description="Sanitised lowercased identifier; derived from username if empty.")
+
+    @model_validator(mode="after")
+    def _derive_slug(self) -> OperatorIdentity:
+        if self.slug:
+            return self
+        derived = _SLUG_DISALLOWED_RE.sub("-", self.username.strip().lower()).strip("-_.")
+        if not derived:
+            raise ValueError("operator slug is empty after sanitisation; cannot persist runs (FR-026)")
+        # Pydantic frozen models: re-construct with the derived slug.
+        object.__setattr__(self, "slug", derived)
+        return self
 
 
 class DiagnosticRun(BaseModel):

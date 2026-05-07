@@ -11,10 +11,31 @@ def test_loader_returns_germany_fleet_only(synthetic_inventory: Path) -> None:
     hosts = load_hosts(synthetic_inventory)
     ids = {h.id for h in hosts}
 
-    # Belgium (FR-001b) is filtered out.
+    # Non-Germany regions are filtered out at load time
+    # (FR-001b + Clarification 2026-05-07: DE-only).
     assert "ve-be-bxl" not in ids
     assert "ts-be-bxl-foo" not in ids
-    assert ids == {"ve-de-apollo", "ve-de-loki", "ve-de-thor", "ts-de-ber-zeus"}
+    assert "ve-us-01001" not in ids
+    assert "ts-us-las-00001" not in ids
+    assert ids == {
+        "ve-de-apollo",
+        "ve-de-loki",
+        "ve-de-thor",
+        "ve-de-saturn-slow",
+        "ts-de-ber-zeus",
+    }
+
+
+def test_loader_drops_us_hosts_per_de_only_clarification(synthetic_inventory: Path) -> None:
+    """T036 (extended) — `ve-us-*` and `ts-us-*` MUST be dropped at load time.
+
+    United States is represented in the SPA only as a disabled "Coming
+    soon" tile (FR-001a step 1, Clarification 2026-05-07); no US data
+    crosses the API boundary.
+    """
+    hosts = load_hosts(synthetic_inventory)
+    countries = {h.country.value for h in hosts}
+    assert countries == {"de"}
 
 
 def test_loader_restricts_telestations_to_berlin(synthetic_inventory: Path) -> None:

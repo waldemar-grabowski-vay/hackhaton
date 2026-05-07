@@ -62,6 +62,10 @@ export type Host = z.infer<typeof hostSchema>;
 
 export const inventoryMetaSchema = z.object({
   last_refreshed_at: z.string().datetime({ offset: true }),
+  // FR-027 — distinct from `last_refreshed_at`; tracks the most recent
+  // refresh attempt (success or failure) so the SPA banner can stay current.
+  last_refresh_attempted_at: z.string().datetime({ offset: true }).nullable(),
+  consecutive_failed_refreshes: z.number().int().nonnegative(),
   source_revision: z.string(),
   host_count: z.number().int().nonnegative(),
 });

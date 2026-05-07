@@ -15,6 +15,15 @@
 - Q: Should v1 expose underlying technical detail per item (operator-only / per-item raw expand for everyone / dual-mode)? → A: Two modes — **Operator** (default, no raw output) and **Developer** (per-item expand reveals raw underlying output: CAN trace, exit codes, file paths, parser messages). Switched via a **manual toggle in the app header**; default on first load is Operator. Same routes and data in both modes; only the affordances differ.
 - Q: What can the operator do during an in-progress run (wait only / cancel / cancel + background)? → A: **Wait only.** No cancel control, no background-run pattern in v1. The operator observes progress (FR-009) until completion, timeout, or failure.
 
+### Session 2026-05-07
+
+- Q: Run timeout — at what duration does an in-progress run get declared timed out / partial? → A: 30 s hard timeout.
+- Directive: v1 scope is restricted to **Germany hosts only** (`ve-de-*` / `ts-de-*`). United States hosts (`ve-us-*` / `ts-us-*`) join Belgium as out-of-scope for v1.
+- Q: With Germany as the only runnable country in v1, how should the wizard handle the Country step? → A: Keep the Country step. Show **United States visible but disabled / greyed out** (signals it as a known near-term follow-up); Germany is the only selectable option. Belgium and other regions remain hidden.
+- Q: Run-record persistence — whose "most recent run per host" is retained? → A: **Per-operator backend record.** Backend persists the most recent run per `(host, operator)` pair; each operator sees only the runs they themselves initiated. One operator's runs are not visible to another operator.
+- Q: Inventory refresh failure when a usable cache is already present — what should the app do? → A: **Non-blocking + background auto-retry with exponential backoff.** Continue using the cached inventory; retry the refresh in the background with exponential backoff; only surface an operator-visible warning after N consecutive retry failures. Manual "Update inventory" (FR-017) remains available throughout.
+- Q: When the operator reaches a host they've previously checked, does the stored prior run auto-display? → A: **No — start blank.** The result view always opens in a CTA-only state on host selection; the operator MUST trigger a fresh run before any item-level results are shown. FR-026 backend persistence is retained for record-keeping but is not surfaced via auto-display in v1.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Run a check and see what is broken (Priority: P1)
@@ -153,25 +162,29 @@ core function, so it is the lowest priority.
   host identifier entry MUST NOT be supported in v1.
 - **FR-001a**: The host picker MUST be presented as a step-by-step wizard
   with the following ordered steps:
-  1. **Country** — the operator picks **Germany** or **United States**.
+  1. **Country** — the operator sees **Germany** (selectable) and
+     **United States** (visible but disabled / greyed out, with a brief
+     plain-language indicator such as "Coming soon"). Selecting United
+     States MUST NOT be possible and MUST NOT advance the wizard. No
+     other countries (e.g., Belgium) are shown at this step in v1.
   2. **Type of host** — the operator picks **Vehicle** or **Telestation**.
   3. **City** — only when Type is **Telestation**. The operator picks
-     from the cities present in the chosen country (for example Berlin
-     for DE; Las Vegas, Lincoln, Nuq for US — exact set is whatever the
-     inventory currently contains). When Type is **Vehicle**, this step
-     MUST be skipped entirely; vehicles are not associated with a city.
+     from the German cities present in the inventory (for example
+     Berlin — exact set is whatever the inventory currently contains for
+     Germany). When Type is **Vehicle**, this step MUST be skipped
+     entirely; vehicles are not associated with a city.
   4. **Host** — the operator picks the specific host from the list
      filtered by the prior steps.
   At each step the operator MUST be able to go back to the previous step
   without losing earlier selections.
-- **FR-001b**: Country and (for telestations) city MUST be derived
-  deterministically from the host file-name prefix in
-  `ree-vehicle-configs`: `ve-de-*` / `ts-de-*` → Germany,
-  `ve-us-*` / `ts-us-*` → United States; for telestations the third
-  segment of the file name is the city code (e.g., `ts-de-ber-*` → Berlin,
-  `ts-us-las-*` → Las Vegas). Hosts whose country prefix is neither `de`
-  nor `us` (e.g., `ve-be-*`, `ts-be-*`) are out of scope for the v1
-  picker and MUST NOT appear at any step.
+- **FR-001b**: Only Germany hosts (`ve-de-*` / `ts-de-*`) are in scope
+  for the v1 picker. For telestations the third segment of the file name
+  is the city code (e.g., `ts-de-ber-*` → Berlin). United States is
+  represented in the Country step solely as a disabled placeholder (see
+  FR-001a step 1); no US hosts (`ve-us-*` / `ts-us-*`) appear in any
+  later wizard step and no diagnostic run can be initiated against them
+  in v1. Hosts from other regions (e.g., `ve-be-*`, `ts-be-*`) MUST NOT
+  appear at any wizard step and MUST NOT be runnable in v1.
 - **FR-001c**: The picker MUST NOT require an in-app search or type-ahead
   filter in v1. Each wizard step MUST display the available choices as a
   single visible list/group; if the list grows beyond what fits on one
@@ -271,16 +284,50 @@ core function, so it is the lowest priority.
   later). The only operator-controllable interaction during an
   in-progress run is observing the progress feedback required by
   FR-009.
+- **FR-025**: A diagnostic run MUST be aborted with a timeout outcome if
+  it has not completed within **30 seconds** of being started. The
+  result MUST be marked as partial per FR-006 / the "Check times out
+  partway" edge case and MUST indicate which item kinds did not
+  complete. FR-009's "this is taking longer than usual" message MAY be
+  surfaced earlier than 30 s, but the hard timeout is 30 s.
+- **FR-026**: System MUST persist the most recent diagnostic run per
+  `(host, operator)` pair on the backend, keyed by the authenticated
+  operator identity provided by the existing internal SSO. An operator
+  MUST only see runs they themselves initiated; another operator's runs
+  for the same host MUST NOT be visible to them. There is no shared,
+  team-wide "last run" view in v1.
+- **FR-027**: When an inventory refresh attempt (periodic per FR-016 or
+  manual per FR-017) fails while a non-empty local cached copy is
+  present, the system MUST NOT block wizard usage. The cached inventory
+  MUST continue to serve the picker, and the system MUST automatically
+  retry the refresh in the background using an **exponential backoff**
+  schedule (exact base interval, multiplier, and ceiling are planning
+  decisions). An operator-visible warning MUST be surfaced only after a
+  small number of consecutive retry failures (recommended default: 3),
+  must persist until the next successful refresh, and must not block
+  any other functionality. The manual "Update inventory" affordance
+  (FR-017) MUST remain available throughout. The FR-019 blocking
+  message applies only to the *missing-or-empty cache* case, not to
+  this failed-refresh-with-cache-present case.
+- **FR-028**: The result view MUST start in a blank / CTA-only state
+  every time the operator reaches a host through the wizard. Even when
+  a prior run for that `(host, operator)` pair has been persisted under
+  FR-026, that prior run MUST NOT be auto-displayed; the operator MUST
+  initiate a fresh diagnostic run (FR-002) before any item-level
+  results are shown. Once a fresh run has completed and is visible on
+  the result view, FR-008's single-action re-run remains available
+  within that session. v1 exposes no UI affordance to recall a stored
+  prior run without re-running it; FR-026 persistence is retained for
+  backend record-keeping only.
 
 ### Key Entities *(include if feature involves data)*
 
 - **Remote Host**: The machine being diagnosed. Has an operator-visible
   identifier (a friendly name), a hidden technical address, a host
-  **type** (Vehicle or Telestation), a **country** (Germany or United
-  States in v1), and — for telestations only — a **city** derived from
-  the file-name segment (e.g., Berlin, Las Vegas, Lincoln, Nuq). Belongs
-  to a host class that determines which checks apply. Sourced from
-  `ree-vehicle-configs`.
+  **type** (Vehicle or Telestation), a **country** (Germany only in v1),
+  and — for telestations only — a **city** derived from the file-name
+  segment (e.g., Berlin). Belongs to a host class that determines which
+  checks apply. Sourced from `ree-vehicle-configs`.
 - **Diagnostic Run**: One execution of a check against one host. Has a
   start timestamp, an end timestamp, an overall outcome (complete / partial
   / unreachable), and an ordered list of Diagnostic Items.
@@ -340,14 +387,18 @@ core function, so it is the lowest priority.
   cached copy on the operator's machine, refreshed periodically and on
   demand. The exact sync mechanism (git pull, rsync, packaged tarball,
   etc.) and refresh cadence are implementation decisions for planning.
-- Belgium-region hosts (`ve-be-*`, `ts-be-*`) exist in the inventory but
-  are out of scope for the v1 picker. Adding a third region grouping is a
-  later follow-up, not a v1 requirement.
+- Non-Germany hosts (`ve-us-*`, `ts-us-*`, `ve-be-*`, `ts-be-*`, etc.)
+  exist in the inventory but are out of scope for the v1 picker. Adding
+  additional region groupings (US, Belgium, …) is a later follow-up, not
+  a v1 requirement.
 - "Telestation" and "Vehicle" are treated as distinct host classes; the
   diagnostic check sets for each class may differ. Defining those check
   sets is part of planning, not this spec.
-- Only the most recent run per host is retained and displayed. There is no
-  historical view, no comparison across runs, and no export in v1.
+- Only the most recent run per `(host, operator)` pair is retained on the
+  backend. It is **not auto-displayed** when the operator selects a host;
+  the result view always starts blank and the operator must trigger a
+  fresh run to see results (see FR-028). There is no historical view, no
+  comparison across runs, and no export in v1.
 - One operator runs one check at a time per host. No alerting, no
   background polling, no email/push notifications.
 - v1 ships with two operator-visible modes: an **Operator** mode (the
@@ -361,11 +412,11 @@ core function, so it is the lowest priority.
 - The exact mechanism by which the web app reaches the remote host (agent,
   SSH, pre-installed daemon, etc.) is an implementation detail to be
   decided during planning, not in this spec.
-- The combined v1 inventory (vehicles + telestations across DE+US) is
-  small enough — on the order of dozens to ~100 hosts — that no in-app
+- The v1 inventory (Germany vehicles + Germany telestations) is small
+  enough — on the order of dozens of hosts — that no in-app
   search/type-ahead is needed inside any wizard step. If the inventory
-  grows substantially (several hundred hosts in one step), search becomes
-  a follow-up requirement.
+  grows substantially (several hundred hosts in one step) once additional
+  regions are brought in scope, search becomes a follow-up requirement.
 - The UI ships in English only for v1. German (or any other) localization
   is a deferred follow-up; v1 work does not need to be designed for a
   later locale switch beyond keeping operator-visible strings extractable.

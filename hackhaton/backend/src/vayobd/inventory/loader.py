@@ -1,8 +1,9 @@
-"""Inventory loader (T014, FR-001b).
+"""Inventory loader (T014, FR-001b, Clarification 2026-05-07).
 
 Walks `org/*/{vehicles,telestations}/*.yaml` under the configured local
-checkout, derives country/type/city deterministically from the filename, and
-filters to v1's in-scope set (DE + US). Belgium-region hosts are dropped.
+checkout, derives country/type/city deterministically from the filename,
+and filters to v1's in-scope set (**Germany only**). United States,
+Belgium, and any other region are dropped at load time.
 
 The YAML body is parsed best-effort to discover an `address` (not always
 present). Address is server-internal and never reaches the SPA.
@@ -149,8 +150,14 @@ def _load_or_synthesise_meta(meta_path: Path, *, host_count: int) -> InventoryMe
         try:
             with meta_path.open("r", encoding="utf-8") as f:
                 raw = json.load(f)
+            attempted_raw = raw.get("last_refresh_attempted_at")
+            attempted = (
+                datetime.fromisoformat(attempted_raw) if isinstance(attempted_raw, str) else None
+            )
             return InventoryMeta(
                 last_refreshed_at=datetime.fromisoformat(raw["last_refreshed_at"]),
+                last_refresh_attempted_at=attempted,
+                consecutive_failed_refreshes=int(raw.get("consecutive_failed_refreshes", 0) or 0),
                 source_revision=raw.get("source_revision", "unknown"),
                 host_count=host_count,
             )
@@ -158,8 +165,11 @@ def _load_or_synthesise_meta(meta_path: Path, *, host_count: int) -> InventoryMe
             log.warning("meta_parse_failed", path=str(meta_path), error=str(exc))
 
     # Synthesise — first ever boot, no prior meta written yet.
+    now = datetime.now(UTC)
     return InventoryMeta(
-        last_refreshed_at=datetime.now(UTC),
+        last_refreshed_at=now,
+        last_refresh_attempted_at=now,
+        consecutive_failed_refreshes=0,
         source_revision="unknown",
         host_count=host_count,
     )

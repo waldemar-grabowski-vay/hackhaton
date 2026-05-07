@@ -13,15 +13,19 @@ Type: `str` (regex-validated). Stable identifier for a host, derived from
 the YAML filename in `ree-vehicle-configs` with the `.yaml` suffix
 stripped.
 
-- Examples: `ve-de-apollo`, `ve-us-01001`, `ts-de-ber-zeus`, `ts-us-las-00001`.
-- Pattern: `^(ve|ts)-(de|us)(-[a-z0-9-]+)+$`.
+- Examples: `ve-de-apollo`, `ts-de-ber-zeus`.
+- Pattern: `^(ve|ts)-de(-[a-z0-9-]+)+$` (DE-only in v1 per
+  Clarification 2026-05-07).
 - Used as a path-safe slug; never contains VIN or PII.
 
 ## Country
 
-Enum: `"de" | "us"`. Derived from segment 2 of the host filename. v1 hosts
-with any other country segment (e.g., `be`) are filtered out before they
-reach the API (FR-001b).
+Enum: `"de"`. Derived from segment 2 of the host filename. v1 hosts with
+any other country segment (e.g., `us`, `be`) are filtered out at load
+time and never reach the API (FR-001b). The Country wizard step in the
+SPA renders an additional disabled-only "United States — Coming soon"
+tile as a static UI affordance; that tile does not correspond to any
+data on the wire (see `contracts/http-api.md`).
 
 ## HostType
 
@@ -58,7 +62,9 @@ Validation rules:
 
 | Field | Type | Notes |
 |---|---|---|
-| `last_refreshed_at` | `datetime` (ISO 8601 UTC) | Most recent successful `git fetch + reset` timestamp. Surfaced by `GET /api/inventory` for FR-018. |
+| `last_refreshed_at` | `datetime` (ISO 8601 UTC) | Most recent **successful** `git fetch + reset` timestamp. Surfaced by `GET /api/inventory` for FR-018. |
+| `last_refresh_attempted_at` | `datetime \| null` | Most recent refresh **attempt** timestamp, success or failure. Distinct from `last_refreshed_at` so the frontend can tell that a retry happened recently even if it failed. |
+| `consecutive_failed_refreshes` | `int` | Count of consecutive refresh failures since the last successful refresh. Zero on success. The frontend renders the FR-027 warning banner once this crosses the configurable threshold (default 3). |
 | `source_revision` | `str` | Short SHA of the cached checkout's HEAD. |
 | `host_count` | `int` | Number of in-scope hosts after country filtering. |
 
@@ -72,7 +78,11 @@ The full payload returned by `GET /api/inventory`.
 | `hosts` | `list[Host]` | All in-scope hosts. The frontend wizard groups them; the backend does not pre-group. |
 
 The frontend derives wizard steps locally:
-- Step 1 (Country): unique `host.country` values.
+- Step 1 (Country): in v1, exactly two tiles are rendered — **Germany**
+  (selectable; comes from the unique `host.country` value `"de"`) and
+  **United States** (rendered as a disabled "Coming soon" affordance
+  with no backing data; see Clarification 2026-05-07 in `spec.md`).
+  Selecting the US tile is a no-op and does not advance the wizard.
 - Step 2 (Type): unique `host.type` values within the chosen country.
 - Step 3 (City): unique `host.city` values within `(country, telestation)`. **Not shown** when type is vehicle.
 - Step 4 (Host): hosts matching the chain above.
@@ -102,11 +112,13 @@ Enum: `"complete" | "partial" | "unreachable" | "timeout"`. Drives FR-006.
 - `complete`: every catalog item ran and produced a status.
 - `partial`: at least one item ran but at least one didn't (e.g., SSH succeeded but one check timed out individually).
 - `unreachable`: SSH/connection layer never succeeded; no item-level results returned.
-- `timeout`: server-side 25 s hard timeout fired before either category resolved.
+- `timeout`: server-side **30 s** hard timeout fired before either category resolved (FR-025).
 
 ## DiagnosticRun
 
-The result returned by `POST /api/runs` and `GET /api/runs/latest`.
+The result returned by `POST /api/runs`. Also persisted on disk per
+`(operator, host_id)` pair (FR-026); v1 exposes no read endpoint for
+the persisted record (FR-028 — see `research.md` R7).
 
 | Field | Type | Notes |
 |---|---|---|
@@ -131,17 +143,22 @@ back to `[idle]`. The lock is the only mutable state outside the on-disk
 
 ## OperatorIdentity (server-internal)
 
-Pulled from the `X-Vay-User` proxy header per R4.
+Pulled from the `X-Vay-User` proxy header per R4. **Load-bearing**:
+this value is used as a path segment when persisting runs (FR-026), so
+it must be sanitised before being used in I/O.
 
 | Field | Type | Notes |
 |---|---|---|
-| `username` | `str` | Used in structured logs and the run cache file's `triggered_by` field. Never returned in API responses to avoid leaking identity into client logs. |
+| `username` | `str` | Raw value from the trusted `X-Vay-User` header. Used in structured logs and the run cache file's `triggered_by` field. Never returned in API responses to avoid leaking identity into client logs. |
+| `slug` | `str` (derived) | `username` lowercased and stripped to `[a-z0-9._-]`. Used as the directory segment under `~/.cache/vayobd/runs/`. Must be non-empty after sanitisation; if it is, the request is rejected with HTTP 401. |
 
 ## Persistence shapes
 
 - `~/.cache/vayobd/inventory.meta.json` ↔ `InventoryMeta` JSON.
-- `~/.cache/vayobd/runs/<host_id>.json` ↔ `DiagnosticRun` JSON, plus an
-  internal `triggered_by: OperatorIdentity` field stripped from API
-  responses.
+- `~/.cache/vayobd/runs/<operator-slug>/<host_id>.json` ↔ `DiagnosticRun`
+  JSON, plus an internal `triggered_by: OperatorIdentity` field stripped
+  from API responses. Each operator's directory is independently
+  read/writeable; one operator's runs are not visible to another via
+  any v1 API surface (FR-026).
 - `~/.cache/vayobd/ree-vehicle-configs/` ↔ git checkout (managed by
   `inventory/sync.py`).

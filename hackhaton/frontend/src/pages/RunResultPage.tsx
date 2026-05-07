@@ -1,22 +1,22 @@
 /**
- * RunResultPage (T057 + T060 + T064 + T066).
+ * RunResultPage (T057, FR-028 + FR-008 + FR-026 + FR-025).
  *
- * - On mount, kicks off `useRunCheck(hostId)` once.
- * - Shows `RunningState` while in flight.
- * - On success, renders `ResultHero` + Working / Needs attention groups, with
- *   a `DiagnosticItemRow` for every catalog item the run produced.
- * - "Run check again" button (US2 / T060) re-runs against the same host and
- *   replaces the result data on success.
+ * - On mount, renders ONLY the host header and a single "Run check" CTA.
+ *   No persisted prior run is auto-displayed (FR-028 / research R7).
+ *   `useRunCheck` only fires after the operator clicks the CTA.
+ * - Once a run completes, swaps in `ResultHero` + Working / Needs attention
+ *   groups. The "Run check again" button (US2 / FR-008) re-runs against
+ *   the same host and replaces the in-view result.
  * - Unreachable / timeout outcomes render the dedicated state.
  * - Partial outcomes prepend the partial banner.
  * - 100% pass + opt-in confetti via VITE_FEATURE_CONFETTI=true (T069).
  */
 import { ArrowLeft, RotateCw } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 
 import { useInventory } from "@/api/inventory";
-import { useLatestRun, useRunCheck } from "@/api/runs";
+import { useRunCheck } from "@/api/runs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DiagnosticItemRow } from "@/components/result/DiagnosticItemRow";
@@ -31,8 +31,6 @@ import { prettyHostName, strings } from "@/strings";
 
 export function RunResultPage() {
   const { hostId } = useParams<{ hostId: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const wantsAutoRun = searchParams.get("run") === "1";
 
   const inventory = useInventory();
   const host = useMemo(
@@ -41,23 +39,6 @@ export function RunResultPage() {
   );
 
   const runMutation = useRunCheck(hostId);
-  const latest = useLatestRun(hostId);
-
-  const autoRunStartedRef = useRef(false);
-
-  useEffect(() => {
-    if (!hostId) return;
-    if (!wantsAutoRun) return;
-    if (autoRunStartedRef.current) return;
-    if (runMutation.isPending) return;
-    autoRunStartedRef.current = true;
-    runMutation.mutate(undefined, {
-      onSettled: () => {
-        // Drop the ?run=1 from the URL so a refresh doesn't re-fire the check.
-        setSearchParams({}, { replace: true });
-      },
-    });
-  }, [hostId, wantsAutoRun, runMutation, setSearchParams]);
 
   if (!hostId) {
     return (
@@ -71,9 +52,9 @@ export function RunResultPage() {
     );
   }
 
-  // Prefer the freshest data: an in-flight or completed mutation wins, then the
-  // persisted "latest" cache.
-  const run = runMutation.data ?? latest.data ?? null;
+  // Only the in-flight / completed mutation drives the displayed run; FR-028
+  // forbids auto-displaying a stored prior run.
+  const run = runMutation.data ?? null;
 
   const hostLabel = host
     ? prettyHostName(host.display_name, host.type)
@@ -95,11 +76,12 @@ export function RunResultPage() {
             {strings.result.backToWizard}
           </Link>
         </Button>
-        {(run || latest.data) && !isRunning && (
+        {run && !isRunning && (
           <Button
             onClick={() => runMutation.mutate()}
             disabled={isRunning}
             className="gap-2"
+            data-testid="run-again-button"
           >
             <RotateCw className={isRunning ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
             {strings.runs.runAgainButton}
@@ -109,16 +91,12 @@ export function RunResultPage() {
 
       {isRunning && <RunningState hostLabel={hostLabel} />}
 
-      {!isRunning && !run && latest.isLoading && (
-        <Card className="glass">
-          <CardContent className="p-6 text-sm text-muted-foreground">
-            Loading…
-          </CardContent>
-        </Card>
-      )}
-
-      {!isRunning && !run && !latest.isLoading && (
-        <Card className="glass">
+      {!isRunning && !run && (
+        // FR-028: blank-on-entry. The result view always opens with a
+        // single "Run check" CTA — the operator must explicitly trigger
+        // the diagnostic. Backend persistence is server-side audit only
+        // (FR-026 / research R7); v1 surfaces no read endpoint.
+        <Card className="glass" data-testid="run-cta-card">
           <CardContent className="space-y-3 p-6">
             <div className="text-sm font-semibold">
               {strings.runs.noneYet.title}
@@ -126,7 +104,11 @@ export function RunResultPage() {
             <div className="text-sm text-muted-foreground">
               {strings.runs.noneYet.body}
             </div>
-            <Button onClick={() => runMutation.mutate()} className="mt-1">
+            <Button
+              onClick={() => runMutation.mutate()}
+              className="mt-1"
+              data-testid="run-check-button"
+            >
               {strings.runs.runButton}
             </Button>
           </CardContent>
@@ -266,4 +248,3 @@ function useConfettiOnce(fire: boolean) {
     };
   }, [fire, done]);
 }
-

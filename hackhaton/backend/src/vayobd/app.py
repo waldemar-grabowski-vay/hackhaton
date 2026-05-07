@@ -35,6 +35,9 @@ def _make_lifespan(settings: Settings):
                 branch=settings.inventory_branch,
                 meta_path=settings.inventory_meta_path,
                 interval_seconds=settings.refresh_interval_seconds,
+                backoff_base_seconds=settings.refresh_backoff_base_seconds,
+                backoff_multiplier=settings.refresh_backoff_multiplier,
+                backoff_ceiling_seconds=settings.refresh_backoff_ceiling_seconds,
             ),
             name="vayobd-inventory-refresh",
         )

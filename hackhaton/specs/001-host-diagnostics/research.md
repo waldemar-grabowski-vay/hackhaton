@@ -59,20 +59,41 @@ are defined in `R3` below.
 - Refresh triggers:
   1. Once on backend startup (FR-016).
   2. On `POST /api/inventory/refresh` (FR-017).
-  3. On a fixed-cadence background scheduler running inside the FastAPI
-     process (`asyncio` task at default 30-minute interval, configurable).
-- Refresh failures do NOT replace the previously cached copy; the loader
-  continues to read whatever is on disk. The most-recent successful refresh
-  timestamp is kept in `~/.cache/vayobd/inventory.meta.json` and returned
-  by `GET /api/inventory` for FR-018.
+  3. On a periodic background scheduler running inside the FastAPI
+     process (`asyncio` task). Default cadence 30 minutes when the last
+     attempt succeeded.
+- **Refresh failure handling (FR-027)**: when a scheduled or manual
+  refresh fails *and a non-empty cached copy already exists*, the cache
+  is left untouched and the scheduler switches to **exponential
+  backoff** for retries: base interval 30 s, multiplier 2, ceiling 5
+  minutes (e.g., 30 s → 60 s → 2 min → 4 min → 5 min cap). The
+  scheduler returns to the normal 30-minute cadence on the next
+  successful refresh. A counter `consecutive_failed_refreshes` is
+  incremented on each failure and zeroed on success; this counter is
+  surfaced in `InventoryMeta` (see `data-model.md`) so the frontend can
+  render the FR-027 warning banner once it crosses the configurable
+  threshold (default 3). Manual `POST /api/inventory/refresh` remains
+  available throughout and counts the same way — a manual success
+  resets the counter.
+- Refresh failures with **no usable cached copy** still surface as the
+  FR-019 blocking message at the API boundary (HTTP 503 from
+  `GET /api/inventory`).
+- Inventory **filtering**: the loader drops every host whose filename
+  prefix is not `ve-de-` or `ts-de-` (Clarification 2026-05-07 — DE-only
+  scope). US/Belgium/other regions never reach the API surface; the
+  Country wizard step's "United States (Coming soon)" tile is a static
+  frontend affordance, not data flowing from the inventory.
 
 **Rationale**:
 - Constitution I (Simplicity First): one moving part — a local git
   checkout. Familiar to anyone on the team.
-- Survives intermittent VPN/network blips without downgrading the
-  operator's UX.
-- Avoids ambient state: refresh is observable through one endpoint and one
-  metadata file.
+- FR-027 backoff strategy keeps transient network blips silent (matches
+  the operator's "tool that works when other things are broken"
+  expectation) while still telling them honestly when the source has
+  been unreachable for several attempts.
+- Filtering at load time (not request time) means the API is
+  unconditionally DE-only — no per-request defensive checks scattered
+  across endpoints.
 
 **Alternatives considered**:
 - *rsync from a snapshot server* — rejected: requires a snapshot server we
@@ -81,10 +102,20 @@ are defined in `R3` below.
   pipeline; git pull is what the team already does manually.
 - *Live read on every request* — rejected: violates FR-015 (offline
   tolerance) and adds latency to picker render.
+- *Filter at API/serialisation time instead of load time* — rejected:
+  forces every endpoint and every test to repeat the country guard, and
+  the eventual "add US back" amendment becomes a search-and-replace in
+  multiple places instead of one config change.
 
 ---
 
 ## R3. Which concrete diagnostic items run per host class?
+
+> Only `ve-de-*` and `ts-de-*` hosts reach the catalog in v1
+> (Clarification 2026-05-07). The catalog itself is host-class-keyed and
+> remains region-agnostic, so re-enabling US later is a one-line config
+> change in the loader, not a catalog change.
+
 
 **Decision**: Define an explicit, code-reviewed catalog per host class in
 `backend/src/vayobd/checks/catalog.py`. v1 ships with the three categories
@@ -142,56 +173,102 @@ hackathon doesn't need pluggability.
 
 **Decision**: The app process **assumes** an upstream reverse proxy
 performs Vay corporate SSO and forwards an authenticated identity in a
-trusted header (`X-Vay-User`). The app reads the header for logging and
-audit; it does not gate access to specific hosts in v1. All authenticated
-operators can run any check on any in-scope host. There is no role split
-in v1 — Developer mode is a UI affordance, not an authorization boundary.
+trusted header (`X-Vay-User`). The app reads the header for two
+purposes:
+
+1. **Run persistence keying (FR-026)**: every persisted run lives at
+   `~/.cache/vayobd/runs/<operator>/<host_id>.json`. The directory
+   segment is the proxy-supplied identity, sanitised (lowercased,
+   non-`[a-z0-9._-]` characters stripped). One operator's runs are
+   unreachable through any API surface another operator hits.
+2. **Structured logging / audit**: every executed run logs a structured
+   line including the triggering operator (the `triggered_by` field
+   internal to the persisted record).
+
+The app does NOT gate access to specific hosts in v1 — every
+authenticated operator can trigger a run on every in-scope host.
+Developer mode is a UI affordance, not an authorization boundary.
+
+If `X-Vay-User` is missing or empty, the API returns HTTP 401 — the
+app process refuses to fall back to a synthetic "anonymous" operator,
+both because that would silently violate FR-026's per-operator scoping
+and because in production the proxy is contractually expected to set
+this header.
 
 **Rationale**:
-- Spec assumption already says auth is handled by existing internal SSO and
-  is out of scope for the feature spec. This plan honours that.
+- Spec assumption already says auth is handled by existing internal SSO
+  and is out of scope for the feature spec. This plan honours that.
 - Constitution II (Ship Fast): no per-host RBAC in v1.
-- Putting SSO at the proxy is the project-typical pattern at Vay and means
-  this app stays unaware of OIDC / SAML / cookie internals.
+- FR-026 made the operator identity load-bearing for persistence
+  scoping — it is no longer "for logs only", so refusing to operate
+  without the header is the safer default.
+- Putting SSO at the proxy is the project-typical pattern at Vay and
+  means this app stays unaware of OIDC / SAML / cookie internals.
 
 **Alternatives considered**:
 - *Per-host role-based access* — rejected for v1: requires a role mapping
   registry the team doesn't have and the hackathon doesn't need. Easy to
   add later without breaking the API shape.
-- *In-app session login* — rejected: reinvents what corp SSO already does.
+- *In-app session login* — rejected: reinvents what corp SSO already
+  does.
+- *Default to a synthetic "anonymous" operator when the header is
+  missing* — rejected: would collapse all dev-time runs into one shared
+  bucket and silently undermine FR-026; instead, the dev environment
+  documents how to set the header (see `quickstart.md`).
 
 ---
 
-## R5. How is the in-progress run modelled, given FR-024 (wait-only, no cancel, no background)?
+## R5. How is the in-progress run modelled, given FR-024 (wait-only, no cancel, no background) and FR-025 (30 s hard timeout)?
 
 **Decision**:
-- `POST /api/runs` is a synchronous request that does not return until the
-  run terminates (complete / partial / unreachable / timeout).
-- Server-side hard timeout: 25 s (slightly above SC-006's 10 s typical so
-  slow-but-honest runs aren't cut off prematurely; well under common
-  reverse-proxy and browser request timeouts).
-- The frontend shows a generic "Running checks against `<host>`…" spinner
-  while the request is in flight (FR-009). No item-level streaming.
+- `POST /api/runs` is a synchronous request that does not return until
+  the run terminates (complete / partial / unreachable / timeout).
+- **Server-side hard timeout: 30 s** (FR-025, Clarification
+  2026-05-07). Implemented via `asyncio.wait_for(run_coro, timeout=30)`
+  in `checks/runner.py`. On expiry the run is cancelled, the per-host
+  lock is released, and the response is shaped as
+  `outcome: "timeout"` with `items: []` and a populated `started_at` /
+  `completed_at` pair.
+- The frontend shows a generic "Running checks against `<host>`…"
+  spinner while the request is in flight (FR-009) and after a soft
+  threshold (default 15 s, configurable) swaps in a "this is taking
+  longer than usual" hint. The hard 30 s ceiling is the request
+  timeout; the frontend's request timeout is set slightly above (35 s)
+  so the server's structured timeout response always wins over a
+  client-side abort.
 - Concurrency lock (FR-011): an in-memory `asyncio.Lock` keyed by
-  `host_id`. A second `POST /api/runs` for a host that already has a run
-  in flight returns HTTP 409 with a `{"reason": "run_in_progress"}` body;
-  the frontend translates this into a plain-English toast and disables
-  the "Run check" button while a run is active.
+  `host_id`. A second `POST /api/runs` for a host that already has a
+  run in flight returns HTTP 409 with a
+  `{"error": "run_in_progress"}` body; the frontend disables the
+  "Run check" button while a run is active and surfaces a toast
+  defensively if the 409 still arrives.
+- FR-011's "same operator" wording is preserved because in v1 cross-
+  operator concurrent runs against the same host are not constrained
+  (each operator's results are persisted to a separate path-segment per
+  R4/FR-026, so they do not collide). The in-memory `host_id` lock is
+  intentionally stricter than FR-011 requires — locking globally on
+  `host_id` is simpler than locking per `(host_id, operator)` and
+  prevents two operators from racing the same SSH endpoint, which is
+  the actually-bad outcome.
 
 **Rationale**:
 - Synchronous request = simplest possible state machine. No queue, no
   WebSocket, no SSE, no background worker.
-- An in-memory lock is sufficient because v1 is a single-process backend
-  (FR-011 only requires "from the same operator" — a single process
-  inherently sees all live runs).
+- An in-memory lock is sufficient because v1 is a single-process
+  backend.
+- 30 s is comfortably under any reverse-proxy idle timeout and any
+  browser default (typically ≥60 s), so the server timeout always wins.
 
 **Alternatives considered**:
 - *Job queue + polling* — rejected: more code, more components, no v1
-  benefit since runs are <25 s.
+  benefit since runs are ≤30 s.
 - *WebSocket per-item progress streaming* — rejected: would require
   per-check streaming primitives in the executor and a stateful frontend
   store, all for cosmetic value the spec already chose to forgo (FR-009
   needs only generic in-progress feedback).
+- *Per-`(host, operator)` lock instead of per-`host` lock* — rejected:
+  permits two operators to hammer one SSH endpoint simultaneously,
+  which buys nothing and risks confusing diagnostics.
 
 ---
 
@@ -223,7 +300,48 @@ and the frontend renders the string for that identifier.
 
 ---
 
+## R7. Result-view entry: persistence vs. blank-on-entry (FR-026 + FR-028)
+
+**Decision**:
+- Backend persists the most recent run per `(operator, host_id)` pair
+  on disk (FR-026) — see R4 for the directory layout.
+- The HTTP API in v1 **does not expose** an endpoint that returns the
+  persisted run for a host. There is no `GET /api/runs/latest`. The
+  result page calls `POST /api/runs` only when the operator clicks the
+  CTA, and renders nothing host-specific until that response arrives
+  (FR-028).
+- The persisted record's purpose in v1 is twofold:
+  1. **Backend audit / inspection** — engineers can read
+     `~/.cache/vayobd/runs/<operator>/<host_id>.json` directly.
+  2. **Same-tab refresh resilience** — a future iteration can
+     reintroduce a `GET /api/runs/latest` endpoint to repopulate the
+     result view after an accidental browser refresh, without changing
+     the on-disk format.
+
+**Rationale**:
+- FR-028 is explicit that no UI affordance recalls a stored run
+  without re-running. Defining a `GET` endpoint with no consumer in v1
+  would invite drift between contract and behaviour (Constitution I).
+- Keeping persistence on disk preserves the per-operator scoping
+  decision (FR-026) without locking us into a "no persistence at all"
+  shape that would force a backend rewrite the moment the team wants
+  the audit log or the refresh-resilience affordance.
+
+**Alternatives considered**:
+- *No persistence at all in v1* — rejected: contradicts FR-026 and
+  closes the door on cheap follow-ups (audit, refresh-resilience). The
+  on-disk write costs nothing.
+- *Expose `GET /api/runs/latest` even though FR-028 forbids the
+  frontend from using it* — rejected: adds a contract surface the
+  frontend won't call, increases the audit footprint for SC-003 (jargon
+  audit on Operator-mode-visible surfaces) for zero v1 value.
+
+---
+
 ## Summary of unresolved items at the end of Phase 0
 
 None. Every `NEEDS CLARIFICATION` originally implied by the Technical
-Context and the deferred-to-plan portions of `spec.md` is closed above.
+Context and the deferred-to-plan portions of `spec.md` is closed above,
+including the five clarifications recorded in spec.md Session
+2026-05-07 (timeout, scope, country-step UX, persistence scope,
+refresh-failure handling) and the FR-028 result-view-on-entry rule.

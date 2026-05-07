@@ -11,6 +11,17 @@ description: "Task breakdown for Remote Host Diagnostics (feature 001-host-diagn
 
 **Organization**: Tasks are grouped by user story (US1, US2, US3 from `spec.md`). Each story phase is independently testable per the spec's "Independent Test" sections.
 
+> **2026-05-07 re-alignment**: Five new clarifications + a DE-only scope
+> directive landed in `spec.md` Session 2026-05-07. They introduced FR-025
+> (30 s hard timeout), FR-026 (per-operator backend persistence), FR-027
+> (exp-backoff inventory refresh on failure), FR-028 (blank-on-entry
+> result view), and the wizard's disabled "United States — Coming soon"
+> tile. Task descriptions for affected items below are updated in place
+> and their checkboxes flipped to `[ ]` where the existing implementation
+> no longer matches; net-new work (banner component, new tests, dropped
+> endpoint) lives in **Phase 7: Re-alignment** at the bottom of this
+> file.
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel — different files, no dependencies on incomplete tasks.
@@ -49,12 +60,12 @@ description: "Task breakdown for Remote Host Diagnostics (feature 001-host-diagn
 - [X] T011 [P] Create backend Settings module (env-driven `VAYOBD_INVENTORY_PATH`, `VAYOBD_EXECUTOR`, `VAYOBD_SSH_KEY`, `VAYOBD_SSH_KNOWN_HOSTS`, refresh cadence) in `hackhaton/backend/src/vayobd/config.py`
 - [X] T012 [P] Configure structlog with JSON renderer in `hackhaton/backend/src/vayobd/logging.py`
 - [X] T013 [P] Implement problem-JSON error envelope and FastAPI exception handlers in `hackhaton/backend/src/vayobd/api/errors.py`
-- [X] T014 [P] Implement inventory loader — read `org/*/{vehicles,telestations}/*.yaml`, derive `country`/`type`/`city`, filter to DE+US (FR-001b) — in `hackhaton/backend/src/vayobd/inventory/loader.py`
-- [X] T015 [P] Implement inventory sync — `git fetch && git reset --hard origin/<branch>` via subprocess with hard timeout, write `inventory.meta.json`, preserve previous on failure (R2) — in `hackhaton/backend/src/vayobd/inventory/sync.py`
-- [X] T016 [P] Implement run-cache filesystem helpers (`runs/<host_id>.json` read/write with `triggered_by` stripping on API responses) in `hackhaton/backend/src/vayobd/inventory/runs_cache.py`
+- [X] T014 [P] Implement inventory loader — read `org/*/{vehicles,telestations}/*.yaml`, derive `country`/`type`/`city`, **filter to DE only** (FR-001b, Clarification 2026-05-07) — in `hackhaton/backend/src/vayobd/inventory/loader.py`
+- [X] T015 [P] Implement inventory sync — `git fetch && git reset --hard origin/<branch>` via subprocess with hard timeout, write `inventory.meta.json`, **preserve previous cache on failure and increment `consecutive_failed_refreshes` counter** (FR-027, R2) — in `hackhaton/backend/src/vayobd/inventory/sync.py`
+- [X] T016 [P] Implement run-cache filesystem helpers (**`runs/<operator-slug>/<host_id>.json`** read/write with `triggered_by` stripping on API responses; per-operator scoping per FR-026) in `hackhaton/backend/src/vayobd/inventory/runs_cache.py`
 - [X] T017 Create FastAPI app factory in `hackhaton/backend/src/vayobd/app.py` — mounts inventory + runs routers, mounts built SPA `static/` directory in production, registers exception handlers from T013
-- [X] T018 Implement auth middleware that reads `X-Vay-User` header into `OperatorIdentity` (R4) in `hackhaton/backend/src/vayobd/api/auth.py`
-- [X] T019 Implement asyncio periodic-refresh task started by app factory (FR-016, default 30 min) in `hackhaton/backend/src/vayobd/inventory/scheduler.py`
+- [X] T018 Implement auth middleware that reads `X-Vay-User` header into `OperatorIdentity` **and derives a sanitised `slug` (`[a-z0-9._-]` only); raise HTTP 401 if header is missing/empty or slug is empty after sanitisation** (R4, FR-026) in `hackhaton/backend/src/vayobd/api/auth.py`
+- [X] T019 Implement asyncio periodic-refresh task started by app factory — default cadence 30 min on success; **on failure, switch to exponential backoff (base 30 s, multiplier ×2, ceiling 5 min) and increment `consecutive_failed_refreshes`; reset both on next success** (FR-016 + FR-027) — in `hackhaton/backend/src/vayobd/inventory/scheduler.py`
 - [X] T020 [P] Frontend app shell — `QueryClientProvider`, router routes (`/`, `/host/:hostId`), theme provider, ErrorBoundary — in `hackhaton/frontend/src/App.tsx` and `hackhaton/frontend/src/main.tsx`
 - [X] T021 [P] Frontend `developerMode` store (Zustand or `useSyncExternalStore` over localStorage), default off, broadcast on toggle (FR-021) in `hackhaton/frontend/src/lib/developerMode.ts`
 - [X] T022 [P] Frontend typed fetch wrapper that maps backend problem-JSON to typed errors and Zod-validates responses in `hackhaton/frontend/src/api/client.ts`
@@ -81,20 +92,20 @@ description: "Task breakdown for Remote Host Diagnostics (feature 001-host-diagn
 - [X] T030 [US1] Implement `Runner.run(host)` orchestrating T029 catalog through configured T026 executor, classifying into `RunOutcome` (complete / partial / unreachable / timeout) in `hackhaton/backend/src/vayobd/checks/runner.py`
 - [X] T031 [US1] Implement per-`host_id` `asyncio.Lock` registry; second concurrent run returns 409 (FR-011, R5) in `hackhaton/backend/src/vayobd/checks/runner.py`
 - [X] T032 [P] [US1] Server-side PII scrubber over `raw_detail` strings (no VIN, no host segments containing PII) in `hackhaton/backend/src/vayobd/checks/runner.py` (FR-013)
-- [X] T033 [US1] Implement `POST /api/runs` — body `{host_id}`, 25 s hard timeout, persists via T016, returns `DiagnosticRun` — in `hackhaton/backend/src/vayobd/api/runs.py`
-- [X] T034 [US1] Implement `GET /api/runs/latest?host_id=…` returning persisted run or 404 in `hackhaton/backend/src/vayobd/api/runs.py`
-- [X] T035 [P] [US1] Seed `hackhaton/backend/tests/fixtures/runs/` with a healthy host (`ve-de-apollo.yaml`), an errored host (`ve-de-loki.yaml` — missing USB camera), and an unreachable host (`ve-us-01001.yaml`)
-- [X] T036 [P] [US1] Backend unit test: inventory loader filters out `ve-be-*` / `ts-be-*`, derives `country`/`type`/`city` correctly, vehicle has `city is None`, telestation has non-null `city` — in `hackhaton/backend/tests/unit/test_inventory_loader.py`
+- [X] T033 [US1] Implement `POST /api/runs` — body `{host_id}`, **30 s hard timeout** (FR-025), persists via T016 (per-operator), returns `DiagnosticRun` — in `hackhaton/backend/src/vayobd/api/runs.py`
+- ~~[X]~~ **T034 — DROPPED 2026-05-07** per FR-028 + research R7. The `GET /api/runs/latest?host_id=…` endpoint is not exposed in v1; the result view never auto-displays a stored prior run. Removal task: see T079 in Phase 7.
+- [X] T035 [P] [US1] Seed `hackhaton/backend/tests/fixtures/runs/` with a healthy host (`ve-de-apollo.yaml`), an errored host (`ve-de-loki.yaml` — missing USB camera), an unreachable host (**`ve-de-thor.yaml`** — DE-only per Clarification 2026-05-07), and a timeout host (**`ve-de-saturn-slow.yaml`** with `delay_seconds: 35` to verify FR-025)
+- [X] T036 [P] [US1] Backend unit test: inventory loader **filters out `ve-us-*` / `ts-us-*` / `ve-be-*` / `ts-be-*`** (DE-only per FR-001b), derives `country`/`type`/`city` correctly, vehicle has `city is None`, telestation has non-null `city` — in `hackhaton/backend/tests/unit/test_inventory_loader.py`
 - [X] T037 [P] [US1] Backend unit test: catalog wiring — vehicle host produces vehicle catalog items, telestation produces telestation items, item ids are stable across calls — in `hackhaton/backend/tests/unit/test_catalog.py`
 - [X] T038 [P] [US1] Backend integration test: `POST /api/runs` with `FixtureExecutor` for the three seeded fixtures returns the expected `outcome` and item statuses; second concurrent call returns 409 — in `hackhaton/backend/tests/integration/test_runs_endpoint.py`
 
 ### Frontend — US1
 
 - [X] T039 [P] [US1] API hooks `useInventory()` + `useRefreshInventory()` in `hackhaton/frontend/src/api/inventory.ts`
-- [X] T040 [P] [US1] API hooks `useRunCheck(hostId)` + `useLatestRun(hostId)` (handles 409 toast key, 503 empty-inventory branch) in `hackhaton/frontend/src/api/runs.ts`
+- [X] T040 [P] [US1] API hook **`useRunCheck(hostId)` only** — `useLatestRun(hostId)` is dropped per FR-028 (see T034 + T079); handles 409 toast key, 503 empty-inventory branch — in `hackhaton/frontend/src/api/runs.ts`
 - [X] T041 [P] [US1] Framer Motion wrapper `PageTransition` (slide left/right) in `hackhaton/frontend/src/components/motion/PageTransition.tsx`
 - [X] T042 [P] [US1] `StaggeredList` Framer Motion enter animations for result items in `hackhaton/frontend/src/components/motion/StaggeredList.tsx`
-- [X] T043 [P] [US1] Wizard `CountryStep` — Germany / United States tile picker with flag iconography — in `hackhaton/frontend/src/components/wizard/CountryStep.tsx`
+- [X] T043 [P] [US1] Wizard `CountryStep` — **Germany (selectable) and United States (disabled / greyed-out with "Coming soon" sublabel; click is a no-op and does not advance the wizard)** with flag iconography (FR-001a step 1, Clarification 2026-05-07) — in `hackhaton/frontend/src/components/wizard/CountryStep.tsx`
 - [X] T044 [P] [US1] Wizard `TypeStep` — Vehicle / Telestation card picker — in `hackhaton/frontend/src/components/wizard/TypeStep.tsx`
 - [X] T045 [P] [US1] Wizard `CityStep` (rendered only when type=telestation; hidden for vehicles per FR-001a) in `hackhaton/frontend/src/components/wizard/CityStep.tsx`
 - [X] T046 [P] [US1] Wizard `HostStep` — host card grid with friendly names + selected highlight — in `hackhaton/frontend/src/components/wizard/HostStep.tsx`
@@ -108,12 +119,12 @@ description: "Task breakdown for Remote Host Diagnostics (feature 001-host-diagn
 - [X] T054 [US1] `DiagnosticItemRow` — plain-language name, category badge, recommended-action paragraph for errors, conditional `raw_detail` expand visible only when `developerMode === true` (FR-022) — in `hackhaton/frontend/src/components/result/DiagnosticItemRow.tsx`
 - [X] T055 [P] [US1] `UnreachableState` — single user-facing message; rendered when `outcome === "unreachable"` (FR-006, edge case) — in `hackhaton/frontend/src/components/states/UnreachableState.tsx`
 - [X] T056 [P] [US1] `PartialRunState` — summary banner that some checks did not complete (FR-006) — in `hackhaton/frontend/src/components/states/PartialRunState.tsx`
-- [X] T057 [US1] `RunResultPage` — pulls `useRunCheck` once on mount, renders `RunningState` then `ResultHero` + two `ResultGroup`s + `DiagnosticItemRow` enumerating every catalog item (FR-003) — in `hackhaton/frontend/src/pages/RunResultPage.tsx`
-- [X] T058 [US1] Populate `hackhaton/frontend/src/strings.ts` with every operator-visible string for v1 (wizard step titles, item names from catalog T029, recommended actions, category labels, error toasts, empty/unreachable messages) (FR-005, FR-014, R6)
+- [X] T057 [US1] `RunResultPage` — **renders blank-on-entry: only the host header and a single "Run check" CTA are visible on mount; `useRunCheck` fires only after the operator clicks the CTA** (FR-028). Once a run completes, renders `RunningState` → `ResultHero` + two `ResultGroup`s + `DiagnosticItemRow` enumerating every catalog item (FR-003). Soft-threshold (15 s) hint and hard 30 s ceiling are surfaced via `RunningState`. — in `hackhaton/frontend/src/pages/RunResultPage.tsx`
+- [X] T058 [US1] Populate `hackhaton/frontend/src/strings.ts` with every operator-visible string for v1 (wizard step titles **including `wizard.country.us.disabled` "Coming soon"**, item names from catalog T029, recommended actions, category labels, error toasts, empty/unreachable messages, **`inventory.refresh_failed.banner` body for FR-027**, **`runs.timeout.body` for FR-025**) (FR-005, FR-014, R6)
 
 ### Smoke — US1
 
-- [ ] T059 [US1] Playwright smoke test covering the P1 happy path (open app → Country → Type=Vehicle → Host → Run check → ResultHero with both groups populated → toggle Developer mode → expand a row → toggle off) in `hackhaton/frontend/tests/e2e/p1.spec.ts`
+- [X] T059 [US1] Playwright smoke test covering the P1 happy path (open app → Country → Type=Vehicle → Host → Continue → blank result → Run check → ResultHero with both groups populated → toggle Developer mode → expand a row → toggle off) in `hackhaton/frontend/tests/e2e/p1.spec.ts` (extended with T087/T088/T090 assertions)
 
 **Checkpoint**: US1 fully functional and demoable end-to-end with the fixture executor. This is the MVP — stop here for first demo.
 
@@ -128,7 +139,7 @@ description: "Task breakdown for Remote Host Diagnostics (feature 001-host-diagn
 - [X] T060 [US2] Add **Run check again** primary button on `RunResultPage` — calls T040's `useRunCheck` again, shows `RunningState` over the existing layout, replaces result data on success; disables itself while the request is in flight (FR-008, FR-011) — in `hackhaton/frontend/src/pages/RunResultPage.tsx`
 - [X] T061 [US2] Toast on 409 (`runs.in_progress.toast`) using shadcn `useToast`; verify the button stays disabled during the in-flight period — in `hackhaton/frontend/src/pages/RunResultPage.tsx`
 - [X] T062 [US2] Verify run-cache overwrite semantics (most-recent run replaces previous) and add a unit test in `hackhaton/backend/tests/unit/test_runs_cache.py`
-- [ ] T063 [US2] Playwright smoke: trigger a run with an errored fixture, swap the fixture to a healthy variant via test helper, click **Run check again**, assert previously errored item is now under "Working" — in `hackhaton/frontend/tests/e2e/p2.spec.ts`
+- [X] T063 [US2] Playwright smoke: trigger a run with an errored fixture, swap the fixture to a healthy variant via test helper, click **Run check again**, assert previously errored item is now under "Working" — in `hackhaton/frontend/tests/e2e/p2.spec.ts` (updated for FR-028 Continue → blank → Run check flow)
 
 **Checkpoint**: US1 + US2 both work independently; the operator's full "diagnose → fix → verify" loop is closed.
 
@@ -144,7 +155,7 @@ description: "Task breakdown for Remote Host Diagnostics (feature 001-host-diagn
 - [X] T065 [P] [US3] `CategoryBadge` component using shadcn `Badge` with category-specific colour and icon (Communication / Hardware / Configuration) (FR-010) — in `hackhaton/frontend/src/components/result/CategoryBadge.tsx`
 - [X] T066 [US3] Wire `CategoryBadge` into `DiagnosticItemRow` so every row shows its category — in `hackhaton/frontend/src/components/result/DiagnosticItemRow.tsx`
 - [X] T067 [US3] Add category label entries to `hackhaton/frontend/src/strings.ts` (Communication / Hardware / Configuration plain-language labels)
-- [ ] T068 [US3] Playwright assertion: for a fully-healthy fixture host, the result enumerates the full catalog by name (no aggregate-only summary) — extends `hackhaton/frontend/tests/e2e/p1.spec.ts` or adds `hackhaton/frontend/tests/e2e/p3.spec.ts` covering SC-007
+- [X] T068 [US3] Playwright assertion: for a fully-healthy fixture host, the result enumerates the full catalog by name (no aggregate-only summary) — covered by `hackhaton/frontend/tests/e2e/p1.spec.ts` "happy path with blank-on-entry result view + developer toggle" which asserts both groups render with item rows for every catalog item (SC-007)
 
 **Checkpoint**: All three user stories are independently functional. SC-001..SC-008 should be measurable now.
 
@@ -162,6 +173,51 @@ description: "Task breakdown for Remote Host Diagnostics (feature 001-host-diagn
 
 ---
 
+## Phase 7: Re-alignment with 2026-05-07 clarifications
+
+**Purpose**: Net-new work introduced by spec.md Session 2026-05-07
+clarifications + the DE-only directive. Tasks T014, T015, T016, T018,
+T019, T033, T034, T035, T036, T040, T043, T057, T058 above were
+patched in place (descriptions updated, checkboxes flipped to `[ ]`
+where the existing implementation no longer matches). This phase
+captures the additional surfaces and tests.
+
+### Models & schemas
+
+- [X] T076 [P] Extend `InventoryMeta` Pydantic model in `hackhaton/backend/src/vayobd/models.py` with `last_refresh_attempted_at: datetime | None` and `consecutive_failed_refreshes: int` (FR-027); mirror in `hackhaton/frontend/src/api/schemas.ts` Zod schema
+- [X] T077 [P] Add `OperatorIdentity.slug` (sanitised `[a-z0-9._-]` derivation of `username`) in `hackhaton/backend/src/vayobd/models.py` (FR-026)
+
+### Endpoint contract delta
+
+- [X] T078 Update `POST /api/inventory/refresh` and `GET /api/inventory` to include the new `InventoryMeta` fields in the 200 response **and to embed `meta` in the 502 failure response body** so the SPA can update its banner state without an extra round-trip (`contracts/http-api.md`) — in `hackhaton/backend/src/vayobd/api/inventory.py`
+- [X] T079 Remove the `GET /api/runs/latest` route from `hackhaton/backend/src/vayobd/api/runs.py` and remove `useLatestRun` from `hackhaton/frontend/src/api/runs.ts` (FR-028 / R7); update `hackhaton/frontend/src/pages/RunResultPage.tsx` to no longer call it
+
+### Frontend additions
+
+- [X] T080 [P] `InventoryRefreshBanner` component in `hackhaton/frontend/src/components/chrome/InventoryRefreshBanner.tsx` — renders only when `meta.consecutive_failed_refreshes >= VITE_REFRESH_FAILURE_THRESHOLD` (default 3); copy keyed `inventory.refresh_failed.banner` (FR-027); does not block any other UI
+- [X] T081 [P] Wire `InventoryRefreshBanner` into `hackhaton/frontend/src/pages/PickerPage.tsx` (top of wizard) so it appears across all wizard steps without disabling them (FR-027)
+- [X] T082 Vite dev proxy config in `hackhaton/frontend/vite.config.ts` injects `X-Vay-User: $VAYOBD_DEV_USER` (default `dev@local`) on every proxied `/api/*` request, matching the production SSO-proxy contract (R4 + quickstart §2)
+
+### Tests
+
+- [X] T083 [P] Backend unit test: scheduler exponential backoff — failures advance the schedule (30 s → 60 s → 2 min → 4 min → 5 min ceiling), counter increments per failure, both reset on next success — in `hackhaton/backend/tests/unit/test_inventory_scheduler.py`
+- [X] T084 [P] Backend unit test: `auth.py` returns HTTP 401 when `X-Vay-User` is missing or empty, and when sanitisation produces an empty slug; valid usernames produce stable lowercased slugs — in `hackhaton/backend/tests/unit/test_auth.py`
+- [X] T085 [P] Backend unit test: per-operator persistence — writing two runs with different `X-Vay-User` values produces two independent files at `runs/<slug-a>/<host_id>.json` and `runs/<slug-b>/<host_id>.json`; reading from one slug never surfaces the other's data — in `hackhaton/backend/tests/unit/test_runs_cache.py`
+- [X] T086 [P] Backend integration test: `POST /api/runs` against a fixture host (`ve-de-saturn-slow.yaml`, sleeps 5 s) paired with a tight `run_timeout_seconds=0.5` returns `outcome: "timeout"` with empty `items[]`; same code path enforces the 30 s production ceiling (FR-025) — extends `hackhaton/backend/tests/integration/test_runs_endpoint.py`
+- [X] T087 [P] Frontend test: rolled into Playwright `p1.spec.ts` "country step renders US as disabled (Coming soon)" — verifies US tile has `aria-disabled="true"` and click is a no-op (FR-001a step 1). Vitest unit infra is not yet installed; if added later, lift this assertion into `__tests__/CountryStep.test.tsx`.
+- [X] T088 [P] Frontend test: rolled into Playwright `p1.spec.ts` blank-on-entry assertions — `[data-testid=run-cta-card]` is the only result-view content on mount; result hero appears only after the CTA is clicked (FR-028).
+- [ ] T089 [P] Frontend unit test: `InventoryRefreshBanner` — hidden when `consecutive_failed_refreshes < threshold`, visible at/above threshold. **Skipped in this implementation pass** — needs vitest setup (not yet wired). Verifiable manually per `quickstart.md` §4 "Inventory refresh fails with cache present".
+
+### E2E smoke updates
+
+- [X] T090 Update Playwright happy-path smoke (`hackhaton/frontend/tests/e2e/p1.spec.ts`): asserts US tile is present-but-disabled on Country step; asserts result page is blank-on-entry until the CTA is clicked; existing test confirms two-group split + Developer-mode toggle round-trip. Timeout assertion verifiable via `quickstart.md` §4 walkthrough against the slow fixture.
+
+**Checkpoint**: Implementation matches the 2026-05-07 spec. Quickstart
+§4 walkthroughs (timeout, refresh-failure-with-cache, per-operator
+persistence sanity check) all pass.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -172,6 +228,7 @@ description: "Task breakdown for Remote Host Diagnostics (feature 001-host-diagn
 - **US2 (Phase 4)** → depends on US1 (re-uses `RunResultPage`, `useRunCheck`, runs cache).
 - **US3 (Phase 5)** → depends on US1 (extends `ResultHero` and `DiagnosticItemRow`); independent of US2.
 - **Polish (Phase 6)** → depends on whichever stories you intend to ship.
+- **Re-alignment (Phase 7)** → can run in parallel with the still-open Polish tasks. T076/T077 (model fields + slug) unblock T078 (endpoint contract delta) and T084/T085/T086 (tests). T080/T081 (banner) depend on T076 + T078. T079 (drop endpoint + hook) and T082 (Vite proxy header) are independent. T087/T088/T089 unit tests depend on the corresponding component patches (T043, T057, T080). T090 Playwright smoke is the last gate — depends on the full Phase 7 + the fixture additions in T035.
 
 ### Within Each Story
 
@@ -247,6 +304,21 @@ T068 → after T066 + T067
 T073, T075 are sequential, run last.
 ```
 
+### Phase 7 Re-alignment
+
+```text
+[P] T076 || T077 || T079 || T082 || T083 || T084 are independent.
+T078 → after T076.
+T080 → after T076 + T078.
+T081 → after T080.
+T085 → after T077 (slug derivation) + T016 (per-operator path).
+T086 → after T033 (30 s timeout) + T035 (slow fixture).
+T087 → after T043 (CountryStep patch).
+T088 → after T057 (RunResultPage blank-on-entry patch).
+T089 → after T080 (banner component).
+T090 → after the full Phase 7 (final gate).
+```
+
 ---
 
 ## Implementation Strategy
@@ -266,6 +338,7 @@ T073, T075 are sequential, run last.
 3. + US2 → Closed-loop diagnose-then-verify demo (P2)
 4. + US3 → Trust-and-transparency polish (P3)
 5. + Polish → Final demo build with confetti, theme refinements, SC numbers measured
+6. + **Re-alignment (Phase 7)** → spec fully matches implementation; FR-025/FR-026/FR-027/FR-028 all enforced; DE-only scope wired end-to-end
 
 ### Parallel Team Strategy (for the hackathon team)
 

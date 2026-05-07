@@ -20,9 +20,11 @@ Used to populate the wizard.
 ```json
 {
   "meta": {
-    "last_refreshed_at": "2026-05-06T14:08:11Z",
+    "last_refreshed_at": "2026-05-07T14:08:11Z",
+    "last_refresh_attempted_at": "2026-05-07T14:08:11Z",
+    "consecutive_failed_refreshes": 0,
     "source_revision": "abc1234",
-    "host_count": 97
+    "host_count": 42
   },
   "hosts": [
     {
@@ -46,6 +48,9 @@ Used to populate the wizard.
 ```
 
 `address` and `source_file` are server-internal and **not returned**.
+All `hosts[*].country` values are `"de"` in v1; the wizard's "United
+States — Coming soon" tile is a static frontend affordance with no
+backing data on the wire.
 
 **Response 503** — local inventory missing or empty (FR-019):
 
@@ -73,9 +78,11 @@ completes (success or failure).
 ```json
 {
   "meta": {
-    "last_refreshed_at": "2026-05-06T14:11:42Z",
+    "last_refreshed_at": "2026-05-07T14:11:42Z",
+    "last_refresh_attempted_at": "2026-05-07T14:11:42Z",
+    "consecutive_failed_refreshes": 0,
     "source_revision": "def5678",
-    "host_count": 98
+    "host_count": 42
   }
 }
 ```
@@ -86,20 +93,31 @@ preserved unchanged:
 ```json
 {
   "error": "inventory_refresh_failed",
-  "message_key": "inventory.refresh_failed.body"
+  "message_key": "inventory.refresh_failed.body",
+  "meta": {
+    "last_refreshed_at": "2026-05-07T13:41:42Z",
+    "last_refresh_attempted_at": "2026-05-07T14:11:42Z",
+    "consecutive_failed_refreshes": 2,
+    "source_revision": "def5678",
+    "host_count": 42
+  }
 }
 ```
 
-The frontend SHOULD surface this as a non-blocking toast and continue to
-display the previously cached inventory (per R2: refresh failures do not
-replace the existing copy).
+Per R2 / FR-027: the frontend MUST continue to use the cached inventory
+returned by the prior `GET /api/inventory` and MUST NOT block the
+wizard. The `meta` block in the 502 response lets the SPA update its
+banner state without an extra round-trip. Surfacing of the persistent
+warning banner is gated on
+`meta.consecutive_failed_refreshes >= threshold` (configurable, default
+3); below the threshold the failure SHOULD be silent (background-only).
 
 ---
 
 ## `POST /api/runs`
 
 Triggers one diagnostic run. Synchronous: blocks until the run reaches a
-terminal state (R5). Server-side hard timeout 25 s.
+terminal state (R5). Server-side hard timeout **30 s** (FR-025).
 
 **Request body**
 
@@ -112,8 +130,8 @@ terminal state (R5). Server-side hard timeout 25 s.
 ```json
 {
   "host_id": "ve-de-apollo",
-  "started_at": "2026-05-06T14:12:01Z",
-  "completed_at": "2026-05-06T14:12:08Z",
+  "started_at": "2026-05-07T14:12:01Z",
+  "completed_at": "2026-05-07T14:12:08Z",
   "outcome": "complete",
   "items": [
     {
@@ -167,19 +185,17 @@ removed on the last refresh):
 
 ---
 
-## `GET /api/runs/latest?host_id=<HostId>`
+## (Intentionally not in v1) `GET /api/runs/latest`
 
-Returns the most recent persisted run for a host, if any. Used by US3
-(see what was checked) and to repopulate the result screen on
-navigation.
-
-**Response 200** — same shape as `POST /api/runs` 200.
-
-**Response 404** — no run has been persisted for this host yet:
-
-```json
-{ "error": "no_run_yet", "message_key": "runs.none_yet.body" }
-```
+A read endpoint returning the operator's persisted last run for a given
+host is **not exposed in v1** per FR-028 — the result view always
+opens blank, and the operator must trigger a fresh run to see anything.
+Persistence still happens server-side per FR-026 and `research.md` R7,
+but no v1 client surface reads it. A follow-up that re-introduces this
+endpoint (e.g., to repopulate the result view after an accidental
+browser refresh) would scope the lookup to the authenticated operator
+identity, mirroring the on-disk layout
+(`~/.cache/vayobd/runs/<operator-slug>/<host_id>.json`).
 
 ---
 
@@ -187,15 +203,22 @@ navigation.
 
 All endpoints require an authenticated identity forwarded by the upstream
 proxy via `X-Vay-User` (R4). The app process trusts this header and uses
-it for structured logging only (`triggered_by` on persisted runs). No
-in-app login screen.
+it for two purposes:
+
+1. **Persistence keying** — the sanitised slug becomes the directory
+   segment under `~/.cache/vayobd/runs/<operator-slug>/` (FR-026).
+2. **Structured logging** — `triggered_by` on persisted run records.
+
+If `X-Vay-User` is missing, empty, or sanitises to an empty slug, the
+endpoint MUST return HTTP 401. There is no fallback "anonymous"
+identity; the dev environment documents how to set the header (see
+`quickstart.md`). No in-app login screen.
 
 ## Caching headers
 
 - `GET /api/inventory` — `Cache-Control: no-store`. Cheap server-side
   (reads memory snapshot of last-loaded inventory).
 - `POST /api/inventory/refresh`, `POST /api/runs` — `Cache-Control: no-store`.
-- `GET /api/runs/latest` — `Cache-Control: no-store`.
 
 ## Versioning
 

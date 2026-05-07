@@ -45,8 +45,14 @@ class Settings(BaseSettings):
     fixtures_dir: Path | None = None  # Defaults under backend/tests/fixtures/runs
 
     # API
-    run_timeout_seconds: float = 25.0
+    run_timeout_seconds: float = 30.0  # FR-025 — hard ceiling per Clarification 2026-05-07
     static_dir: Path | None = None  # Production-built SPA mounted here when set
+
+    # Inventory refresh failure surfacing (FR-027)
+    refresh_failure_warning_threshold: int = 3
+    refresh_backoff_base_seconds: float = 30.0
+    refresh_backoff_multiplier: float = 2.0
+    refresh_backoff_ceiling_seconds: float = 5 * 60.0
 
 
 def get_settings() -> Settings:

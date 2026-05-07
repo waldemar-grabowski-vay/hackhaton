@@ -1,7 +1,13 @@
-"""Runs API (T033 / T034).
+"""Runs API (T033, FR-025, FR-026, FR-028).
 
-`POST /api/runs` triggers one synchronous diagnostic; `GET /api/runs/latest`
-returns the persisted result.
+`POST /api/runs` triggers one synchronous diagnostic against an in-scope
+host with a server-side **30 s** hard timeout (per `Settings.run_timeout_seconds`,
+FR-025) and persists the result under the triggering operator's slug
+directory (FR-026).
+
+`GET /api/runs/latest` is intentionally **not exposed** in v1
+(FR-028 / research R7): the result view never auto-shows a stored prior
+run, so no client surface reads the persisted record.
 """
 
 from __future__ import annotations
@@ -16,7 +22,7 @@ from vayobd.checks.runner import RunInProgressError, execute_run
 from vayobd.config import Settings, get_settings
 from vayobd.dependencies import get_executor
 from vayobd.inventory.loader import load_inventory
-from vayobd.inventory.runs_cache import read_run, write_run
+from vayobd.inventory.runs_cache import write_run
 from vayobd.logging import get_logger
 from vayobd.models import DiagnosticRun, Host, OperatorIdentity
 
@@ -72,21 +78,6 @@ async def trigger_run(
         "run_triggered",
         host_id=host.id,
         outcome=run.outcome.value,
-        triggered_by=operator.username,
+        operator_slug=operator.slug,
     )
-    return run
-
-
-@router.get("/latest", response_model=DiagnosticRun)
-async def latest_run(
-    host_id: str,
-    settings: Settings = Depends(get_settings),
-) -> DiagnosticRun:
-    run = read_run(runs_dir=settings.runs_dir, host_id=host_id)
-    if run is None:
-        raise ApiError(
-            status_code=status.HTTP_404_NOT_FOUND,
-            error="no_run_yet",
-            message_key="runs.none_yet.body",
-        )
     return run

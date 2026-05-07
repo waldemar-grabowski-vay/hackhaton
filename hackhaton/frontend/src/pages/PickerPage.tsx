@@ -20,6 +20,7 @@ import { HostStep } from "@/components/wizard/HostStep";
 import { TypeStep } from "@/components/wizard/TypeStep";
 import { EmptyInventoryState } from "@/components/states/EmptyInventoryState";
 import { InventoryFreshness } from "@/components/chrome/InventoryFreshness";
+import { InventoryRefreshBanner } from "@/components/chrome/InventoryRefreshBanner";
 import { PageTransition } from "@/components/motion/PageTransition";
 import { strings } from "@/strings";
 import type { Country, HostType } from "@/api/schemas";
@@ -53,9 +54,12 @@ export function PickerPage() {
 
   const hosts = inventory.data?.hosts ?? [];
 
-  const availableCountries = useMemo(() => {
+  const availableCountries = useMemo<Country[]>(() => {
     const set = new Set<Country>();
     hosts.forEach((h) => set.add(h.country));
+    // Always offer DE as a known scope marker, even if the inventory hasn't
+    // loaded yet — keeps the wizard's first step responsive on cold cache.
+    set.add("de");
     return Array.from(set).sort();
   }, [hosts]);
 
@@ -126,9 +130,11 @@ export function PickerPage() {
     }
   }
 
-  function handleRun() {
+  function handleContinue() {
     if (!hostId) return;
-    navigate(`/host/${hostId}?run=1`);
+    // FR-028: do NOT auto-trigger a run. The result page opens blank;
+    // the operator clicks "Run check" there to start the diagnostic.
+    navigate(`/host/${hostId}`);
   }
 
   if (inventory.isLoading) {
@@ -175,6 +181,7 @@ export function PickerPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <InventoryRefreshBanner meta={inventory.data.meta} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-xs uppercase tracking-wider text-muted-foreground">
           {strings.wizard.progressLabel} {Math.min(stepIndex, totalSteps)} of{" "}
@@ -244,12 +251,12 @@ export function PickerPage() {
         </Button>
         {step === "host" && (
           <Button
-            onClick={handleRun}
+            onClick={handleContinue}
             disabled={!hostId}
             size="lg"
             className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-[0_8px_24px_-12px_hsl(var(--primary)/0.7)] hover:opacity-95"
           >
-            {strings.runs.runButton}
+            {strings.wizard.continueButton}
             <ArrowRight className="h-4 w-4" />
           </Button>
         )}

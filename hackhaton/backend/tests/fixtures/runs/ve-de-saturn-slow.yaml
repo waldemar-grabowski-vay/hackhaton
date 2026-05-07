@@ -1,0 +1,13 @@
+# T035 / T086 fixture — verifies FR-025 (30 s hard timeout) by sleeping
+# longer than the configured run timeout. The integration test pairs this
+# with `run_timeout_seconds=0.5` so the executor reliably trips the
+# `RunOutcome.TIMEOUT` branch in the runner without making the suite slow.
+#
+# In a real demo against the production-default 30 s ceiling, set
+# `delay_seconds: 35` so the host actually exceeds the FR-025 timeout.
+outcome: complete
+delay_seconds: 5.0
+items:
+  - id: main_can_bus_reachable
+    status: working
+    raw_detail: "would have arrived if we hadn't been cut off"
