@@ -1,19 +1,18 @@
 /**
- * EmptyInventoryState (T048).
+ * EmptyInventoryState.
  *
- * Renders the blocking message + Update inventory CTA when the wizard has
- * nothing to offer (FR-019). The CTA wires to `useRefreshInventory`.
+ * 002 / FR-013a: the refresh CTA from 001 is gone. This state now
+ * surfaces only when the configured inventory file is missing or
+ * unparseable; the recovery path is the "Inventory location"
+ * affordance (US3, Phase 5) that re-opens the setup card.
  */
 import { motion } from "framer-motion";
-import { CloudOff, RefreshCw } from "lucide-react";
+import { CloudOff } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useRefreshInventory } from "@/api/inventory";
 import { strings } from "@/strings";
 
 export function EmptyInventoryState() {
-  const refresh = useRefreshInventory();
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -34,20 +33,6 @@ export function EmptyInventoryState() {
               {strings.inventory.empty.body}
             </div>
           </div>
-          <Button
-            onClick={() => refresh.mutate()}
-            disabled={refresh.isPending}
-            className="mt-2 gap-2"
-          >
-            <RefreshCw
-              className={
-                refresh.isPending ? "h-4 w-4 animate-spin" : "h-4 w-4"
-              }
-            />
-            {refresh.isPending
-              ? strings.inventory.refreshing
-              : strings.inventory.refreshButton}
-          </Button>
         </CardContent>
       </Card>
     </motion.div>

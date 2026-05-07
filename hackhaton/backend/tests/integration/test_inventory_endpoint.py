@@ -29,11 +29,12 @@ def test_inventory_returns_in_scope_hosts(client: TestClient) -> None:
     resp = client.get("/api/inventory")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["meta"]["host_count"] == 5
+    assert body["meta"]["host_count"] == 6
     ids = {h["id"] for h in body["hosts"]}
     assert ids == {
         "ve-de-apollo",
         "ve-de-loki",
+        "ve-de-no-fixture",
         "ve-de-thor",
         "ve-de-saturn-slow",
         "ts-de-ber-zeus",
@@ -47,11 +48,18 @@ def test_inventory_returns_in_scope_hosts(client: TestClient) -> None:
     for host in body["hosts"]:
         assert "address" not in host or host["address"] is None
         assert "source_file" not in host or host["source_file"] is None
-    # New InventoryMeta fields are exposed (FR-027).
+    # 002 / FR-013a — slimmed meta shape (no caching, no last-refreshed
+    # timestamps, no failure counter). The 001 fields are gone.
     meta = body["meta"]
-    assert "consecutive_failed_refreshes" in meta
-    assert meta["consecutive_failed_refreshes"] == 0
-    assert "last_refresh_attempted_at" in meta
+    assert "last_read_at" in meta
+    assert "source_path" in meta
+    assert "host_count" in meta
+    assert meta["host_count"] == 6
+    # 001's retired fields are NOT present any more.
+    assert "consecutive_failed_refreshes" not in meta
+    assert "last_refresh_attempted_at" not in meta
+    assert "last_refreshed_at" not in meta
+    assert "source_revision" not in meta
 
 
 def test_inventory_empty_returns_503(tmp_path: Path) -> None:

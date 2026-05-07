@@ -1,21 +1,18 @@
 /**
- * Inventory API hooks (T039).
+ * Inventory API hook.
  *
- * `useInventory` exposes the cached host list to the wizard.
- * `useRefreshInventory` wraps `POST /api/inventory/refresh` and surfaces a toast
- * on failure (R2 — refresh failures keep the previous list intact).
+ * 002 / FR-013a — `useRefreshInventory` from 001 is retired along
+ * with the cache + sync layer. The inventory is re-read from the
+ * operator's local `ree-vehicle-configs` clone on every
+ * `GET /api/inventory` request; the operator's `git pull` + browser
+ * tab refresh is the v1 update flow.
  */
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { ApiError, apiRequest } from "@/api/client";
-import { Inventory, inventoryMetaSchema, inventorySchema } from "@/api/schemas";
-import { useToast } from "@/lib/hooks/use-toast";
-import { strings } from "@/strings";
-import { z } from "zod";
+import { Inventory, inventorySchema } from "@/api/schemas";
 
 const INVENTORY_QUERY_KEY = ["inventory"] as const;
-
-const refreshResponseSchema = z.object({ meta: inventoryMetaSchema });
 
 export function useInventory() {
   return useQuery<Inventory, ApiError>({
@@ -27,34 +24,5 @@ export function useInventory() {
         responseSchema: inventorySchema,
       }),
     retry: false,
-  });
-}
-
-export function useRefreshInventory() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: () =>
-      apiRequest({
-        method: "POST",
-        path: "/api/inventory/refresh",
-        responseSchema: refreshResponseSchema,
-      }),
-    onSuccess: () => {
-      // Refresh succeeded; re-fetch the inventory itself for fresh hosts.
-      void queryClient.invalidateQueries({ queryKey: INVENTORY_QUERY_KEY });
-    },
-    onError: (err) => {
-      // Refresh failed; previous inventory remains intact (R2). Surface a toast.
-      const isUnavailable = err instanceof ApiError && err.code === "inventory_refresh_failed";
-      toast({
-        variant: "destructive",
-        title: strings.inventory.refreshFailedToast.title,
-        description: isUnavailable
-          ? strings.inventory.refreshFailedToast.body
-          : strings.errors.generic,
-      });
-    },
   });
 }

@@ -20,7 +20,6 @@ import { HostStep } from "@/components/wizard/HostStep";
 import { TypeStep } from "@/components/wizard/TypeStep";
 import { EmptyInventoryState } from "@/components/states/EmptyInventoryState";
 import { InventoryFreshness } from "@/components/chrome/InventoryFreshness";
-import { InventoryRefreshBanner } from "@/components/chrome/InventoryRefreshBanner";
 import { PageTransition } from "@/components/motion/PageTransition";
 import { strings } from "@/strings";
 import type { Country, HostType } from "@/api/schemas";
@@ -181,7 +180,6 @@ export function PickerPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <InventoryRefreshBanner meta={inventory.data.meta} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-xs uppercase tracking-wider text-muted-foreground">
           {strings.wizard.progressLabel} {Math.min(stepIndex, totalSteps)} of{" "}

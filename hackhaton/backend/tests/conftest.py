@@ -48,9 +48,10 @@ def synthetic_inventory(tmp_path: Path) -> Path:
         "network:\n  ve_addresses:\n    - 10.0.1.5\n",
     )
     _write(vehicles / "ve-de-loki.yaml", "")
-    # ve-de-thor: in-scope but the run fixture marks it unreachable, so the
-    # integration test for the unreachable outcome can hit a real DE host id.
     _write(vehicles / "ve-de-thor.yaml", "")
+    # ve-de-no-fixture: in-scope host with no corresponding run fixture, so
+    # FixtureExecutor returns unreachable — used by the unreachable-outcome test.
+    _write(vehicles / "ve-de-no-fixture.yaml", "")
     # ve-de-saturn-slow: in-scope; paired with a sleep-heavy fixture so the
     # FR-025 30 s timeout integration test (T086) has a real host id to
     # POST against.

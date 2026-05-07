@@ -83,6 +83,30 @@ _VEHICLE_CATALOG: tuple[CheckSpec, ...] = (
         description_key_error="item.network.description.error",
         recommended_action_key="item.network.action",
     ),
+    CheckSpec(
+        id="peplink_cellular_connected",
+        name_key="item.peplink_cellular_connected.name",
+        category=CheckCategory.COMMUNICATION,
+        description_key_working="item.peplink_cellular.description.working",
+        description_key_error="item.peplink_cellular.description.error",
+        recommended_action_key="item.peplink_cellular.action",
+    ),
+    CheckSpec(
+        id="peplink_vpn_tunnels_established",
+        name_key="item.peplink_vpn_tunnels_established.name",
+        category=CheckCategory.COMMUNICATION,
+        description_key_working="item.peplink_vpn.description.working",
+        description_key_error="item.peplink_vpn.description.error",
+        recommended_action_key="item.peplink_vpn.action",
+    ),
+    CheckSpec(
+        id="reecu_wake_line_active",
+        name_key="item.reecu_wake_line_active.name",
+        category=CheckCategory.HARDWARE,
+        description_key_working="item.reecu_wake_line.description.working",
+        description_key_error="item.reecu_wake_line.description.error",
+        recommended_action_key="item.reecu_wake_line.action",
+    ),
 )
 
 _TELESTATION_CATALOG: tuple[CheckSpec, ...] = (
@@ -109,6 +133,14 @@ _TELESTATION_CATALOG: tuple[CheckSpec, ...] = (
         description_key_working="item.telestation_config.description.working",
         description_key_error="item.telestation_config.description.error",
         recommended_action_key="item.telestation_config.action",
+    ),
+    CheckSpec(
+        id="reecu_wake_line_active",
+        name_key="item.reecu_wake_line_active.name",
+        category=CheckCategory.HARDWARE,
+        description_key_working="item.reecu_wake_line.description.working",
+        description_key_error="item.reecu_wake_line.description.error",
+        recommended_action_key="item.reecu_wake_line.action",
     ),
 )
 

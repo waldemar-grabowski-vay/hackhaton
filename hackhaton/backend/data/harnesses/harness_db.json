@@ -1,0 +1,1212 @@
+{
+  "_meta": {
+    "description": "Vay VayScale100 vehicle wiring harness signal database. Extracted from official harness PDFs.",
+    "version": "1.0",
+    "harnesses": 16
+  },
+  "signal_canonical": {
+    "APP_CAN_H": [
+      "APP_High",
+      "APP_High_CAN_S",
+      "APP_HIGH_CAN_S",
+      "REF_AUX_CAN_H",
+      "REF_AUX_CAN_P"
+    ],
+    "APP_CAN_L": [
+      "APP_Low",
+      "APP_Low_CAN_S",
+      "APP_LOW_CAN_S",
+      "REF_AUX_CAN_L",
+      "REF_AUX_CAN_N"
+    ],
+    "XCP_CAN_H": [
+      "XCP_High",
+      "XCP_CAN"
+    ],
+    "XCP_CAN_L": [
+      "XCP_Low",
+      "XCP_CAN"
+    ],
+    "SCI_CAN_H": [
+      "SCI_High",
+      "SCI_CAN"
+    ],
+    "SCI_CAN_L": [
+      "SCI_Low",
+      "SCI_CAN"
+    ],
+    "BODY_CAN_H": [
+      "S_BODY_CAN_H",
+      "BODY_CAN_H",
+      "CAN_BODY_H"
+    ],
+    "BODY_CAN_L": [
+      "S_BODY_CAN_L",
+      "BODY_CAN_L",
+      "CAN_BODY_L"
+    ],
+    "CHASSIS_CAN_H": [
+      "S_CHASSIS_CAN_H",
+      "CHASSIS_CAN_H"
+    ],
+    "CHASSIS_CAN_L": [
+      "S_CHASSIS_CAN_L",
+      "CHASSIS_CAN_L"
+    ],
+    "POWERTRAIN_CAN_H": [
+      "S_PT_H",
+      "CAN_PT_H",
+      "CAN_SBW_H",
+      "CAN_Powertrain_H"
+    ],
+    "POWERTRAIN_CAN_L": [
+      "S_PT_L",
+      "CAN_PT_L",
+      "CAN_SBW_L",
+      "CAN_Powertrain_L"
+    ],
+    "DIAG_CAN_H": [
+      "S_DIAG_CAN_H",
+      "DIAG_CAN_H"
+    ],
+    "DIAG_CAN_L": [
+      "S_DIAG_CAN_L",
+      "DIAG_CAN_L"
+    ],
+    "DEPB_CAN": [
+      "DEPB0_CAN"
+    ],
+    "K15": [
+      "K15",
+      "K15_Reebox",
+      "K15_REEBOX"
+    ],
+    "K30": [
+      "K30_PWR",
+      "VBAT"
+    ]
+  },
+  "reecu_connector_aliases": {
+    "CREECU_0": "X7",
+    "CREECU_1": "X8",
+    "REECU_X4_PWR": "X4",
+    "CREECU_X9": "X9"
+  },
+  "harnesses": {
+    "VS050100": {
+      "name": "Vehicle Integration Harness",
+      "version": "4.5",
+      "description": "Central hub harness interconnecting all sub-systems to REECU",
+      "connectors": {
+        "CREECU_0": {
+          "alias": "X7",
+          "description": "REECU Bosch 96-pin header 0 (female on VIH side)",
+          "mating": "REECU PCB X7",
+          "pins": 96
+        },
+        "CREECU_1": {
+          "alias": "X8",
+          "description": "REECU Bosch 96-pin header 1 (female on VIH side)",
+          "mating": "REECU PCB X8",
+          "pins": 96
+        },
+        "REECU_X4_PWR": {
+          "alias": "X4",
+          "description": "REECU power connector",
+          "mating": "REECU PCB X4"
+        },
+        "VIH_2_REEBOX_F": {
+          "description": "VIH to REEBox connector (female)",
+          "notes": "Carries APP CAN (pins 1 & 2)",
+          "pins": 16,
+          "pn": "19418-0029"
+        },
+        "VIH_2_CENTER_CONSOLE": {
+          "description": "VIH to Center Console Harness",
+          "notes": "Does NOT carry APP CAN"
+        },
+        "VIH_2_STEERING_F": {
+          "description": "VIH to VE Steering Harness",
+          "pins": 40
+        },
+        "VIH_2_KIAFUSEBOX_M": {
+          "description": "VIH to KIA Fusebox Harness"
+        },
+        "VIH_2_APCB_M": {
+          "description": "VIH to APCB Harness"
+        }
+      },
+      "splices": {
+        "APP_HIGH_CAN_S": {
+          "signal": "APP_CAN_H",
+          "connects": [
+            "VIH_2_REEBOX_F.1",
+            "REECU_CAN1.2",
+            "CAN_ACCESS1.12"
+          ],
+          "wire_color": "Green"
+        },
+        "APP_LOW_CAN_S": {
+          "signal": "APP_CAN_L",
+          "connects": [
+            "VIH_2_REEBOX_F.2",
+            "REECU_CAN1.3",
+            "CAN_ACCESS1.11"
+          ],
+          "wire_color": "Yellow"
+        },
+        "S_CAN_SBW_H": {
+          "signal": "POWERTRAIN_CAN_H",
+          "connects": [
+            "CAN_ACCESS1.9",
+            "CREECU_0.12",
+            "VIH_2_CENTER_CONSOLE.3"
+          ]
+        },
+        "S_CAN_SBW_L": {
+          "signal": "POWERTRAIN_CAN_L",
+          "connects": [
+            "CAN_ACCESS1.10",
+            "CREECU_0.13",
+            "VIH_2_CENTER_CONSOLE.4"
+          ]
+        },
+        "S_CAN_POWERTRAIN_H": {
+          "signal": "POWERTRAIN_CAN_H",
+          "connects": [
+            "CAN_ACCESS1.7",
+            "CREECU_1.67",
+            "VIH_2_CENTER_CONSOLE.5"
+          ]
+        },
+        "S_CAN_POWERTRAIN_L": {
+          "signal": "POWERTRAIN_CAN_L",
+          "connects": [
+            "CAN_ACCESS1.8",
+            "CREECU_1.68",
+            "VIH_2_CENTER_CONSOLE.6"
+          ]
+        },
+        "S_CAN_BODY_H": {
+          "signal": "BODY_CAN_H",
+          "connects": [
+            "CAN_ACCESS1.3",
+            "CREECU_1.x"
+          ]
+        },
+        "S_CAN_BODY_L": {
+          "signal": "BODY_CAN_L",
+          "connects": [
+            "CAN_ACCESS1.4",
+            "CREECU_1.x"
+          ]
+        },
+        "S_CAN_CHASSIS_H": {
+          "signal": "CHASSIS_CAN_H",
+          "connects": [
+            "CAN_ACCESS1.5",
+            "CREECU_1.x"
+          ]
+        },
+        "S_CAN_CHASSIS_L": {
+          "signal": "CHASSIS_CAN_L",
+          "connects": [
+            "CAN_ACCESS1.6",
+            "CREECU_1.x"
+          ]
+        },
+        "S_CAN_DIAG_H": {
+          "signal": "DIAG_CAN_H",
+          "connects": [
+            "CAN_ACCESS1.1",
+            "CREECU_1.x"
+          ]
+        },
+        "S_CAN_DIAG_L": {
+          "signal": "DIAG_CAN_L",
+          "connects": [
+            "CAN_ACCESS1.2",
+            "CREECU_1.x"
+          ]
+        },
+        "S_GND_SPLICE": {
+          "signal": "GND",
+          "connects": [
+            "REECU_CAN1.8",
+            "REECU_X4_PWR1.4",
+            "VIH_2_REEBOX_F.15"
+          ]
+        },
+        "S_RT1": {
+          "signal": "CAN_TERMINATION",
+          "connects": [
+            "termination resistor network"
+          ]
+        },
+        "WAKE_SPLICE": {
+          "signal": "WAKE",
+          "connects": [
+            "CREECU_1.11",
+            "CREECU_1.38",
+            "VIH_2_STEERING_F.26"
+          ]
+        },
+        "SPLICE_BRAKE_LIGHT_SW_3": {
+          "signal": "BRAKE_LIGHT_SW",
+          "connects": [
+            "multiple brake light switch circuit nodes"
+          ]
+        },
+        "SPLICE_BRAKE_LIGHT_SW_4": {
+          "signal": "BRAKE_LIGHT_SW",
+          "connects": [
+            "multiple brake light switch circuit nodes"
+          ]
+        }
+      },
+      "signal_traces": {
+        "APP_CAN": {
+          "canonical": "APP_CAN_H / APP_CAN_L",
+          "reecu_connector": "X8 (CREECU_1)",
+          "reecu_net_names": [
+            "REF_AUX_CAN_H",
+            "REF_AUX_CAN_L"
+          ],
+          "vih_splice": [
+            "APP_HIGH_CAN_S",
+            "APP_LOW_CAN_S"
+          ],
+          "vih_external_connector": "VIH_2_REEBOX_F",
+          "vih_external_pins": [
+            1,
+            2
+          ],
+          "wire_colors": [
+            "Yellow (H)",
+            "Gray (L)"
+          ],
+          "note": "APP CAN does NOT route through the Center Console connector"
+        }
+      }
+    },
+    "VS050900": {
+      "name": "Center Console Harness",
+      "version": "1.6",
+      "description": "Center console wiring, no signal names on wires (only wire IDs and colors)",
+      "connectors": {
+        "CC_2_VIH_M": {
+          "description": "Center Console to VIH male connector",
+          "mating": "VIH_2_CENTER_CONSOLE"
+        },
+        "VIH_2_CENTER_CONSOLE": {
+          "description": "VIH to Center Console female connector (same harness, other end)",
+          "mating": "CC_2_VIH_M"
+        },
+        "SEATBELT_M": {
+          "description": "Seatbelt male connector (2-pin)",
+          "pins": 2,
+          "mating": "SEATBELT_F",
+          "connector_pn": "KET MG641029"
+        },
+        "SEATBELT_F": {
+          "description": "Seatbelt female connector (2-pin)",
+          "pins": 2,
+          "mating": "SEATBELT_M",
+          "connector_pn": "KET MG651026"
+        },
+        "CF44_M": {
+          "description": "CF44 male connector",
+          "mating": "CF44_F",
+          "connector_pn": "KET MG641029"
+        },
+        "CF44_F": {
+          "description": "CF44 female connector",
+          "mating": "CF44_M",
+          "connector_pn": "KET MG651026"
+        }
+      },
+      "splices": {
+        "S1": {
+          "signal": "unknown",
+          "connects": [
+            "F60_M.14",
+            "F60_F.14",
+            "CC_2_VIH_M.9"
+          ],
+          "wires": [
+            {
+              "id": "W13",
+              "color": "Blue",
+              "from": "F60_M.14"
+            },
+            {
+              "id": "W4",
+              "color": "Blue",
+              "from": "F60_F.14"
+            },
+            {
+              "id": "W27",
+              "color": "Yellow",
+              "to": "CC_2_VIH_M.9"
+            }
+          ]
+        },
+        "S2": {
+          "signal": "unknown",
+          "connects": [
+            "F60_M.20",
+            "F60_F.20",
+            "CC_2_VIH_M.10"
+          ],
+          "wires": [
+            {
+              "id": "W14",
+              "color": "Blue",
+              "from": "F60_M.20"
+            },
+            {
+              "id": "W20",
+              "color": "Blue",
+              "from": "F60_F.20"
+            },
+            {
+              "id": "W28",
+              "color": "Black",
+              "to": "CC_2_VIH_M.10"
+            }
+          ]
+        }
+      },
+      "signal_traces": {
+        "CAN_SBW": {
+          "wires": [
+            "W3+W22 twisted"
+          ],
+          "wire_colors": [
+            "unknown (no signal labels in this harness)"
+          ],
+          "note": "Center Console harness has no signal names; signal identity resolved via VIH splice names"
+        },
+        "CAN_POWERTRAIN": {
+          "wires": [
+            "W23+W24 twisted"
+          ],
+          "note": "Center Console harness \u2014 signal identity from VIH"
+        }
+      }
+    },
+    "VS050407": {
+      "name": "PIGTAIL M40 Harness",
+      "version": "1.3",
+      "description": "Simple 40-pin pass-through pigtail adapter",
+      "connectors": {
+        "C1": {
+          "description": "M40 female connector (KET MG610376-4, 12-pin \u2014 note: 40 in name is max, actual pin count may vary)",
+          "mating": "C2",
+          "pins": 12,
+          "pn": "MG610376-4"
+        },
+        "C2": {
+          "description": "M40 male connector, other end",
+          "mating": "C1"
+        }
+      },
+      "splices": {},
+      "signal_traces": {}
+    },
+    "VS101500": {
+      "name": "Accessory Harness",
+      "version": "4.2",
+      "description": "Connects IPDU to REEBox Accessory inputs: APP CAN, XCP CAN, SCI CAN, Wake, K15",
+      "connectors": {
+        "C1": {
+          "description": "16-pin Molex 19419-0020 (main multi-way connector)",
+          "pins": 16,
+          "pn": "19419-0020"
+        },
+        "Reebox_Main_F": {
+          "description": "REEBox main signal connector (8-pin female)",
+          "pins": 8,
+          "signals": {
+            "1": "APP_CAN_H (APP_High, Yellow)",
+            "2": "APP_CAN_L (APP_Low, Gray)",
+            "3": "XCP_CAN_H (XCP_High, Green)",
+            "4": "XCP_CAN_L (XCP_Low, Gray)",
+            "5": "SCI_CAN_H (SCI_High, Gray)",
+            "6": "SCI_CAN_L (SCI_Low, Blue)",
+            "7": "Wake_signal (Yellow)",
+            "8": "K15 (Red)"
+          }
+        },
+        "Reebox_DEPB_F": {
+          "description": "REEBox DEPB connector (4-pin female)",
+          "pins": 4
+        },
+        "Chazm_M": {
+          "description": "CHAZM connector, male (6-pin) \u2014 connects to WL-GND extension CHAZM_F",
+          "pins": 6,
+          "mating": "CHAZM_F (WL-GND extension)"
+        },
+        "GND_Reebox": {
+          "description": "Anderson Power ground connector for REEBox (2-pos)",
+          "mating": "GND_Reebox (WL-GND extension)"
+        },
+        "REECU_GND_2": {
+          "description": "REECU secondary ground connection"
+        }
+      },
+      "splices": {},
+      "signal_traces": {
+        "APP_CAN": {
+          "connector": "Reebox_Main_F",
+          "pins": [
+            1,
+            2
+          ],
+          "wire_colors": [
+            "W4 Yellow (H)",
+            "W7 Gray (L)"
+          ],
+          "note": "APP CAN H and L are twisted pair"
+        },
+        "XCP_CAN": {
+          "connector": "Reebox_Main_F",
+          "pins": [
+            3,
+            4
+          ],
+          "wire_colors": [
+            "W19 Green (H)",
+            "W8 Gray (L)"
+          ],
+          "note": "XCP CAN H and L are twisted pair"
+        },
+        "SCI_CAN": {
+          "connector": "Reebox_Main_F",
+          "pins": [
+            5,
+            6
+          ],
+          "wire_colors": [
+            "W21 Gray (H)",
+            "W20 Blue (L)"
+          ],
+          "note": "SCI CAN H and L are twisted pair"
+        }
+      }
+    },
+    "VS101400": {
+      "name": "IPDU Harness",
+      "version": "4.5",
+      "description": "Complex internal IPDU harness; connects TTC boards (96-pin Bosch), REEBox, DEPB, Peplink, Ethernet",
+      "connectors": {
+        "TTC_1_96pin": {
+          "description": "TTC board 1 \u2014 Bosch 96-pin connector",
+          "pins": 96
+        },
+        "TTC_2_96pin": {
+          "description": "TTC board 2 \u2014 Bosch 96-pin connector",
+          "pins": 96
+        },
+        "TTC_1_58pin": {
+          "description": "TTC board 1 \u2014 Bosch 58-pin connector",
+          "pins": 58
+        },
+        "TTC_2_58pin": {
+          "description": "TTC board 2 \u2014 Bosch 58-pin connector",
+          "pins": 58
+        },
+        "Reebox_Main_M": {
+          "description": "REEBox main signal connector (8-pin male) \u2014 mates with Accessory harness Reebox_Main_F",
+          "mating": "Reebox_Main_F (Accessory harness)",
+          "pins": 8
+        },
+        "Reebox_DEPB_M": {
+          "description": "REEBox DEPB connector (4-pin male) \u2014 mates with Accessory harness Reebox_DEPB_F",
+          "mating": "Reebox_DEPB_F (Accessory harness)",
+          "pins": 4
+        },
+        "PEPLINK_1": {
+          "description": "Peplink router 1 power connector (4-pin Molex)",
+          "pins": 4
+        },
+        "PEPLINK_2": {
+          "description": "Peplink router 2 power connector (4-pin Molex)",
+          "pins": 4
+        },
+        "IPDU_2_EPB": {
+          "description": "IPDU to EPB (Electronic Parking Brake) connector \u2014 extends via DEPB extension harness"
+        }
+      },
+      "splices": {},
+      "signal_traces": {
+        "APP_CAN": {
+          "note": "Routed through Reebox_Main_M connector"
+        },
+        "XCP_CAN": {
+          "note": "Routed through Reebox_Main_M connector"
+        },
+        "SCI_CAN": {
+          "note": "Routed through Reebox_Main_M connector"
+        },
+        "DEPB_CAN": {
+          "note": "Routed through Reebox_DEPB_M connector"
+        }
+      }
+    },
+    "VS051200": {
+      "name": "Hood to PDU Harness",
+      "version": "1.3",
+      "description": "Power harness from battery/hood area to PDU",
+      "connectors": {
+        "PDU_IN_F": {
+          "description": "PDU input connector (6-pin TE)",
+          "pins": 6
+        },
+        "K15_Tap": {
+          "description": "K15 ignition tap connector"
+        },
+        "MegaFuse_IN": {
+          "description": "MegaFuse input terminal"
+        }
+      },
+      "splices": {
+        "S1": {},
+        "S2": {},
+        "S3": {}
+      },
+      "signal_traces": {
+        "VBAT": {
+          "signals": [
+            "VBAT_1",
+            "VBAT_2",
+            "VBAT_3"
+          ]
+        },
+        "K15": {
+          "note": "K15_Reebox ignition signal"
+        }
+      }
+    },
+    "VS051400": {
+      "name": "PDU to System Harness",
+      "version": "1.4",
+      "description": "Power distribution from PDU output to system fuse box",
+      "connectors": {
+        "PDU_OUT_F": {
+          "description": "PDU output connector (6-pin female)",
+          "pins": 6
+        },
+        "PDU_2_Fusebox_M": {
+          "description": "PDU to fusebox connector (6-pin male)",
+          "pins": 6
+        }
+      },
+      "splices": {},
+      "signal_traces": {
+        "VBAT": {
+          "signals": [
+            "VBAT_1",
+            "VBAT_2",
+            "VBAT_3"
+          ]
+        },
+        "K15_REEBOX": {}
+      }
+    },
+    "VS051300": {
+      "name": "PDU Harness",
+      "version": "1.2",
+      "description": "Internal PDU wiring between input, fuses, and output",
+      "connectors": {
+        "PDU_IN_M": {
+          "description": "PDU input (male)"
+        },
+        "PDU_OUT_M": {
+          "description": "PDU output (male)"
+        }
+      },
+      "splices": {},
+      "signal_traces": {
+        "VBAT": {
+          "signals": [
+            "VBAT_1",
+            "VBAT_2",
+            "VBAT_3"
+          ]
+        },
+        "K15": {},
+        "APCB_M40": {}
+      }
+    },
+    "VS051700": {
+      "name": "VE Steering Harness",
+      "version": "1.5",
+      "description": "Steering harness interconnecting TAS, EPAS ECU, and VIH",
+      "connectors": {
+        "VIH_2_STEERING_M": {
+          "description": "VIH side of steering connector (male, 40-pin IP_F Youye)",
+          "mating": "STEERING_2_VIH_F",
+          "pins": 40
+        },
+        "STEERING_2_VIH_F": {
+          "description": "Steering harness side connector (female, 40-pin IP_F Youye)",
+          "mating": "VIH_2_STEERING_M",
+          "pins": 40
+        },
+        "CM40": {
+          "description": "Molex 8-pin third-leg connector (connects to VIH_2_APCB)",
+          "mating": "VIH_2_APCB (VIH)",
+          "pins": 8
+        },
+        "CTAS_F": {
+          "description": "TAS (Torque/Angle Sensor) connector"
+        },
+        "CEPAS_F": {
+          "description": "EPAS ECU connector"
+        },
+        "M01M_M01F": {
+          "description": "Youye 16-pin connector pair",
+          "pins": 16
+        },
+        "CM30_R_M": {
+          "description": "30-pin connector (right side)",
+          "pins": 30
+        }
+      },
+      "splices": {
+        "S_TRIP_GND": {
+          "description": "Trip ground splice"
+        },
+        "S_VEH_WIPER": {
+          "description": "Vehicle wiper signal splice"
+        }
+      },
+      "signal_traces": {}
+    },
+    "VS051800": {
+      "name": "KIAFUSEBOX Harness",
+      "version": "1.4",
+      "description": "KIA fusebox harness; connects IP (instrument panel) connectors and fuse box to VIH; carries BODY CAN, CHASSIS CAN, DIAG CAN, HORN, HAZARD",
+      "connectors": {
+        "IPF_F": {
+          "description": "Instrument Panel Female (40-pin Youye YY8401064)",
+          "pins": 40,
+          "mating": "IPF_M",
+          "pn": "YY8401064"
+        },
+        "IPF_M": {
+          "description": "Instrument Panel Male (40-pin Youye YY940107K)",
+          "pins": 40,
+          "mating": "IPF_F",
+          "pn": "YY940107K"
+        },
+        "CIPG_F": {
+          "description": "Center Instrument Panel Gate Female (16-pin TE 2005076-1)",
+          "pins": 16,
+          "mating": "CIPG_M",
+          "key_pins": {
+            "3": "BODY_CAN_L (W51.Blue, twisted W54)",
+            "4": "BODY_CAN_H (W54.Red, twisted W51)",
+            "5": "CHASSIS_CAN_H (W55.White, twisted W58)",
+            "6": "CHASSIS_CAN_L (W58.Brown, twisted W55)",
+            "10": "HORN",
+            "12": "HAZARD_ACT"
+          },
+          "pn": "2005076-1"
+        },
+        "CIPG_M": {
+          "description": "Center Instrument Panel Gate Male (16-pin TE 2005079-1)",
+          "pins": 16,
+          "mating": "CIPG_F",
+          "key_pins": {
+            "3": "BODY_CAN_L (W52.Blue, twisted W53)",
+            "4": "BODY_CAN_H (W53.Red, twisted W52)",
+            "5": "CHASSIS_CAN_H (W56.White, twisted W57)",
+            "6": "CHASSIS_CAN_L (W57.Brown, twisted W56)",
+            "10": "HORN",
+            "12": "HAZARD_ACT"
+          },
+          "pn": "2005079-1"
+        },
+        "FUSEBOXKIA_2_VIH": {
+          "description": "KIA Fusebox to VIH connector (20-pin Youye YY920812 F60 Male)",
+          "pins": 20,
+          "mating": "VIH side connector",
+          "pn": "YY920812"
+        },
+        "M26_F": {
+          "description": "M26 blindspot sensor connector female (KET MG654102, 24-pin)",
+          "mating": "M26_M",
+          "pn": "MG654102"
+        },
+        "M26_M": {
+          "description": "M26 blindspot sensor connector male (KET MG644152, 24-pin F63)",
+          "mating": "M26_F",
+          "pn": "MG644152"
+        }
+      },
+      "splices": {
+        "S_BODY_CAN_H": {
+          "signal": "BODY_CAN_H"
+        },
+        "S_BODY_CAN_L": {
+          "signal": "BODY_CAN_L"
+        },
+        "S_CHASSIS_CAN_H": {
+          "signal": "CHASSIS_CAN_H"
+        },
+        "S_CHASSIS_CAN_L": {
+          "signal": "CHASSIS_CAN_L"
+        },
+        "S_DCDC": {
+          "description": "DC-DC converter enable"
+        },
+        "S_DIAG_CAN_H": {
+          "signal": "DIAG_CAN_H",
+          "pins": "IPF_F.26 / IPF_M.26"
+        },
+        "S_DIAG_CAN_L": {
+          "signal": "DIAG_CAN_L",
+          "pins": "IPF_F.27 / IPF_M.27"
+        },
+        "S_HAZARD_ACT": {
+          "description": "Hazard actuator signal"
+        },
+        "S_HORN": {
+          "description": "Horn signal"
+        }
+      },
+      "signal_traces": {
+        "BODY_CAN": {
+          "connector_pair": "CIPG_F / CIPG_M",
+          "pins": {
+            "H": 4,
+            "L": 3
+          },
+          "wire_colors": {
+            "H": "Red (W54/W53)",
+            "L": "Blue (W51/W52)"
+          }
+        },
+        "CHASSIS_CAN": {
+          "connector_pair": "CIPG_F / CIPG_M",
+          "pins": {
+            "H": 5,
+            "L": 6
+          },
+          "wire_colors": {
+            "H": "White (W55/W56)",
+            "L": "Brown (W58/W57)"
+          }
+        },
+        "DIAG_CAN": {
+          "connector": "IPF_F / IPF_M",
+          "pins": {
+            "H": 26,
+            "L": 27
+          },
+          "wire_colors": {
+            "H": "Yellow (W63/W64)",
+            "L": "Green (W66/W65)"
+          }
+        }
+      }
+    },
+    "VS040804": {
+      "name": "APCB Harness",
+      "version": "2.6",
+      "description": "APCB (Antenna/PCB) harness; connects APCB board to VIH, FMC130, iButton, CAN bus",
+      "connectors": {
+        "APCB_2_VIH": {
+          "description": "APCB to VIH connector (12-pin Molex 469921210)",
+          "pins": 12,
+          "mating": "VIH_2_APCB_M (VIH)",
+          "pin_map": {
+            "1": "PWR Main (W9.Red 0.5mm\u00b2)",
+            "2": "GND Main (W12.Black 0.5mm\u00b2)",
+            "3": "Wire Data to FMC130.2",
+            "4": "REECU WAKE (W66.Orange \u2192 S12)",
+            "5": "IPDU WAKE (W8.Blue \u2192 S9)",
+            "6": "Spare Digital Input 1",
+            "7": "Spare Digital Input 2",
+            "10": "Wire Data (W63.Green 0.5mm\u00b2)",
+            "11": "S10 (W15.White)"
+          },
+          "pn": "469921210"
+        },
+        "FMC_130": {
+          "description": "FMC130 connector (12-pin Molex 43025-1200 Micro-Fit)",
+          "pins": 12,
+          "pin_map": {
+            "1": "PWR FMC130 \u2192 S1",
+            "7": "GND FMC130 \u2192 S2",
+            "8": "REECU WAKE (W65.Orange \u2192 S12)",
+            "9": "IPDU WAKE (W59.Blue \u2192 S9)",
+            "12": "CAN TX \u2192 CAN_CTL_2.5 (W52.Yellow 0.25mm\u00b2)",
+            "6": "CAN RX \u2192 CAN_CTL_2.6 (W61.Green 0.25mm\u00b2)"
+          },
+          "pn": "43025-1200"
+        },
+        "IPG_M": {
+          "description": "Interface/Power Gate Male (16-pin TE 1473410-1)",
+          "mating": "IPG_F",
+          "key_pins": {
+            "3": "S_BODY_L (W80.Brown, twisted W18)",
+            "4": "S_BODY_H (W18.Blue, twisted W80)"
+          },
+          "pins": 16,
+          "pn": "1473410-1"
+        },
+        "IPG_F": {
+          "description": "Interface/Power Gate Female (16-pin TE 1318386-1)",
+          "mating": "IPG_M",
+          "key_pins": {
+            "3": "S_BODY_L (W79.Brown, twisted W58)",
+            "4": "S_BODY_H (W58.Blue, twisted W79)"
+          },
+          "pins": 16,
+          "pn": "1318386-1"
+        },
+        "CAN_CTL_1": {
+          "description": "CAN control board connector 1 (8-pin Molex 355070800)",
+          "pin_map": {
+            "1": "S_BODY_H \u2192 board (W56.Blue 0.25mm\u00b2)",
+            "2": "S_BODY_L \u2192 board (W100.Brown 0.25mm\u00b2)"
+          },
+          "pins": 8,
+          "pn": "355070800"
+        },
+        "CAN_CTL_2": {
+          "description": "CAN control board connector 2 (11-pin Molex 355071100)",
+          "pin_map": {
+            "5": "TX from FMC130 (W52.Yellow 0.25mm\u00b2)",
+            "6": "RX from FMC130 (W61.Green 0.25mm\u00b2)"
+          },
+          "pins": 11,
+          "pn": "355071100"
+        },
+        "CM40": {
+          "description": "Third-leg harness connector M26 (Molex 347910041 4-pin) \u2014 connects to Accessory harness Chazm_M",
+          "mating": "Chazm_M (Accessory harness)",
+          "pins": 4,
+          "pn": "347910041"
+        },
+        "iButton": {
+          "description": "iButton connector (4-pin Molex 46993-0410)",
+          "pins": 4,
+          "pn": "46993-0410"
+        }
+      },
+      "splices": {
+        "S_BODY_H": {
+          "signal": "BODY_CAN_H",
+          "connects": [
+            "IPG_M.4",
+            "IPG_F.4",
+            "CAN_CTL_1.1"
+          ]
+        },
+        "S_BODY_L": {
+          "signal": "BODY_CAN_L",
+          "connects": [
+            "IPG_M.3",
+            "IPG_F.3",
+            "CAN_CTL_1.2"
+          ]
+        },
+        "S_CHASSIS_H": {
+          "signal": "CHASSIS_CAN_H"
+        },
+        "S_CHASSIS_L": {
+          "signal": "CHASSIS_CAN_L"
+        },
+        "S_PT_H": {
+          "signal": "POWERTRAIN_CAN_H"
+        },
+        "S_PT_L": {
+          "signal": "POWERTRAIN_CAN_L"
+        },
+        "S9": {
+          "description": "IPDU WAKE signal splice"
+        },
+        "S12": {
+          "description": "REECU WAKE signal splice"
+        }
+      },
+      "signal_traces": {
+        "BODY_CAN": {
+          "splice": "S_BODY_H / S_BODY_L",
+          "board_connector": "CAN_CTL_1 pins 1 & 2",
+          "external_connector": "IPG_M / IPG_F pins 4 & 3"
+        },
+        "CHASSIS_CAN": {
+          "splice": "S_CHASSIS_H / S_CHASSIS_L"
+        },
+        "POWERTRAIN_CAN": {
+          "splice": "S_PT_H / S_PT_L"
+        }
+      }
+    },
+    "VS030812": {
+      "name": "E-Stop Loopback Harness",
+      "version": "2.1",
+      "description": "E-Stop safety loopback; wires loop back to same connector to confirm E-Stop circuit continuity",
+      "connectors": {
+        "C1": {
+          "description": "16-pin TE 1473410-1 \u2014 single connector, wires form loops back to same connector",
+          "pin_loops": [
+            {
+              "pins": [
+                9,
+                10
+              ],
+              "wire": "W1.Green"
+            },
+            {
+              "pins": [
+                12,
+                13
+              ],
+              "wire": "W2.White"
+            },
+            {
+              "pins": [
+                14,
+                15
+              ],
+              "wire": "W3.Blue"
+            }
+          ],
+          "pins": 16,
+          "pn": "1473410-1"
+        }
+      },
+      "splices": {
+        "S1": {
+          "description": "N/C pin splice"
+        }
+      },
+      "signal_traces": {
+        "E_STOP_LOOP": {
+          "note": "Loopback harness \u2014 if wires are cut or connector is unseated, E-Stop circuit opens (safety trip)"
+        }
+      }
+    },
+    "VS051000": {
+      "name": "DEPB Extension Harness",
+      "version": "1.4",
+      "description": "Electronic Parking Brake (EPB) power extension from IPDU to EPB actuators",
+      "connectors": {
+        "EPB_M": {
+          "description": "EPB male connector (KET MG651747-5, 4-pin)",
+          "mating": "EPB_F",
+          "pins": 4,
+          "pn": "MG651747-5"
+        },
+        "EPB_F": {
+          "description": "EPB female connector (KET MG641744-5, 4-pin)",
+          "mating": "EPB_M",
+          "pins": 4,
+          "pn": "MG641744-5"
+        },
+        "IPDU_2_EPB": {
+          "description": "IPDU to EPB connector (KET MG641744-5, 4-pin female)",
+          "pin_map": {
+            "1": "\u2192 EPB_M.3 (W2.Red 1.5mm\u00b2) note: M3",
+            "2": "\u2192 EPB_M.4 (W1.Red 1.5mm\u00b2) note: M4",
+            "3": "\u2192 EPB_F.3 (W3.Red 1.5mm\u00b2) note: F3",
+            "4": "\u2192 EPB_F.4 (W4.Red 1.5mm\u00b2) note: F4"
+          },
+          "pins": 4,
+          "pn": "MG641744-5"
+        }
+      },
+      "splices": {},
+      "signal_traces": {
+        "EPB_POWER": {
+          "note": "1.5mm\u00b2 red wires \u2014 high current EPB actuator power"
+        }
+      }
+    },
+    "VS050402": {
+      "name": "Pigtail F61 Harness",
+      "version": "1.2",
+      "description": "6-pin Hirose F61 pigtail adapter \u2014 straight pass-through, likely used for camera/sensor connections",
+      "connectors": {
+        "C1": {
+          "description": "Hirose CL6424-0076-05 F61 6-pin",
+          "mating": "C2",
+          "pn": "CL6424-0076-05"
+        },
+        "C2": {
+          "description": "Hirose CL6424-0076-05 F61 6-pin",
+          "mating": "C1",
+          "pn": "CL6424-0076-05"
+        }
+      },
+      "splices": {},
+      "signal_traces": {
+        "note": "Straight pass-through pigtail. Wire colors: Yellow, Green, Brown, Blue, White, Black (pins 1-6)"
+      }
+    },
+    "VS090112": {
+      "name": "WL-GND Extension Harness",
+      "version": "2.1",
+      "description": "Warning light (WL) and REEBox ground extension harness",
+      "connectors": {
+        "CHAZM_F": {
+          "description": "CHAZM female connector (6-pin Molex 504693-0604, blue) \u2014 connects to Accessory harness Chazm_M",
+          "mating": "Chazm_M (Accessory harness)",
+          "pin_map": {
+            "1": "\u2192 STR_1.1 (W5.Blue)",
+            "2": "\u2192 STR_1.2 (W6.Black)",
+            "3": "\u2192 STR_1.3 (W7.Red)",
+            "4": "\u2192 STR_2.1 (W8.Blue)",
+            "5": "\u2192 STR_2.2 (W15.Black)",
+            "6": "\u2192 STR_2.3 (W9.Red)"
+          },
+          "pn": "504693-0604"
+        },
+        "STR_1": {
+          "description": "Strobe 1 connector (4-pin Molex 504693-0403, yellow)",
+          "pin_map": {
+            "1-3": "\u2192 CHAZM_F.1-3",
+            "4": "\u2194 STR_2.4 (W4.Yellow local loop)"
+          },
+          "pn": "504693-0403"
+        },
+        "STR_2": {
+          "description": "Strobe 2 connector (4-pin Molex 504693-0403, yellow)",
+          "pin_map": {
+            "1-3": "\u2192 CHAZM_F.4-6",
+            "4": "\u2194 STR_1.4 (W4.Yellow local loop)"
+          },
+          "pn": "504693-0403"
+        },
+        "GND_Reebox": {
+          "description": "Anderson Power 6319G1 (2-pos) \u2014 REEBox chassis ground",
+          "pin_map": {
+            "1": "\u2192 RT1 ring terminal (W19.Black 6mm\u00b2)",
+            "2": "\u2192 RT2 ring terminal (W20.Black 6mm\u00b2)"
+          },
+          "pn": "6319G1"
+        },
+        "RT1": {
+          "description": "Ring terminal 1 (Panduit LCMA6-6-C, M6 stud)",
+          "pn": "LCMA6-6-C"
+        },
+        "RT2": {
+          "description": "Ring terminal 2 (Panduit LCMA6-6-C, M6 stud)",
+          "pn": "LCMA6-6-C"
+        }
+      },
+      "splices": {},
+      "signal_traces": {
+        "CHASSIS_GND": {
+          "connector": "GND_Reebox",
+          "wire": "W19/W20 Black 6mm\u00b2",
+          "note": "Heavy gauge ground cable to chassis"
+        }
+      }
+    },
+    "VS051100": {
+      "name": "REEBox Power Cable",
+      "version": "1.2",
+      "description": "Single high-current power cable from IPDU to REEBox main power input",
+      "connectors": {
+        "IPDU_PWR1": {
+          "description": "Ring terminal (Phoenix Contact 3240096, M8 stud) at IPDU/battery side",
+          "pn": "3240096"
+        },
+        "MEC_97_IPDU_PWR1": {
+          "description": "REEBox power input (Amphenol RL00571-16BK Radlok 16mm\u00b2)",
+          "pin_map": {
+            "1": "W1.Red 6mm\u00b2 \u2192 IPDU_PWR1 (4950mm length)"
+          },
+          "pn": "RL00571-16BK"
+        }
+      },
+      "splices": {},
+      "signal_traces": {
+        "VBAT_REEBOX": {
+          "connector": "MEC_97_IPDU_PWR1",
+          "wire": "W1 Red 6mm\u00b2",
+          "note": "Main 12V power feed to REEBox from IPDU"
+        }
+      }
+    }
+  },
+  "check_id_to_signals": {
+    "main_can_bus_reachable": {
+      "signal": "APP_CAN",
+      "description": "Application-layer CAN bus from REECU to REEBox",
+      "signal_path": [
+        "REECU PCB X8 (CREECU_1) \u2014 nets: REF_AUX_CAN_H / REF_AUX_CAN_L",
+        "VIH splices: APP_HIGH_CAN_S / APP_LOW_CAN_S",
+        "VIH_2_REEBOX_F connector \u2014 pins 1 (H, Yellow) & 2 (L, Gray)",
+        "Accessory harness Reebox_Main_F \u2014 pins 1 (H) & 2 (L)",
+        "IPDU harness Reebox_Main_M",
+        "REECU internal"
+      ],
+      "key_connectors": [
+        {
+          "name": "VIH_2_REEBOX_F",
+          "harness": "VS050100",
+          "pins": "1 & 2"
+        },
+        {
+          "name": "Reebox_Main_F / Reebox_Main_M",
+          "harness": "VS101500 / VS101400"
+        },
+        {
+          "name": "REECU X8 (CREECU_1)",
+          "harness": "VS050100",
+          "note": "PCB connector alias X8"
+        }
+      ],
+      "note": "APP CAN does NOT route through Center Console connector"
+    },
+    "front_camera": {
+      "signal": "USB_FRONT_CAMERA",
+      "description": "Front camera USB connection",
+      "note": "USB signal; check USB cable and connectors physically"
+    },
+    "expected_front_camera_connected": {
+      "signal": "USB_FRONT_CAMERA",
+      "description": "Front camera USB connection"
+    },
+    "left_camera": {
+      "signal": "USB_LEFT_CAMERA",
+      "description": "Left camera USB connection"
+    },
+    "expected_left_camera_connected": {
+      "signal": "USB_LEFT_CAMERA",
+      "description": "Left camera USB connection"
+    },
+    "right_camera": {
+      "signal": "USB_RIGHT_CAMERA",
+      "description": "Right camera USB connection"
+    },
+    "expected_right_camera_connected": {
+      "signal": "USB_RIGHT_CAMERA",
+      "description": "Right camera USB connection"
+    },
+    "vehicle_integration_config_valid": {
+      "signal": null,
+      "description": "Software configuration check \u2014 no wiring involved"
+    },
+    "vehicle_config": {
+      "signal": null,
+      "description": "Vehicle configuration file check"
+    },
+    "network_addresses_reachable": {
+      "signal": "ETHERNET",
+      "description": "Ethernet/network connectivity from REECU"
+    },
+    "network": {
+      "signal": "ETHERNET",
+      "description": "Ethernet/network connectivity"
+    }
+  }
+}

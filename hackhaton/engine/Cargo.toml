@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = [
+    "ree-debug-engine",
+    "ree-debug-tui",
+    "ree-debug-cli",
+]
+
+[workspace.package]
+edition = "2021"
+license = "Proprietary"
+version = "0.0.1"
+
+[workspace.dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+crossterm = "0.28"
+ratatui = "0.29"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "io-util", "time", "sync", "net"] }
+
+[profile.release]
+lto = "thin"
+strip = true

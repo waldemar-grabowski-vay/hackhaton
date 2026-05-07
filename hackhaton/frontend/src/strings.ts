@@ -116,10 +116,15 @@ export const strings = {
     backToWizard: "Pick another host",
     runStartedAt: "Run started",
   },
+  // 002 / FR-006 — five-category palette. Software covers vDrive
+  // manifest drift / firmware / gateware / container status;
+  // Calibration covers SAS calibration + GNSS yaw-rate watchdog.
   category: {
     communication: "Communication",
     hardware: "Hardware",
     configuration: "Configuration",
+    software: "Software",
+    calibration: "Calibration",
   },
   errors: {
     generic:
@@ -128,6 +133,14 @@ export const strings = {
       "We couldn't reach the diagnostics service. Check your connection and try again.",
     unauthenticated:
       "We couldn't confirm who you are. Sign in through Vay corporate SSO and try again.",
+  },
+  guide: {
+    viewButton: "View repair guide",
+    noGuideTitle: "No repair guide available",
+    noGuideBody: "Follow the suggested next step above, or contact the engineering team for assistance.",
+    debugHeading: "Debug suggestions",
+    stepPhysical: "Physical action",
+    closeButton: "Close",
   },
   // Per-item operator-visible names + descriptions + recommended actions.
   // Keys mirror catalog.py / data-model.md item ids.
@@ -222,6 +235,39 @@ export const strings = {
       },
       action:
         "Re-deploy the telestation config from ree-vehicle-configs and re-run.",
+    },
+    reecu_wake_line_active: {
+      name: "REECU WAKE line active",
+    },
+    reecu_wake_line: {
+      description: {
+        working: "KL15 WAKE signal on REECU connector X9 is present (12 V).",
+        error: "KL15 WAKE signal on REECU connector X9 is absent or below threshold.",
+      },
+      action:
+        "Inspect the WAKE line on connector X9 pin 1. Check the KL15 fuse and the Integration harness.",
+    },
+    peplink_cellular_connected: {
+      name: "Peplink cellular connected",
+    },
+    peplink_vpn_tunnels_established: {
+      name: "Peplink VPN tunnels established",
+    },
+    peplink_cellular: {
+      description: {
+        working: "All Peplink cellular interfaces are connected and reporting green.",
+        error: "One or more Peplink cellular interfaces are not reporting green.",
+      },
+      action:
+        "Check antenna connections and SIM card seats on the Peplink router, then re-run.",
+    },
+    peplink_vpn: {
+      description: {
+        working: "All 5 PepVPN tunnels are established.",
+        error: "Not all 5 expected PepVPN tunnels are established.",
+      },
+      action:
+        "Check the Peplink router WAN connection and VPN configuration, then re-run.",
     },
   },
 } as const;
