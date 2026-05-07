@@ -1,13 +1,15 @@
-"""FastAPI app factory (T017).
+"""FastAPI app factory.
 
-Mounts the API routers, the static SPA when present, the auth middleware,
-the error handlers, and the periodic inventory refresh (T019). Single
-entry point: `uvicorn vayobd.app:app --reload`.
+Mounts the API routers, the static SPA when present, the auth
+dependency, and the error handlers. Single entry point:
+`uvicorn vayobd.app:app --reload`.
+
+Notable change from 001: the periodic inventory refresh task is gone
+(FR-013a — inventory is re-read from disk per request, no caching).
 """
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -18,37 +20,19 @@ from vayobd.api.errors import install_exception_handlers
 from vayobd.api.inventory import router as inventory_router
 from vayobd.api.runs import router as runs_router
 from vayobd.config import Settings, get_settings
-from vayobd.inventory.scheduler import run_periodic_refresh
 from vayobd.logging import configure_logging, get_logger
 
 log = get_logger(__name__)
 
 
-def _make_lifespan(settings: Settings):
+def _make_lifespan(_settings: Settings):
     @asynccontextmanager
     async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
         configure_logging()
         log.info("vayobd_starting")
-        refresh_task = asyncio.create_task(
-            run_periodic_refresh(
-                inventory_path=settings.inventory_path,
-                branch=settings.inventory_branch,
-                meta_path=settings.inventory_meta_path,
-                interval_seconds=settings.refresh_interval_seconds,
-                backoff_base_seconds=settings.refresh_backoff_base_seconds,
-                backoff_multiplier=settings.refresh_backoff_multiplier,
-                backoff_ceiling_seconds=settings.refresh_backoff_ceiling_seconds,
-            ),
-            name="vayobd-inventory-refresh",
-        )
         try:
             yield
         finally:
-            refresh_task.cancel()
-            try:
-                await refresh_task
-            except (asyncio.CancelledError, Exception):
-                pass
             log.info("vayobd_stopped")
 
     return _lifespan

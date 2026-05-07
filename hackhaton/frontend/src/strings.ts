@@ -116,10 +116,15 @@ export const strings = {
     backToWizard: "Pick another host",
     runStartedAt: "Run started",
   },
+  // 002 / FR-006 — five-category palette. Software covers vDrive
+  // manifest drift / firmware / gateware / container status;
+  // Calibration covers SAS calibration + GNSS yaw-rate watchdog.
   category: {
     communication: "Communication",
     hardware: "Hardware",
     configuration: "Configuration",
+    software: "Software",
+    calibration: "Calibration",
   },
   errors: {
     generic:

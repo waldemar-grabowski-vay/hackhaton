@@ -1,4 +1,13 @@
-"""Application settings — env-driven (R2, R4, plan.md)."""
+"""Application settings — env-driven.
+
+Phase 2 (T012, T016): SSH executor mode and the periodic-refresh
+backoff knobs from 001 are gone. Phase 3 (T036) re-introduces a
+`ree` ExecutorMode wired to the in-monorepo `ree-debug-cli` binary.
+
+The operator's persisted inventory path lives in
+`~/.config/vayobd/settings.toml` (see `settings_file.py`); this
+config module owns process-level env settings only.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +20,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class ExecutorMode(StrEnum):
     FIXTURE = "fixture"
-    SSH = "ssh"
+    # `ree` lands in Phase 3 (T036). Until then `dependencies.py` raises
+    # if asked for it.
 
 
 def _default_inventory_path() -> Path:
@@ -29,30 +39,21 @@ def _default_meta_path() -> Path:
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="VAYOBD_", env_file=".env", extra="ignore")
 
-    # Inventory
+    # Inventory — env-only override; the operator-facing path comes from
+    # `~/.config/vayobd/settings.toml` via `settings_file.py` in Phase 2 / 3.
     inventory_path: Path = Field(default_factory=_default_inventory_path)
-    inventory_branch: str = "main"
     inventory_meta_path: Path = Field(default_factory=_default_meta_path)
-    refresh_interval_seconds: int = 30 * 60
 
-    # Run cache
+    # Run cache (per-(operator, host) JSON, FR-026 carry-forward).
     runs_dir: Path = Field(default_factory=_default_runs_dir)
 
-    # Executor
+    # Executor selection.
     executor: ExecutorMode = ExecutorMode.FIXTURE
-    ssh_key: Path | None = None
-    ssh_known_hosts: Path | None = None
     fixtures_dir: Path | None = None  # Defaults under backend/tests/fixtures/runs
 
     # API
-    run_timeout_seconds: float = 30.0  # FR-025 — hard ceiling per Clarification 2026-05-07
+    run_timeout_seconds: float = 30.0  # FR-008 / 001 FR-025
     static_dir: Path | None = None  # Production-built SPA mounted here when set
-
-    # Inventory refresh failure surfacing (FR-027)
-    refresh_failure_warning_threshold: int = 3
-    refresh_backoff_base_seconds: float = 30.0
-    refresh_backoff_multiplier: float = 2.0
-    refresh_backoff_ceiling_seconds: float = 5 * 60.0
 
 
 def get_settings() -> Settings:

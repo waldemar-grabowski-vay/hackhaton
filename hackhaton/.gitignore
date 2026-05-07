@@ -19,6 +19,11 @@ build/
 .coverage.*
 htmlcov/
 
+# Rust / Cargo (engine/) — Cargo.lock IS committed for our binary
+# crate workspace (reproducible builds), only target/ is excluded.
+engine/target/
+**/*.rs.bk
+
 # Node / Vite (frontend/)
 node_modules/
 frontend/dist/
