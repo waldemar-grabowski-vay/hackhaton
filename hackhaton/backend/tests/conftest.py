@@ -72,6 +72,8 @@ def synthetic_inventory(tmp_path: Path) -> Path:
                       ansible_host: 10.0.3.5
                     ve-de-saturn-slow:
                       ansible_host: 10.0.4.5
+                    ve-de-no-fixture:
+                      ansible_host: 10.0.5.5
                     ve-be-bxl:
                       ansible_host: 10.0.99.1
                     ve-us-01001:

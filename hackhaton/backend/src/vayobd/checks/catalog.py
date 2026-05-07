@@ -83,6 +83,22 @@ _VEHICLE_CATALOG: tuple[CheckSpec, ...] = (
         description_key_error="item.network.description.error",
         recommended_action_key="item.network.action",
     ),
+    CheckSpec(
+        id="peplink_cellular_connected",
+        name_key="item.peplink_cellular_connected.name",
+        category=CheckCategory.COMMUNICATION,
+        description_key_working="item.peplink_cellular.description.working",
+        description_key_error="item.peplink_cellular.description.error",
+        recommended_action_key="item.peplink_cellular.action",
+    ),
+    CheckSpec(
+        id="peplink_vpn_tunnels_established",
+        name_key="item.peplink_vpn_tunnels_established.name",
+        category=CheckCategory.COMMUNICATION,
+        description_key_working="item.peplink_vpn.description.working",
+        description_key_error="item.peplink_vpn.description.error",
+        recommended_action_key="item.peplink_vpn.action",
+    ),
 )
 
 _TELESTATION_CATALOG: tuple[CheckSpec, ...] = (

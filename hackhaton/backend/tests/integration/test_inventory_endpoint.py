@@ -29,11 +29,12 @@ def test_inventory_returns_in_scope_hosts(client: TestClient) -> None:
     resp = client.get("/api/inventory")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["meta"]["host_count"] == 6
+    assert body["meta"]["host_count"] == 7
     ids = {h["id"] for h in body["hosts"]}
     assert ids == {
         "ve-de-apollo",
         "ve-de-loki",
+        "ve-de-no-fixture",
         "ve-de-thor",
         "ve-de-saturn-slow",
         "ts-de-ber-zeus",
@@ -55,7 +56,7 @@ def test_inventory_returns_in_scope_hosts(client: TestClient) -> None:
     assert "last_read_at" in meta
     assert "source_path" in meta
     assert "host_count" in meta
-    assert meta["host_count"] == 6
+    assert meta["host_count"] == 7
     # 001's retired fields are NOT present any more.
     assert "consecutive_failed_refreshes" not in meta
     assert "last_refresh_attempted_at" not in meta

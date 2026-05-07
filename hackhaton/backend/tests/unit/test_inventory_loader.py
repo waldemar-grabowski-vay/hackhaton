@@ -22,6 +22,7 @@ def test_loader_returns_germany_fleet_only(synthetic_inventory: Path) -> None:
     assert ids == {
         "ve-de-apollo",
         "ve-de-loki",
+        "ve-de-no-fixture",
         "ve-de-thor",
         "ve-de-saturn-slow",
         "ts-de-ber-zeus",

@@ -19,3 +19,9 @@ items:
   - id: network_addresses_reachable
     status: working
     raw_detail: "ping 10.0.1.5: 4/4 received"
+  - id: peplink_cellular_connected
+    status: working
+    raw_detail: "=== gateway_1 :: http://192.168.50.1 ===\nauth ok\n  ok cellular0: statusLed=green  message=Connected\n  ok cellular1: statusLed=green  message=Connected"
+  - id: peplink_vpn_tunnels_established
+    status: working
+    raw_detail: "=== gateway_1 :: http://192.168.50.1 ===\nauth ok\n  ok pepvpn tunnels: 5/5 (expected 5)"

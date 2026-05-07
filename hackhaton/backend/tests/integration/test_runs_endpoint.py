@@ -82,7 +82,7 @@ def test_run_errored_host_has_recommended_action(
 def test_run_unreachable_host_returns_empty_items(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
-    resp = client.post("/api/runs", json={"host_id": "ve-de-thor"}, headers=auth_headers)
+    resp = client.post("/api/runs", json={"host_id": "ve-de-no-fixture"}, headers=auth_headers)
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["outcome"] == "unreachable"
