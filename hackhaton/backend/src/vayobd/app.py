@@ -29,6 +29,9 @@ from vayobd.api.inventory import router as inventory_router
 from vayobd.api.runs import router as runs_router
 from vayobd.config import ExecutorMode, Settings, get_settings
 from vayobd.dependencies import _resolve_ree_cli_bin
+from vayobd.live.dbc_decoder import DbcDecoder
+from vayobd.live.errq_loader import ErrqModel, load_errq_model
+from vayobd.live.ws_router import router as live_router
 from vayobd.logging import configure_logging, get_logger
 
 log = get_logger(__name__)
@@ -82,6 +85,36 @@ async def _engine_self_check(settings: Settings) -> tuple[str, str | None]:
     return ("live", sha)
 
 
+def _live_self_check(settings: Settings) -> tuple[ErrqModel, DbcDecoder]:
+    """T013 — load the errq model + DBC once at startup.
+
+    Both probes are best-effort: failure leaves the live diagnostic
+    surface in degraded mode (FR-012) rather than blocking app start.
+    """
+    errq = load_errq_model(settings.ree_reecu_path)
+    if errq.loaded:
+        log.info(
+            "live_errq_ready",
+            source=str(errq.source_path),
+            errors=len(getattr(errq.model, "errors", []) or []),
+            groups=len(getattr(errq.model, "error_groups", []) or []),
+        )
+    else:
+        log.warning("live_errq_degraded", reason=errq.load_error)
+
+    decoder = DbcDecoder()
+    if decoder.autoload(settings.ree_reecu_path, settings.dbc_path):
+        log.info(
+            "live_dbc_ready",
+            source=str(decoder.dbc_path),
+            messages=len(getattr(decoder.db, "messages", []) or []),
+        )
+    else:
+        log.warning("live_dbc_degraded", reason=decoder.load_error)
+
+    return errq, decoder
+
+
 def _make_lifespan(settings: Settings):
     @asynccontextmanager
     async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -90,6 +123,12 @@ def _make_lifespan(settings: Settings):
         mode, version = await _engine_self_check(settings)
         app.state.engine_mode = mode
         app.state.engine_version = version
+
+        # 004 / T013 — live diagnostic startup probes.
+        errq, decoder = _live_self_check(settings)
+        app.state.errq_model = errq
+        app.state.dbc_decoder = decoder
+
         try:
             yield
         finally:
@@ -111,16 +150,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(inventory_router)
     app.include_router(runs_router)
+    app.include_router(live_router)
 
     @app.get("/api/health", tags=["meta"])
-    def _health() -> dict[str, str | None]:
+    def _health() -> dict[str, object]:
         engine_mode = getattr(app.state, "engine_mode", "unknown")
         engine_version = getattr(app.state, "engine_version", None)
+        errq_model: ErrqModel | None = getattr(app.state, "errq_model", None)
+        decoder: DbcDecoder | None = getattr(app.state, "dbc_decoder", None)
         return {
             "status": "ok",
             "version": app.version,
             "engine_mode": engine_mode,
             "engine_version": engine_version,
+            "live_diagnostic": {
+                "enabled": settings.developer_mode,
+                "errq_loaded": bool(errq_model and errq_model.loaded),
+                "errq_source_path": str(errq_model.source_path) if errq_model else None,
+                "errq_load_error": errq_model.load_error if errq_model else None,
+                "dbc_loaded": bool(decoder and decoder.loaded),
+                "dbc_source_path": str(decoder.dbc_path) if decoder and decoder.dbc_path else None,
+                "dbc_load_error": decoder.load_error if decoder else None,
+            },
         }
 
     if settings.static_dir is not None and settings.static_dir.exists():

@@ -7,6 +7,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppHeader } from "@/components/chrome/AppHeader";
 import { Toaster } from "@/components/ui/toaster";
 import { ErrorBoundary } from "@/lib/ErrorBoundary";
+import { LiveDiagnosticPage } from "@/pages/LiveDiagnostic/LiveDiagnosticPage";
 import { PickerPage } from "@/pages/PickerPage";
 import { RunResultPage } from "@/pages/RunResultPage";
 
@@ -34,6 +35,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<PickerPage />} />
                 <Route path="/host/:hostId" element={<RunResultPage />} />
+                <Route path="/live" element={<LiveDiagnosticPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>

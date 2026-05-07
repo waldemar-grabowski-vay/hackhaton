@@ -281,6 +281,17 @@ class InventorySettings(BaseModel):
         return p
 
 
+class LiveSettings(BaseModel):
+    """004 — Live diagnostic settings. Persisted under `[live]` in the
+    settings TOML; absent on disk = Developer mode off, defaults for
+    paths.
+    """
+
+    developer_mode: bool = False
+    ree_reecu_path: Path | None = None
+    dbc_path: Path | None = None
+
+
 class AppSettings(BaseModel):
     """Top-level persisted settings. `inventory is None` means the
     operator hasn't completed first-launch setup yet — the SPA shows
@@ -288,6 +299,7 @@ class AppSettings(BaseModel):
     """
 
     inventory: InventorySettings | None = None
+    live: LiveSettings = Field(default_factory=LiveSettings)
 
 
 # --- Wire payloads / error envelopes ----------------------------------------

@@ -35,6 +35,10 @@ def _default_meta_path() -> Path:
     return Path.home() / ".cache" / "vayobd" / "inventory.meta.json"
 
 
+def _default_ree_reecu_path() -> Path:
+    return Path.home() / "GitHub" / "ree-reecu"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="VAYOBD_", env_file=".env", extra="ignore")
 
@@ -54,6 +58,11 @@ class Settings(BaseSettings):
     # API
     run_timeout_seconds: float = 30.0  # FR-008 / 001 FR-025
     static_dir: Path | None = None  # Production-built SPA mounted here when set
+
+    # 004 — Live diagnostic surface (Developer mode only).
+    developer_mode: bool = False
+    ree_reecu_path: Path = Field(default_factory=_default_ree_reecu_path)
+    dbc_path: Path | None = None  # When None, dbc_decoder uses find_dbc() glob fallback under ree_reecu_path
 
 
 def get_settings() -> Settings:

@@ -1,6 +1,7 @@
 import { Activity } from "lucide-react";
 
 import { EngineModeBadge } from "@/components/chrome/EngineModeBadge";
+import { LiveDiagnosticButton } from "@/components/chrome/LiveDiagnosticButton";
 import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
@@ -33,6 +34,7 @@ export function AppHeader() {
         </div>
 
         <div className="flex items-center gap-3">
+          <LiveDiagnosticButton />
           <EngineModeBadge />
           <TooltipProvider delayDuration={200}>
             <Tooltip>
