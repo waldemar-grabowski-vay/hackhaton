@@ -188,6 +188,9 @@ class SshExecutor(Executor):
                                 raw_detail=f"probe timed out after {self.PROBE_TIMEOUT_SECONDS}s",
                             )
                         )
+            if host.host_class == "vehicle":
+                items.extend(await self._run_peplink_checks(conn, host.id))
+
         except (OSError, Exception) as exc:
             # Any connection-layer failure → unreachable, items = [].
             log.warning("ssh_connect_failed", host_id=host.id, error=str(exc))
@@ -202,6 +205,36 @@ class SshExecutor(Executor):
             else RunOutcome.PARTIAL
         )
         return ExecutorResult(outcome=outcome, items=items)
+
+
+    async def _run_peplink_checks(self, conn, host_id: str) -> list[ItemResult]:
+        from vayobd.checks import peplink as peplink_mod
+
+        peplink_timeout = self.PROBE_TIMEOUT_SECONDS * 4
+        try:
+            cellular_ok, vpn_ok, detail = await asyncio.wait_for(
+                peplink_mod.run_checks(conn, host_id, self.PROBE_TIMEOUT_SECONDS * 2),
+                timeout=peplink_timeout,
+            )
+        except TimeoutError:
+            detail = f"peplink checks timed out after {peplink_timeout}s"
+            cellular_ok = vpn_ok = False
+        except Exception as exc:
+            detail = f"peplink checks failed: {exc}"
+            cellular_ok = vpn_ok = False
+
+        return [
+            ItemResult(
+                id="peplink_cellular_connected",
+                status=ItemStatus.WORKING if cellular_ok else ItemStatus.ERROR,
+                raw_detail=detail or None,
+            ),
+            ItemResult(
+                id="peplink_vpn_tunnels_established",
+                status=ItemStatus.WORKING if vpn_ok else ItemStatus.ERROR,
+                raw_detail=detail or None,
+            ),
+        ]
 
 
 _VEHICLE_PROBES: dict[str, str] = {

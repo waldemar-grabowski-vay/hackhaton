@@ -129,6 +129,14 @@ export const strings = {
     unauthenticated:
       "We couldn't confirm who you are. Sign in through Vay corporate SSO and try again.",
   },
+  guide: {
+    viewButton: "View repair guide",
+    noGuideTitle: "No repair guide available",
+    noGuideBody: "Follow the suggested next step above, or contact the engineering team for assistance.",
+    debugHeading: "Debug suggestions",
+    stepPhysical: "Physical action",
+    closeButton: "Close",
+  },
   // Per-item operator-visible names + descriptions + recommended actions.
   // Keys mirror catalog.py / data-model.md item ids.
   item: {
@@ -222,6 +230,28 @@ export const strings = {
       },
       action:
         "Re-deploy the telestation config from ree-vehicle-configs and re-run.",
+    },
+    peplink_cellular_connected: {
+      name: "Peplink cellular connected",
+    },
+    peplink_vpn_tunnels_established: {
+      name: "Peplink VPN tunnels established",
+    },
+    peplink_cellular: {
+      description: {
+        working: "All Peplink cellular interfaces are connected and reporting green.",
+        error: "One or more Peplink cellular interfaces are not reporting green.",
+      },
+      action:
+        "Check antenna connections and SIM card seats on the Peplink router, then re-run.",
+    },
+    peplink_vpn: {
+      description: {
+        working: "All 5 PepVPN tunnels are established.",
+        error: "Not all 5 expected PepVPN tunnels are established.",
+      },
+      action:
+        "Check the Peplink router WAN connection and VPN configuration, then re-run.",
     },
   },
 } as const;

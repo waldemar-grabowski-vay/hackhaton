@@ -11,12 +11,14 @@ import {
   Check,
   X,
   ChevronDown,
+  BookOpen,
 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CategoryBadge } from "@/components/result/CategoryBadge";
+import { RepairGuideSheet } from "@/components/result/RepairGuideSheet";
 import { useDeveloperMode } from "@/lib/developerMode";
 import { cn } from "@/lib/utils";
 import type { DiagnosticItem } from "@/api/schemas";
@@ -29,6 +31,7 @@ interface DiagnosticItemRowProps {
 export function DiagnosticItemRow({ item }: DiagnosticItemRowProps) {
   const developer = useDeveloperMode((s) => s.enabled);
   const [open, setOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const isError = item.status === "error";
 
   return (
@@ -67,6 +70,25 @@ export function DiagnosticItemRow({ item }: DiagnosticItemRowProps) {
                 {t(item.recommended_action_key)}
               </span>
             </div>
+          )}
+          {isError && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setGuideOpen(true)}
+              className="mt-2 h-7 gap-1.5 text-xs"
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              {strings.guide.viewButton}
+            </Button>
+          )}
+          {isError && (
+            <RepairGuideSheet
+              item={item}
+              open={guideOpen}
+              onClose={() => setGuideOpen(false)}
+            />
           )}
         </div>
         {developer && (

@@ -1,3 +1,27 @@
-outcome: unreachable
-delay_seconds: 0.4
-items: []
+outcome: complete
+delay_seconds: 1.1
+items:
+  - id: main_can_bus_reachable
+    status: error
+    raw_detail: "candump can0: no frames received in 2000ms (timeout)"
+  - id: expected_front_camera_connected
+    status: working
+    raw_detail: "lsusb: device LI_IMX490 JP2J0301 detected"
+  - id: expected_left_camera_connected
+    status: working
+    raw_detail: "lsusb: device LI_IMX490 JP2J0302 detected"
+  - id: expected_right_camera_connected
+    status: working
+    raw_detail: "lsusb: device LI_IMX490 JP2J0303 detected"
+  - id: vehicle_integration_config_valid
+    status: working
+    raw_detail: "config.yaml parsed; all required keys present"
+  - id: network_addresses_reachable
+    status: working
+    raw_detail: "ping 10.0.1.7: 4/4 received"
+  - id: peplink_cellular_connected
+    status: working
+    raw_detail: "=== gateway_1 :: http://192.168.50.1 ===\nauth ok\n  ok cellular0: statusLed=green  message=Connected\n  ok cellular1: statusLed=green  message=Connected"
+  - id: peplink_vpn_tunnels_established
+    status: working
+    raw_detail: "=== gateway_1 :: http://192.168.50.1 ===\nauth ok\n  ok pepvpn tunnels: 5/5 (expected 5)"
