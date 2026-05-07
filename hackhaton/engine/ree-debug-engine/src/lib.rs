@@ -1,13 +1,17 @@
-//! ree-debug-engine — Phase 1 stub.
+//! ree-debug-engine — diagnostic library shared by `ree-debug-tui` (binary)
+//! and `ree-debug-cli` (binary).
 //!
-//! T002: this crate is the shared diagnostic library that both
-//! `ree-debug-tui` and `ree-debug-cli` consume. The full port from
-//! `~/GitHub/ree-debug-tui/src/{checks,inventory,ssh,manifest,ping,
-//! session_init}.rs` lands in Phase 3 (US1, T022 — T026); for now the
-//! crate exposes a placeholder `run_checks` that returns a hardcoded
-//! empty `EngineReport` — enough for downstream binaries (`ree-debug-tui`,
-//! `ree-debug-cli`) and the FastAPI backend to compile against the
-//! shape Phase 2 (T017) defined.
+//! Phase 3 (T022 — T025): the diagnostic modules from the historical
+//! `~/GitHub/ree-debug-tui` repo are ported in here verbatim. The
+//! library is **pure** — no `println!`, no stdout/stderr writes,
+//! no terminal I/O. Rendering belongs to the binaries.
+//!
+//! T026 (the high-level `run_checks` orchestration that wraps the
+//! per-check fan-out into a single `EngineReport`) lands in a
+//! follow-up. The TUI binary continues to drive its own task fan-out
+//! using the per-check entry points exposed by `crate::checks::*`;
+//! the CLI binary's call-site uses the `run_checks` stub below until
+//! T026 lands the real one.
 
 use std::path::Path;
 
@@ -16,6 +20,13 @@ use thiserror::Error;
 pub use types::*;
 
 mod types;
+
+pub mod checks;
+pub mod inventory;
+pub mod manifest;
+pub mod ping;
+pub mod session_init;
+pub mod ssh;
 
 #[derive(Debug, Error)]
 pub enum EngineRunError {
@@ -57,9 +68,11 @@ impl From<&EngineRunError> for EngineErrorKind {
     }
 }
 
-/// Run the full per-host diagnostic fan-out and return a structured
-/// `EngineReport`. Phase 1 stub: returns a hardcoded empty report so
-/// the workspace compiles end-to-end before the Phase 3 port lands.
+/// High-level orchestration entry point. Phase 3 stub — returns a
+/// hardcoded empty report so the CLI binary compiles. T026 (the next
+/// session) extracts the real fan-out from the historical
+/// `app.rs::confirm_pick`/`rerun` task plumbing into a synchronous
+/// `EngineReport` builder.
 pub async fn run_checks(host_id: &str, _inventory_path: &Path) -> Result<EngineReport, EngineRunError> {
     let now = "1970-01-01T00:00:00Z".to_string();
     Ok(EngineReport {

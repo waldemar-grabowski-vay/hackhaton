@@ -85,16 +85,16 @@ description: "Task breakdown for Real Diagnostic Engine via ree-debug-tui (featu
 
 ### Engine library port (R2 steps 2–5)
 
-- [ ] T022 [US1] Copy `~/GitHub/ree-debug-tui/src/checks/{cameras,connectivity,decode,reecu,usb,mod}.rs` verbatim into `hackhaton/engine/ree-debug-engine/src/checks/`; adjust `mod` declarations only (no logic edits)
-- [ ] T023 [US1] Copy `~/GitHub/ree-debug-tui/src/{inventory,ssh,manifest,ping,session_init}.rs` verbatim into `hackhaton/engine/ree-debug-engine/src/`; adjust `mod` declarations only
-- [ ] T024 [US1] Copy `~/GitHub/ree-debug-tui/config/expected_usb.yaml` to `hackhaton/engine/ree-debug-engine/config/expected_usb.yaml`; update the loader path in `hackhaton/engine/ree-debug-engine/src/checks/usb.rs` to use a `CARGO_MANIFEST_DIR`-relative path
-- [ ] T025 [US1] Audit ported library files for `println!` / `eprintln!` / `print!` / `dbg!` calls; remove all of them (Constitution: engine library MUST stay pure, no stdout/stderr writes)
+- [X] T022 [US1] Copy `~/GitHub/ree-debug-tui/src/checks/{cameras,connectivity,decode,reecu,usb,mod}.rs` verbatim into `hackhaton/engine/ree-debug-engine/src/checks/`; adjust `mod` declarations only (no logic edits)
+- [X] T023 [US1] Copy `~/GitHub/ree-debug-tui/src/{inventory,ssh,manifest,ping,session_init}.rs` verbatim into `hackhaton/engine/ree-debug-engine/src/`; adjust `mod` declarations only
+- [X] T024 [US1] Copy `~/GitHub/ree-debug-tui/config/expected_usb.yaml` to `hackhaton/engine/ree-debug-engine/config/expected_usb.yaml`; update the loader path in `hackhaton/engine/ree-debug-engine/src/checks/usb.rs` to use a `CARGO_MANIFEST_DIR`-relative path
+- [X] T025 [US1] Audit ported library files for `println!` / `eprintln!` / `print!` / `dbg!` calls; remove all of them (Constitution: engine library MUST stay pure, no stdout/stderr writes)
 - [ ] T026 [US1] Implement the real `ree_debug_engine::run_checks(host_id, inventory_path)` in `hackhaton/engine/ree-debug-engine/src/lib.rs`: orchestrate the existing fan-out logic from `~/GitHub/ree-debug-tui/src/app.rs` (parse host_id → look up in inventory → SSH ControlMaster warm-up → parallel per-category check fan-out → assemble `EngineReport`); replace stub from T002
 - [ ] T027 [P] [US1] Add `hackhaton/engine/ree-debug-engine/tests/run_checks_smoke.rs` — golden-output test that calls `run_checks` against a tiny fixture inventory + a fake SSH executor (mocked via trait injection or a test-only feature flag) and asserts the returned `EngineReport` shape
 
 ### TUI binary port (R2 step 6)
 
-- [ ] T028 [US1] Move `~/GitHub/ree-debug-tui/src/{main,app,repair}.rs` and `src/ui/{mod,dashboard,guides,menu,pick}.rs` into `hackhaton/engine/ree-debug-tui/src/`; replace any local diagnostic-execution calls with `ree_debug_engine::run_checks(...)`; mutating actions (`b` / `d` keys in `repair.rs`) stay in this binary
+- [X] T028 [US1] Move `~/GitHub/ree-debug-tui/src/{main,app,repair}.rs` and `src/ui/{mod,dashboard,guides,menu,pick}.rs` into `hackhaton/engine/ree-debug-tui/src/`; replace any local diagnostic-execution calls with `ree_debug_engine::run_checks(...)`; mutating actions (`b` / `d` keys in `repair.rs`) stay in this binary
 - [ ] T029 [P] [US1] Verify TUI binary still builds and runs end-to-end: `cd hackhaton/engine && cargo run --release -p ree-debug-tui` against the operator's real inventory; manual smoke per the historical TUI's behaviour
 
 ### CLI binary (R2 step 7)
