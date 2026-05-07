@@ -236,6 +236,17 @@ export const strings = {
       action:
         "Re-deploy the telestation config from ree-vehicle-configs and re-run.",
     },
+    reecu_wake_line_active: {
+      name: "REECU WAKE line active",
+    },
+    reecu_wake_line: {
+      description: {
+        working: "KL15 WAKE signal on REECU connector X9 is present (12 V).",
+        error: "KL15 WAKE signal on REECU connector X9 is absent or below threshold.",
+      },
+      action:
+        "Inspect the WAKE line on connector X9 pin 1. Check the KL15 fuse and the Integration harness.",
+    },
     peplink_cellular_connected: {
       name: "Peplink cellular connected",
     },

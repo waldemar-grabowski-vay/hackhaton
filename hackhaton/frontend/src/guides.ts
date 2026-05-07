@@ -14,6 +14,7 @@ import {
   VIH_2_REEBOX_F_SVG,
   REEBOX_MAIN_F_SVG,
 } from "@/connectorSpecs";
+import { photosForPNs } from "@/connectorPhotos";
 
 export type RepairStep = {
   title: string;
@@ -21,11 +22,20 @@ export type RepairStep = {
   physical?: true;
 };
 
+export type ConnectorPhoto = {
+  label: string;
+  url: string;
+};
+
 export type DebugSuggestion = {
   label: string;
   body: string;
   /** Inline SVG string rendered above the body text (developer mode only). */
   diagram?: string;
+  /** Clickable photo links that open in a new tab — real connector images. */
+  photos?: ConnectorPhoto[];
+  /** Connector chips that zoom the vehicle diagram to the connector's location. */
+  connectors?: Array<{ id: string; label: string }>;
 };
 
 export type RepairGuide = {
@@ -76,16 +86,23 @@ export const guides: Record<string, RepairGuide> = {
       {
         label: "Connector: VIH_2_REEBOX_F",
         diagram: VIH_2_REEBOX_F_SVG,
+        photos: photosForPNs(["19418-0029"]),
+        connectors: [{ id: "VIH_2_REEBOX_F", label: "VIH_2_REEBOX_F" }],
         body:
-          "Located on the Vehicle Integration Harness (VS050100).\n" +
+          "Molex 19418-0029 · 16-pin female — on the Vehicle Integration Harness (VS050100).\n" +
           "Re-seat both sides of this connector — it bridges the VIH to the REEBox path.\n" +
           "Check for bent pins, corrosion, or moisture on the mating faces.",
       },
       {
-        label: "Connector: Reebox_Main_F",
+        label: "Connector: Reebox_Main_F / Reebox_Main_M",
         diagram: REEBOX_MAIN_F_SVG,
+        connectors: [
+          { id: "Reebox_Main_F", label: "Reebox_Main_F" },
+          { id: "Reebox_Main_M", label: "Reebox_Main_M" },
+        ],
+        // PN not yet confirmed for Reebox_Main_F — add to photosForPNs([...]) once identified.
         body:
-          "8-pin female on the Accessory Harness (VS101500), mates with Reebox_Main_M on the IPDU.\n" +
+          "8-pin female (Accessory Harness VS101500) mates with Reebox_Main_M (IPDU VS101400).\n" +
           "Pins 1 & 2 carry APP CAN (twisted pair — Yellow / Gray).\n" +
           "Re-seat the mating pair; confirm no pin backs-out when the locking tab is released.",
       },
@@ -631,6 +648,43 @@ export const guides: Record<string, RepairGuide> = {
           "  cat /path/to/telestation_config.yaml\n" +
           "  python3 -c \"import yaml; yaml.safe_load(open('/path/to/config'))\"\n" +
           "Compare against expected schema in ree-vehicle-configs.",
+      },
+    ],
+  },
+
+  reecu_wake_line_active: {
+    steps: [
+      {
+        title: "Check the KL15 fuse",
+        body: "Locate the KL15 fuse in the telestation power distribution box. Replace it if blown.",
+        physical: true,
+      },
+      {
+        title: "Inspect connector X9 pin 1",
+        body: "Unplug REECU connector X9 and check pin 1 (WAKE line). Look for corrosion, bent pins, or a loose crimp. Reseat the connector firmly.",
+        physical: true,
+      },
+      {
+        title: "Measure the WAKE line voltage",
+        body: "With KL15 on, probe X9 pin 1 to ground. Expected: 12 V ±1 V. If absent, trace the wire back through the Integration harness toward the ignition relay.",
+        physical: true,
+      },
+      {
+        title: "Re-run the diagnostic",
+        body: "After any repair, re-run the diagnostic and confirm the WAKE line check passes.",
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "REECU X9 — WAKE line",
+        connectors: [{ id: "REECU_X9", label: "REECU X9" }],
+        body:
+          "Pin 1 on X9 carries the KL15 WAKE signal (12 V when ignition ON).\n" +
+          "Signal path: Ignition relay → Integration harness → X9 pin 1 → REECU.\n\n" +
+          "Quick checks:\n" +
+          "  multimeter: X9 pin 1 → GND, key ON → expect 11–13 V\n" +
+          "  if 0 V with key ON: check ignition relay coil and KL15 fuse\n" +
+          "  if 0 V at relay output: check supply to relay from KL30 bar",
       },
     ],
   },

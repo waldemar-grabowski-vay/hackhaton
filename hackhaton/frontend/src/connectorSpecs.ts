@@ -35,9 +35,9 @@ export const APP_CAN_PATH_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox
 
 export const VIH_2_REEBOX_F_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 186" role="img" aria-label="VIH_2_REEBOX_F connector pinout">
   <rect width="280" height="186" rx="6" fill="#0f172a" stroke="#1e293b" stroke-width="1.5"/>
-  <text x="140" y="17" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="ui-monospace,Menlo,monospace" font-weight="600">VIH_2_REEBOX_F · 15-pin &#x2640;</text>
-  <text x="140" y="30" text-anchor="middle" fill="#475569" font-size="9" font-family="ui-monospace,Menlo,monospace">VS050100 Vehicle Integration Harness v4.5</text>
-  <text x="140" y="42" text-anchor="middle" fill="#334155" font-size="8" font-family="ui-monospace,Menlo,monospace" font-style="italic">wired pins only &#x2014; 3 of 15 shown</text>
+  <text x="140" y="17" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="ui-monospace,Menlo,monospace" font-weight="600">VIH_2_REEBOX_F · 16-pin &#x2640;</text>
+  <text x="140" y="30" text-anchor="middle" fill="#475569" font-size="9" font-family="ui-monospace,Menlo,monospace">Molex 19418-0029 · VS050100 Accessory Harness v4.5</text>
+  <text x="140" y="42" text-anchor="middle" fill="#334155" font-size="8" font-family="ui-monospace,Menlo,monospace" font-style="italic">wired pins only &#x2014; 3 of 16 shown</text>
   <rect x="8" y="50" width="264" height="130" rx="4" fill="#0a1628" stroke="#1e3a5f" stroke-width="1"/>
   <rect x="10" y="53" width="260" height="34" rx="3" fill="#451a03" stroke="#92400e" stroke-width="0.5" opacity="0.5"/>
   <circle cx="28" cy="70" r="9" fill="#451a03" stroke="#f59e0b" stroke-width="1.5"/>

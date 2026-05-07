@@ -37,6 +37,7 @@ import { strings, t } from "@/strings";
 
 interface DiagnosticItemRowProps {
   item: DiagnosticItem;
+  hostType?: "vehicle" | "telestation";
 }
 
 interface StatusVisuals {
@@ -83,7 +84,7 @@ const STATUS_VISUALS: Record<ItemStatus, StatusVisuals> = {
   },
 };
 
-export function DiagnosticItemRow({ item }: DiagnosticItemRowProps) {
+export function DiagnosticItemRow({ item, hostType }: DiagnosticItemRowProps) {
   const developer = useDeveloperMode((s) => s.enabled);
   const [open, setOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
@@ -155,6 +156,7 @@ export function DiagnosticItemRow({ item }: DiagnosticItemRowProps) {
           {isError && (
             <RepairGuideSheet
               item={item}
+              hostType={hostType}
               open={guideOpen}
               onClose={() => setGuideOpen(false)}
             />
