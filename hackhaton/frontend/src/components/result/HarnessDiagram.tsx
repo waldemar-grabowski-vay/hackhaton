@@ -4,17 +4,19 @@ import type { ConnectorLocation } from "@/connectorLocations";
 const CONNECTOR_ZOOM = 4;
 const DRAG_THRESHOLD = 4;
 
-type VehicleHarnessKey = "board";
+type VehicleHarnessKey = "board" | "roof";
 
 const HARNESS_IMAGES: Record<VehicleHarnessKey, string> = {
   board: "/harness-diagram.png",
+  roof:  "/ve-roof-harness.png",
 };
 
 const HARNESS_LABELS: Record<VehicleHarnessKey, string> = {
   board: "Board",
+  roof:  "Roof",
 };
 
-const HARNESS_ORDER: VehicleHarnessKey[] = ["board"];
+const HARNESS_ORDER: VehicleHarnessKey[] = ["board", "roof"];
 
 interface HarnessDiagramProps {
   focusLocation?: ConnectorLocation;

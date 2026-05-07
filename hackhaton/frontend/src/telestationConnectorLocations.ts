@@ -2,6 +2,7 @@ export type ConnectorLocation = { fx: number; fy: number };
 
 export type HarnessKey =
   | "board"
+  | "rdms"
   | "integration"
   | "steering"
   | "power"
@@ -10,7 +11,8 @@ export type HarnessKey =
   | "acdc_us";
 
 export const HARNESS_IMAGES: Record<HarnessKey, string> = {
-  board:        "/harness-diagram.png",
+  board:        "/ts-board.png",
+  rdms:         "/ts-rdms-harness.png",
   integration:  "/ts-integration-harness.png",
   steering:     "/ts-steering-harness.png",
   power:        "/ts-power-harness.png",
@@ -21,6 +23,7 @@ export const HARNESS_IMAGES: Record<HarnessKey, string> = {
 
 export const HARNESS_LABELS: Record<HarnessKey, string> = {
   board:        "Board",
+  rdms:         "RDMS",
   integration:  "Integration",
   steering:     "Steering",
   power:        "Power",
@@ -31,6 +34,7 @@ export const HARNESS_LABELS: Record<HarnessKey, string> = {
 
 export const HARNESS_ORDER: HarnessKey[] = [
   "board",
+  "rdms",
   "integration",
   "steering",
   "power",
@@ -61,6 +65,7 @@ export const CONNECTOR_HARNESS: Record<string, HarnessKey> = {
 // Calibrate by overlaying each PNG at 100% and measuring connector label centres.
 export const telestationConnectorLocations: Record<HarnessKey, Record<string, ConnectorLocation>> = {
   board: {},
+  rdms: {},
   integration: {
     REECU_X9:    { fx: 0.18, fy: 0.40 },
     REECU_X4:    { fx: 0.18, fy: 0.55 },

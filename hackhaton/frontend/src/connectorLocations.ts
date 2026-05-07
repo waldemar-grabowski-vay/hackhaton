@@ -13,4 +13,6 @@ export const connectorLocations: Record<string, ConnectorLocation> = {
   CREECU_0:       { fx: 0.150, fy: 0.500 },
   CREECU_1:       { fx: 0.155, fy: 0.510 },
   REECU_X9:       { fx: 0.150, fy: 0.490 },
+  CREECU_X9:      { fx: 0.150, fy: 0.490 },
+  APCB_2_VIH:     { fx: 0.145, fy: 0.522 },
 };

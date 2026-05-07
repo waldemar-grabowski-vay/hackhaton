@@ -286,6 +286,21 @@
             "Gray (L)"
           ],
           "note": "APP CAN does NOT route through the Center Console connector"
+        },
+        "WAKE": {
+          "canonical": "WAKE (KL15)",
+          "source": "FMC130 on APCB board",
+          "source_connector": "APCB_2_VIH",
+          "source_pin": 4,
+          "source_wire": "W66 (Orange, 0.5 mm²)",
+          "intermediate_splice": "WAKE_SPLICE",
+          "reecu_connector": "X8 (CREECU_1) / X9",
+          "reecu_pins": [
+            11,
+            38
+          ],
+          "wire_color": "Orange (W65 FMC130 side, W66 VIH side)",
+          "note": "WAKE signal activates when KL15 (ignition) is ON; expected 12 V KL15 supply"
         }
       }
     },
@@ -391,7 +406,7 @@
           "wires": [
             "W23+W24 twisted"
           ],
-          "note": "Center Console harness \u2014 signal identity from VIH"
+          "note": "Center Console harness — signal identity from VIH"
         }
       }
     },
@@ -401,7 +416,7 @@
       "description": "Simple 40-pin pass-through pigtail adapter",
       "connectors": {
         "C1": {
-          "description": "M40 female connector (KET MG610376-4, 12-pin \u2014 note: 40 in name is max, actual pin count may vary)",
+          "description": "M40 female connector (KET MG610376-4, 12-pin — note: 40 in name is max, actual pin count may vary)",
           "mating": "C2",
           "pins": 12,
           "pn": "MG610376-4"
@@ -443,7 +458,7 @@
           "pins": 4
         },
         "Chazm_M": {
-          "description": "CHAZM connector, male (6-pin) \u2014 connects to WL-GND extension CHAZM_F",
+          "description": "CHAZM connector, male (6-pin) — connects to WL-GND extension CHAZM_F",
           "pins": 6,
           "mating": "CHAZM_F (WL-GND extension)"
         },
@@ -501,28 +516,28 @@
       "description": "Complex internal IPDU harness; connects TTC boards (96-pin Bosch), REEBox, DEPB, Peplink, Ethernet",
       "connectors": {
         "TTC_1_96pin": {
-          "description": "TTC board 1 \u2014 Bosch 96-pin connector",
+          "description": "TTC board 1 — Bosch 96-pin connector",
           "pins": 96
         },
         "TTC_2_96pin": {
-          "description": "TTC board 2 \u2014 Bosch 96-pin connector",
+          "description": "TTC board 2 — Bosch 96-pin connector",
           "pins": 96
         },
         "TTC_1_58pin": {
-          "description": "TTC board 1 \u2014 Bosch 58-pin connector",
+          "description": "TTC board 1 — Bosch 58-pin connector",
           "pins": 58
         },
         "TTC_2_58pin": {
-          "description": "TTC board 2 \u2014 Bosch 58-pin connector",
+          "description": "TTC board 2 — Bosch 58-pin connector",
           "pins": 58
         },
         "Reebox_Main_M": {
-          "description": "REEBox main signal connector (8-pin male) \u2014 mates with Accessory harness Reebox_Main_F",
+          "description": "REEBox main signal connector (8-pin male) — mates with Accessory harness Reebox_Main_F",
           "mating": "Reebox_Main_F (Accessory harness)",
           "pins": 8
         },
         "Reebox_DEPB_M": {
-          "description": "REEBox DEPB connector (4-pin male) \u2014 mates with Accessory harness Reebox_DEPB_F",
+          "description": "REEBox DEPB connector (4-pin male) — mates with Accessory harness Reebox_DEPB_F",
           "mating": "Reebox_DEPB_F (Accessory harness)",
           "pins": 4
         },
@@ -535,7 +550,7 @@
           "pins": 4
         },
         "IPDU_2_EPB": {
-          "description": "IPDU to EPB (Electronic Parking Brake) connector \u2014 extends via DEPB extension harness"
+          "description": "IPDU to EPB (Electronic Parking Brake) connector — extends via DEPB extension harness"
         }
       },
       "splices": {},
@@ -823,14 +838,14 @@
           "pins": 12,
           "mating": "VIH_2_APCB_M (VIH)",
           "pin_map": {
-            "1": "PWR Main (W9.Red 0.5mm\u00b2)",
-            "2": "GND Main (W12.Black 0.5mm\u00b2)",
+            "1": "PWR Main (W9.Red 0.5mm²)",
+            "2": "GND Main (W12.Black 0.5mm²)",
             "3": "Wire Data to FMC130.2",
-            "4": "REECU WAKE (W66.Orange \u2192 S12)",
-            "5": "IPDU WAKE (W8.Blue \u2192 S9)",
+            "4": "REECU WAKE (W66.Orange → S12)",
+            "5": "IPDU WAKE (W8.Blue → S9)",
             "6": "Spare Digital Input 1",
             "7": "Spare Digital Input 2",
-            "10": "Wire Data (W63.Green 0.5mm\u00b2)",
+            "10": "Wire Data (W63.Green 0.5mm²)",
             "11": "S10 (W15.White)"
           },
           "pn": "469921210"
@@ -839,12 +854,12 @@
           "description": "FMC130 connector (12-pin Molex 43025-1200 Micro-Fit)",
           "pins": 12,
           "pin_map": {
-            "1": "PWR FMC130 \u2192 S1",
-            "7": "GND FMC130 \u2192 S2",
-            "8": "REECU WAKE (W65.Orange \u2192 S12)",
-            "9": "IPDU WAKE (W59.Blue \u2192 S9)",
-            "12": "CAN TX \u2192 CAN_CTL_2.5 (W52.Yellow 0.25mm\u00b2)",
-            "6": "CAN RX \u2192 CAN_CTL_2.6 (W61.Green 0.25mm\u00b2)"
+            "1": "PWR FMC130 → S1",
+            "7": "GND FMC130 → S2",
+            "8": "REECU WAKE (W65.Orange → S12)",
+            "9": "IPDU WAKE (W59.Blue → S9)",
+            "12": "CAN TX → CAN_CTL_2.5 (W52.Yellow 0.25mm²)",
+            "6": "CAN RX → CAN_CTL_2.6 (W61.Green 0.25mm²)"
           },
           "pn": "43025-1200"
         },
@@ -871,8 +886,8 @@
         "CAN_CTL_1": {
           "description": "CAN control board connector 1 (8-pin Molex 355070800)",
           "pin_map": {
-            "1": "S_BODY_H \u2192 board (W56.Blue 0.25mm\u00b2)",
-            "2": "S_BODY_L \u2192 board (W100.Brown 0.25mm\u00b2)"
+            "1": "S_BODY_H → board (W56.Blue 0.25mm²)",
+            "2": "S_BODY_L → board (W100.Brown 0.25mm²)"
           },
           "pins": 8,
           "pn": "355070800"
@@ -880,14 +895,14 @@
         "CAN_CTL_2": {
           "description": "CAN control board connector 2 (11-pin Molex 355071100)",
           "pin_map": {
-            "5": "TX from FMC130 (W52.Yellow 0.25mm\u00b2)",
-            "6": "RX from FMC130 (W61.Green 0.25mm\u00b2)"
+            "5": "TX from FMC130 (W52.Yellow 0.25mm²)",
+            "6": "RX from FMC130 (W61.Green 0.25mm²)"
           },
           "pins": 11,
           "pn": "355071100"
         },
         "CM40": {
-          "description": "Third-leg harness connector M26 (Molex 347910041 4-pin) \u2014 connects to Accessory harness Chazm_M",
+          "description": "Third-leg harness connector M26 (Molex 347910041 4-pin) — connects to Accessory harness Chazm_M",
           "mating": "Chazm_M (Accessory harness)",
           "pins": 4,
           "pn": "347910041"
@@ -954,7 +969,7 @@
       "description": "E-Stop safety loopback; wires loop back to same connector to confirm E-Stop circuit continuity",
       "connectors": {
         "C1": {
-          "description": "16-pin TE 1473410-1 \u2014 single connector, wires form loops back to same connector",
+          "description": "16-pin TE 1473410-1 — single connector, wires form loops back to same connector",
           "pin_loops": [
             {
               "pins": [
@@ -989,7 +1004,7 @@
       },
       "signal_traces": {
         "E_STOP_LOOP": {
-          "note": "Loopback harness \u2014 if wires are cut or connector is unseated, E-Stop circuit opens (safety trip)"
+          "note": "Loopback harness — if wires are cut or connector is unseated, E-Stop circuit opens (safety trip)"
         }
       }
     },
@@ -1013,10 +1028,10 @@
         "IPDU_2_EPB": {
           "description": "IPDU to EPB connector (KET MG641744-5, 4-pin female)",
           "pin_map": {
-            "1": "\u2192 EPB_M.3 (W2.Red 1.5mm\u00b2) note: M3",
-            "2": "\u2192 EPB_M.4 (W1.Red 1.5mm\u00b2) note: M4",
-            "3": "\u2192 EPB_F.3 (W3.Red 1.5mm\u00b2) note: F3",
-            "4": "\u2192 EPB_F.4 (W4.Red 1.5mm\u00b2) note: F4"
+            "1": "→ EPB_M.3 (W2.Red 1.5mm²) note: M3",
+            "2": "→ EPB_M.4 (W1.Red 1.5mm²) note: M4",
+            "3": "→ EPB_F.3 (W3.Red 1.5mm²) note: F3",
+            "4": "→ EPB_F.4 (W4.Red 1.5mm²) note: F4"
           },
           "pins": 4,
           "pn": "MG641744-5"
@@ -1025,14 +1040,14 @@
       "splices": {},
       "signal_traces": {
         "EPB_POWER": {
-          "note": "1.5mm\u00b2 red wires \u2014 high current EPB actuator power"
+          "note": "1.5mm² red wires — high current EPB actuator power"
         }
       }
     },
     "VS050402": {
       "name": "Pigtail F61 Harness",
       "version": "1.2",
-      "description": "6-pin Hirose F61 pigtail adapter \u2014 straight pass-through, likely used for camera/sensor connections",
+      "description": "6-pin Hirose F61 pigtail adapter — straight pass-through, likely used for camera/sensor connections",
       "connectors": {
         "C1": {
           "description": "Hirose CL6424-0076-05 F61 6-pin",
@@ -1056,39 +1071,39 @@
       "description": "Warning light (WL) and REEBox ground extension harness",
       "connectors": {
         "CHAZM_F": {
-          "description": "CHAZM female connector (6-pin Molex 504693-0604, blue) \u2014 connects to Accessory harness Chazm_M",
+          "description": "CHAZM female connector (6-pin Molex 504693-0604, blue) — connects to Accessory harness Chazm_M",
           "mating": "Chazm_M (Accessory harness)",
           "pin_map": {
-            "1": "\u2192 STR_1.1 (W5.Blue)",
-            "2": "\u2192 STR_1.2 (W6.Black)",
-            "3": "\u2192 STR_1.3 (W7.Red)",
-            "4": "\u2192 STR_2.1 (W8.Blue)",
-            "5": "\u2192 STR_2.2 (W15.Black)",
-            "6": "\u2192 STR_2.3 (W9.Red)"
+            "1": "→ STR_1.1 (W5.Blue)",
+            "2": "→ STR_1.2 (W6.Black)",
+            "3": "→ STR_1.3 (W7.Red)",
+            "4": "→ STR_2.1 (W8.Blue)",
+            "5": "→ STR_2.2 (W15.Black)",
+            "6": "→ STR_2.3 (W9.Red)"
           },
           "pn": "504693-0604"
         },
         "STR_1": {
           "description": "Strobe 1 connector (4-pin Molex 504693-0403, yellow)",
           "pin_map": {
-            "1-3": "\u2192 CHAZM_F.1-3",
-            "4": "\u2194 STR_2.4 (W4.Yellow local loop)"
+            "1-3": "→ CHAZM_F.1-3",
+            "4": "↔ STR_2.4 (W4.Yellow local loop)"
           },
           "pn": "504693-0403"
         },
         "STR_2": {
           "description": "Strobe 2 connector (4-pin Molex 504693-0403, yellow)",
           "pin_map": {
-            "1-3": "\u2192 CHAZM_F.4-6",
-            "4": "\u2194 STR_1.4 (W4.Yellow local loop)"
+            "1-3": "→ CHAZM_F.4-6",
+            "4": "↔ STR_1.4 (W4.Yellow local loop)"
           },
           "pn": "504693-0403"
         },
         "GND_Reebox": {
-          "description": "Anderson Power 6319G1 (2-pos) \u2014 REEBox chassis ground",
+          "description": "Anderson Power 6319G1 (2-pos) — REEBox chassis ground",
           "pin_map": {
-            "1": "\u2192 RT1 ring terminal (W19.Black 6mm\u00b2)",
-            "2": "\u2192 RT2 ring terminal (W20.Black 6mm\u00b2)"
+            "1": "→ RT1 ring terminal (W19.Black 6mm²)",
+            "2": "→ RT2 ring terminal (W20.Black 6mm²)"
           },
           "pn": "6319G1"
         },
@@ -1105,7 +1120,7 @@
       "signal_traces": {
         "CHASSIS_GND": {
           "connector": "GND_Reebox",
-          "wire": "W19/W20 Black 6mm\u00b2",
+          "wire": "W19/W20 Black 6mm²",
           "note": "Heavy gauge ground cable to chassis"
         }
       }
@@ -1120,9 +1135,9 @@
           "pn": "3240096"
         },
         "MEC_97_IPDU_PWR1": {
-          "description": "REEBox power input (Amphenol RL00571-16BK Radlok 16mm\u00b2)",
+          "description": "REEBox power input (Amphenol RL00571-16BK Radlok 16mm²)",
           "pin_map": {
-            "1": "W1.Red 6mm\u00b2 \u2192 IPDU_PWR1 (4950mm length)"
+            "1": "W1.Red 6mm² → IPDU_PWR1 (4950mm length)"
           },
           "pn": "RL00571-16BK"
         }
@@ -1131,7 +1146,7 @@
       "signal_traces": {
         "VBAT_REEBOX": {
           "connector": "MEC_97_IPDU_PWR1",
-          "wire": "W1 Red 6mm\u00b2",
+          "wire": "W1 Red 6mm²",
           "note": "Main 12V power feed to REEBox from IPDU"
         }
       }
@@ -1142,10 +1157,10 @@
       "signal": "APP_CAN",
       "description": "Application-layer CAN bus from REECU to REEBox",
       "signal_path": [
-        "REECU PCB X8 (CREECU_1) \u2014 nets: REF_AUX_CAN_H / REF_AUX_CAN_L",
+        "REECU PCB X8 (CREECU_1) — nets: REF_AUX_CAN_H / REF_AUX_CAN_L",
         "VIH splices: APP_HIGH_CAN_S / APP_LOW_CAN_S",
-        "VIH_2_REEBOX_F connector \u2014 pins 1 (H, Yellow) & 2 (L, Gray)",
-        "Accessory harness Reebox_Main_F \u2014 pins 1 (H) & 2 (L)",
+        "VIH_2_REEBOX_F connector — pins 1 (H, Yellow) & 2 (L, Gray)",
+        "Accessory harness Reebox_Main_F — pins 1 (H) & 2 (L)",
         "IPDU harness Reebox_Main_M",
         "REECU internal"
       ],
@@ -1194,7 +1209,7 @@
     },
     "vehicle_integration_config_valid": {
       "signal": null,
-      "description": "Software configuration check \u2014 no wiring involved"
+      "description": "Software configuration check — no wiring involved"
     },
     "vehicle_config": {
       "signal": null,
@@ -1207,6 +1222,32 @@
     "network": {
       "signal": "ETHERNET",
       "description": "Ethernet/network connectivity"
+    },
+    "reecu_wake_line_active": {
+      "signal": "WAKE",
+      "description": "KL15 wake line from APCB/FMC130 to REECU — must be 12 V when ignition ON",
+      "signal_path": [
+        "FMC130 (APCB board) — W65.Orange → S12 splice",
+        "APCB_2_VIH connector (Molex 469921210) — pin 4 (W66.Orange)",
+        "VIH WAKE_SPLICE — connects CREECU_1.11 and CREECU_1.38",
+        "REECU X8 (CREECU_1) pins 11 & 38 / X9 pin 1"
+      ],
+      "key_connectors": [
+        {
+          "name": "APCB_2_VIH",
+          "harness": "VS040804",
+          "pins": "4"
+        },
+        {
+          "name": "CREECU_1 (X8)",
+          "harness": "VS050100",
+          "pins": "11, 38"
+        },
+        {
+          "name": "REECU X9",
+          "alias": "CREECU_X9"
+        }
+      ]
     }
   }
 }
