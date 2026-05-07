@@ -119,6 +119,7 @@ export const diagnosticRunSchema = z.object({
   completed_at: z.string().datetime({ offset: true }),
   outcome: runOutcomeSchema,
   items: z.array(diagnosticItemSchema),
+  offline_reason: z.string().nullable().optional(),
 });
 export type DiagnosticRun = z.infer<typeof diagnosticRunSchema>;
 

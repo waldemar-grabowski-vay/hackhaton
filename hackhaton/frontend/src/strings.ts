@@ -94,12 +94,18 @@ export const strings = {
       body: "Some checks didn't return a result. The visible items below are still useful.",
     },
     unreachable: {
-      title: "We couldn't reach this host",
-      body: "The host didn't answer. Confirm it's powered on, on the network, and try again.",
+      title: "Host is offline",
+      body: "The host didn't answer. Follow the troubleshooting steps below to restore connectivity.",
     },
     timeout: {
-      title: "Check took too long",
-      body: "The host didn't finish in time. Try again — if it keeps happening, the host may be slow or stuck.",
+      title: "Check timed out",
+      body: "The host didn't respond in time. It may be overloaded or stuck — follow the steps below.",
+    },
+    offlineReasons: {
+      network_unreachable: "Network unreachable",
+      ssh_auth_failed: "SSH authentication failed",
+      ssh_timeout: "SSH connection timed out",
+      service_unresponsive: "Diagnostic service not responding",
     },
   },
   result: {
