@@ -46,6 +46,7 @@ export const HARNESS_ORDER: HarnessKey[] = [
 /** Connector ID → which harness it lives on */
 export const CONNECTOR_HARNESS: Record<string, HarnessKey> = {
   REECU_X9:      "integration",
+  CREECU_X9:     "integration",
   REECU_X4:      "integration",
   TIH_REECU_F:   "integration",
   TIH_Main_M:    "integration",
@@ -68,6 +69,7 @@ export const telestationConnectorLocations: Record<HarnessKey, Record<string, Co
   rdms: {},
   integration: {
     REECU_X9:    { fx: 0.18, fy: 0.40 },
+    CREECU_X9:   { fx: 0.18, fy: 0.40 },
     REECU_X4:    { fx: 0.18, fy: 0.55 },
     TIH_REECU_F: { fx: 0.50, fy: 0.35 },
     TIH_Main_M:  { fx: 0.75, fy: 0.50 },

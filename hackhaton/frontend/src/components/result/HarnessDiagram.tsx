@@ -4,19 +4,17 @@ import type { ConnectorLocation } from "@/connectorLocations";
 const CONNECTOR_ZOOM = 4;
 const DRAG_THRESHOLD = 4;
 
-type VehicleHarnessKey = "board" | "roof";
+type VehicleHarnessKey = "board";
 
 const HARNESS_IMAGES: Record<VehicleHarnessKey, string> = {
   board: "/harness-diagram.png",
-  roof:  "/ve-roof-harness.png",
 };
 
 const HARNESS_LABELS: Record<VehicleHarnessKey, string> = {
   board: "Board",
-  roof:  "Roof",
 };
 
-const HARNESS_ORDER: VehicleHarnessKey[] = ["board", "roof"];
+const HARNESS_ORDER: VehicleHarnessKey[] = ["board"];
 
 interface HarnessDiagramProps {
   focusLocation?: ConnectorLocation;
@@ -131,6 +129,15 @@ export function HarnessDiagram({ focusLocation }: HarnessDiagramProps) {
       container?.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       return;
     }
+
+    // Connector chips always target the Board tab — switch if needed
+    if (activeHarness !== "board") {
+      setActiveHarness("board");
+      pendingConnectorScroll.current = true;
+      setZoom(CONNECTOR_ZOOM);
+      return;
+    }
+
     if (!container || !img) return;
 
     if (zoomRef.current === CONNECTOR_ZOOM) {
@@ -143,6 +150,7 @@ export function HarnessDiagram({ focusLocation }: HarnessDiagramProps) {
       pendingConnectorScroll.current = true;
       setZoom(CONNECTOR_ZOOM);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusLocation]);
 
   useLayoutEffect(() => {
