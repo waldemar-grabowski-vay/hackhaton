@@ -1,0 +1,16 @@
+[package]
+name = "ree-debug-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Non-interactive JSON-emitting frontend for the Vay diagnostic engine — invoked by the FastAPI backend."
+
+[[bin]]
+name = "ree-debug-cli"
+path = "src/main.rs"
+
+[dependencies]
+ree-debug-engine = { path = "../ree-debug-engine" }
+clap = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }

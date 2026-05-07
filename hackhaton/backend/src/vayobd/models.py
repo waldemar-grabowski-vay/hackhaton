@@ -1,7 +1,10 @@
-"""Pydantic models — the single source of truth for API payloads (R6, data-model.md).
+"""Pydantic models — the single source of truth for API payloads.
 
-Field names are snake_case at the API boundary (Python convention). The frontend
-mirrors these in `frontend/src/api/schemas.ts` via Zod.
+Field names are snake_case at the API boundary (Python convention). The
+frontend mirrors these in `frontend/src/api/schemas.ts` via Zod, and
+the Rust engine library mirrors the engine-side shapes in
+`engine/ree-debug-engine/src/types.rs`. See
+`specs/002-real-executor/data-model.md` for the three-layer story.
 """
 
 from __future__ import annotations
@@ -9,9 +12,17 @@ from __future__ import annotations
 import re
 from datetime import datetime
 from enum import StrEnum
+from pathlib import Path
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 HostId = Annotated[
     str,
@@ -29,20 +40,31 @@ class HostType(StrEnum):
 
 
 class CheckCategory(StrEnum):
+    """The five-bucket palette pinned by the 2026-05-07 clarify session
+    on 002 (FR-006). Operator-mode only — engineering identifiers (XCP,
+    SAS, vDrive, …) never reach the SPA verbatim per Constitution III.
+    """
+
     COMMUNICATION = "communication"
     HARDWARE = "hardware"
     CONFIGURATION = "configuration"
+    SOFTWARE = "software"  # vDrive drift, firmware/gateware, container status
+    CALIBRATION = "calibration"  # SAS calibration, GNSS yaw-rate watchdog
 
 
 class ItemStatus(StrEnum):
+    """Three-status enum from 002's FR-004a. Mirrors the engine's
+    `Pass | Warn | Fail` (CheckStatus on the Rust side):
+    `Pass → working`, `Warn → warning`, `Fail → error`.
+    """
+
     WORKING = "working"
+    WARNING = "warning"
     ERROR = "error"
 
 
 class RunOutcome(StrEnum):
-    """Four outcomes per research R5. Note: spec FR-006 lists three (`timeout`
-    is added here as distinct from `unreachable`). HIGH analyze finding I1 —
-    spec amendment pending."""
+    """Four outcomes per research R5."""
 
     COMPLETE = "complete"
     PARTIAL = "partial"
@@ -82,18 +104,14 @@ class Host(BaseModel):
 
 
 class InventoryMeta(BaseModel):
-    """Inventory freshness summary returned to the SPA.
-
-    `last_refreshed_at` is the most recent **successful** refresh; the
-    `*_attempted_at` and `consecutive_failed_refreshes` fields track the
-    refresh-failure surfacing required by FR-027 so the SPA can decide
-    when to show the persistent banner.
+    """Slimmed for 002 (T011 / FR-013a) — the cache + periodic-refresh
+    layer is retired, so the 001 freshness fields are gone. The
+    inventory is re-read from disk per request; `last_read_at` is
+    always 'now'.
     """
 
-    last_refreshed_at: datetime
-    last_refresh_attempted_at: datetime | None = None
-    consecutive_failed_refreshes: int = 0
-    source_revision: str
+    last_read_at: datetime
+    source_path: str
     host_count: int
 
 
@@ -105,8 +123,12 @@ class Inventory(BaseModel):
 
 
 class DiagnosticItem(BaseModel):
-    """One thing that was checked. raw_detail is always populated server-side
-    so toggling Developer mode never requires a refetch (FR-022)."""
+    """One thing that was checked. `raw_detail` is always populated server-side
+    so toggling Developer mode never requires a refetch (001 FR-022).
+
+    002 / FR-004b: `warning` items must carry a `recommended_action_key`
+    too, not only `error` items.
+    """
 
     id: str = Field(..., description="Stable per host class, e.g. 'main_can_bus_reachable'.")
     name_key: str
@@ -118,8 +140,13 @@ class DiagnosticItem(BaseModel):
 
     @model_validator(mode="after")
     def _validate(self) -> DiagnosticItem:
-        if self.status is ItemStatus.ERROR and self.recommended_action_key is None:
-            raise ValueError(f"errored item {self.id!r} must have recommended_action_key (FR-005)")
+        if (
+            self.status in (ItemStatus.ERROR, ItemStatus.WARNING)
+            and self.recommended_action_key is None
+        ):
+            raise ValueError(
+                f"errored/warning item {self.id!r} must have recommended_action_key (FR-004b)"
+            )
         return self
 
 
@@ -127,12 +154,11 @@ _SLUG_DISALLOWED_RE = re.compile(r"[^a-z0-9._-]+")
 
 
 class OperatorIdentity(BaseModel):
-    """Pulled from the X-Vay-User reverse-proxy header (R4 + FR-026).
+    """Pulled from the X-Vay-User reverse-proxy header (R4 + 001 FR-026).
 
     Load-bearing in v1: `slug` is used as a path segment when persisting
     runs (`runs/<slug>/<host_id>.json`), so it must be sanitised.
-    Never returned in API responses — used for structured logging,
-    persisted run audit, and per-operator scoping only.
+    Never returned in API responses.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -159,7 +185,106 @@ class DiagnosticRun(BaseModel):
     items: list[DiagnosticItem]
 
 
-# --- Wire payloads / error envelopes -----------------------------------------
+# --- 002 engine integration models ------------------------------------------
+
+
+class EngineStatus(StrEnum):
+    """The engine's three statuses, mirrored from the Rust `CheckStatus`
+    enum (`engine/ree-debug-engine/src/types.rs`). Mapped to
+    `ItemStatus` per FR-004a in `checks/ree_cli.py` (Phase 3, T034).
+    """
+
+    PASS = "Pass"
+    WARN = "Warn"
+    FAIL = "Fail"
+
+
+class EngineCheckEntry(BaseModel):
+    """One element of `EngineReport.checks`. Mirrors the Rust
+    `CheckEntry` shape from `data-model.md` Layer 1.
+    """
+
+    id: str
+    status: EngineStatus
+    raw_detail: str | None = None
+    duration_ms: int = Field(..., ge=0)
+
+
+class EngineReport(BaseModel):
+    """The JSON document `ree-debug-cli` prints to stdout for one host
+    run. Parsed by `ReeCliExecutor` (Phase 3, T034).
+    """
+
+    schema_marker: str = Field(alias="schema")
+    version: str
+    host_id: str
+    host_type: HostType
+    started_at: datetime
+    completed_at: datetime
+    outcome: RunOutcome
+    checks: list[EngineCheckEntry]
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @model_validator(mode="after")
+    def _validate(self) -> EngineReport:
+        if self.schema_marker != "ree-debug-engine":
+            raise ValueError(f"unexpected schema marker {self.schema_marker!r}")
+        return self
+
+
+class EngineErrorKind(StrEnum):
+    """Engine-internal failure kinds emitted on stderr when the CLI
+    exits non-zero (`contracts/engine-cli.md`).
+    """
+
+    INVENTORY_MISSING = "inventory_missing"
+    INVENTORY_UNPARSEABLE = "inventory_unparseable"
+    UNKNOWN_HOST_ID = "unknown_host_id"
+    SSH_STARTUP_FAILED = "ssh_startup_failed"
+    INTERNAL = "internal"
+
+
+class EngineError(BaseModel):
+    kind: EngineErrorKind
+    message: str
+
+
+# --- 002 settings models ----------------------------------------------------
+
+
+class InventorySettings(BaseModel):
+    """The persisted inventory path. Lives in `~/.config/vayobd/settings.toml`
+    under the `[inventory]` table (FR-009 — FR-012). The path is
+    expanded + validated via `_expand_and_validate` so an invalid file
+    never ends up persisted.
+    """
+
+    path: Path
+
+    @field_validator("path", mode="after")
+    @classmethod
+    def _expand_and_validate(cls, p: Path) -> Path:
+        p = p.expanduser().resolve()
+        if not p.exists():
+            raise ValueError("path_missing")
+        if not p.is_dir():
+            raise ValueError("path_not_a_directory")
+        if not (p / "org" / "vay" / "inventory.yaml").is_file():
+            raise ValueError("inventory_yaml_missing")
+        return p
+
+
+class AppSettings(BaseModel):
+    """Top-level persisted settings. `inventory is None` means the
+    operator hasn't completed first-launch setup yet — the SPA shows
+    the setup card (US2).
+    """
+
+    inventory: InventorySettings | None = None
+
+
+# --- Wire payloads / error envelopes ----------------------------------------
 
 
 class RunRequest(BaseModel):

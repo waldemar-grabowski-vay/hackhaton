@@ -31,12 +31,12 @@ description: "Task breakdown for Real Diagnostic Engine via ree-debug-tui (featu
 
 **Purpose**: Stand up the empty Cargo workspace and the three crates so CI can build green before any Rust diagnostic code is moved. Each crate has a stub that compiles; nothing yet does real work.
 
-- [ ] T001 Create the Cargo workspace at `hackhaton/engine/Cargo.toml` declaring `members = ["ree-debug-engine", "ree-debug-tui", "ree-debug-cli"]` plus the `[profile.release] lto = "thin"; strip = true` settings carried over from `~/GitHub/ree-debug-tui/Cargo.toml`
-- [ ] T002 [P] Create `hackhaton/engine/ree-debug-engine/Cargo.toml` (library crate, `[lib] name = "ree_debug_engine"`) plus a stub `hackhaton/engine/ree-debug-engine/src/lib.rs` that exposes a placeholder `pub async fn run_checks(...) -> Result<EngineReport, EngineError>` returning a hardcoded empty report — enough to compile against
-- [ ] T003 [P] Create `hackhaton/engine/ree-debug-tui/Cargo.toml` (binary crate, `[[bin]] name = "ree-debug-tui"`) depending on `ree-debug-engine` plus a stub `hackhaton/engine/ree-debug-tui/src/main.rs` that prints "stub" and exits 0
-- [ ] T004 [P] Create `hackhaton/engine/ree-debug-cli/Cargo.toml` (binary crate, `[[bin]] name = "ree-debug-cli"`) depending on `ree-debug-engine`, `clap`, `serde_json`, `tokio`, plus a stub `hackhaton/engine/ree-debug-cli/src/main.rs` that prints `{"schema":"ree-debug-engine","version":"<sha>","checks":[]}` and exits 0
-- [ ] T005 [P] Add `hackhaton/engine/ree-debug-cli/build.rs` that resolves the workspace git SHA via `git rev-parse --short HEAD` and writes it into a `cargo:rustc-env=REE_DEBUG_VERSION=<sha>` directive (used by `--version` per FR-003a)
-- [ ] T006 Verify workspace bootstrap: `cd hackhaton/engine && cargo build --release --workspace && cargo test --workspace` are both green; commit the skeleton before any port work
+- [X] T001 Create the Cargo workspace at `hackhaton/engine/Cargo.toml` declaring `members = ["ree-debug-engine", "ree-debug-tui", "ree-debug-cli"]` plus the `[profile.release] lto = "thin"; strip = true` settings carried over from `~/GitHub/ree-debug-tui/Cargo.toml`
+- [X] T002 [P] Create `hackhaton/engine/ree-debug-engine/Cargo.toml` (library crate, `[lib] name = "ree_debug_engine"`) plus a stub `hackhaton/engine/ree-debug-engine/src/lib.rs` that exposes a placeholder `pub async fn run_checks(...) -> Result<EngineReport, EngineError>` returning a hardcoded empty report — enough to compile against
+- [X] T003 [P] Create `hackhaton/engine/ree-debug-tui/Cargo.toml` (binary crate, `[[bin]] name = "ree-debug-tui"`) depending on `ree-debug-engine` plus a stub `hackhaton/engine/ree-debug-tui/src/main.rs` that prints "stub" and exits 0
+- [X] T004 [P] Create `hackhaton/engine/ree-debug-cli/Cargo.toml` (binary crate, `[[bin]] name = "ree-debug-cli"`) depending on `ree-debug-engine`, `clap`, `serde_json`, `tokio`, plus a stub `hackhaton/engine/ree-debug-cli/src/main.rs` that prints `{"schema":"ree-debug-engine","version":"<sha>","checks":[]}` and exits 0
+- [X] T005 [P] Add `hackhaton/engine/ree-debug-cli/build.rs` that resolves the workspace git SHA via `git rev-parse --short HEAD` and writes it into a `cargo:rustc-env=REE_DEBUG_VERSION=<sha>` directive (used by `--version` per FR-003a)
+- [X] T006 Verify workspace bootstrap: `cd hackhaton/engine && cargo build --release --workspace && cargo test --workspace` are both green; commit the skeleton before any port work
 
 **Checkpoint**: Engine workspace builds and tests cleanly with stub implementations. CI is green; nothing user-visible has changed yet.
 
@@ -48,30 +48,30 @@ description: "Task breakdown for Real Diagnostic Engine via ree-debug-tui (featu
 
 ### Backend models + settings
 
-- [ ] T007 [P] Extend `ItemStatus` enum (add `WARNING`), `CheckCategory` enum (add `SOFTWARE` + `CALIBRATION`), and `DiagnosticItem` validator (require `recommended_action_key` for both `WARNING` and `ERROR` per FR-004b) in `hackhaton/backend/src/vayobd/models.py`
-- [ ] T008 [P] Add `EngineStatus` (Pass/Warn/Fail), `EngineCheckEntry`, `EngineReport`, `EngineErrorKind`, `EngineError` Pydantic v2 models in `hackhaton/backend/src/vayobd/models.py` mirroring the Rust types from `data-model.md` Layer 1
-- [ ] T009 [P] Add `InventorySettings` (with `_expand_and_validate` `field_validator`) and `AppSettings` Pydantic models in `hackhaton/backend/src/vayobd/models.py` per `data-model.md` Layer 2
-- [ ] T010 Implement `hackhaton/backend/src/vayobd/settings_file.py`: read TOML from `${XDG_CONFIG_HOME:-${HOME}/.config}/vayobd/settings.toml` via `tomllib`; write via a small custom serialiser; return `AppSettings` with `inventory=None` when the file is absent
-- [ ] T011 Slim `InventoryMeta` in `hackhaton/backend/src/vayobd/models.py`: remove `last_refresh_attempted_at` and `consecutive_failed_refreshes` (FR-013a — caching layer retired); `host_count` + `last_read_at` + `source_path` only
+- [X] T007 [P] Extend `ItemStatus` enum (add `WARNING`), `CheckCategory` enum (add `SOFTWARE` + `CALIBRATION`), and `DiagnosticItem` validator (require `recommended_action_key` for both `WARNING` and `ERROR` per FR-004b) in `hackhaton/backend/src/vayobd/models.py`
+- [X] T008 [P] Add `EngineStatus` (Pass/Warn/Fail), `EngineCheckEntry`, `EngineReport`, `EngineErrorKind`, `EngineError` Pydantic v2 models in `hackhaton/backend/src/vayobd/models.py` mirroring the Rust types from `data-model.md` Layer 1
+- [X] T009 [P] Add `InventorySettings` (with `_expand_and_validate` `field_validator`) and `AppSettings` Pydantic models in `hackhaton/backend/src/vayobd/models.py` per `data-model.md` Layer 2
+- [X] T010 Implement `hackhaton/backend/src/vayobd/settings_file.py`: read TOML from `${XDG_CONFIG_HOME:-${HOME}/.config}/vayobd/settings.toml` via `tomllib`; write via a small custom serialiser; return `AppSettings` with `inventory=None` when the file is absent
+- [X] T011 Slim `InventoryMeta` in `hackhaton/backend/src/vayobd/models.py`: remove `last_refresh_attempted_at` and `consecutive_failed_refreshes` (FR-013a — caching layer retired); `host_count` + `last_read_at` + `source_path` only
 
 ### Backend retirements (delete 001 surfaces no longer used)
 
-- [ ] T012 Delete `SshExecutor` class and its imports from `hackhaton/backend/src/vayobd/checks/executor.py`; `FixtureExecutor` stays (FR-001 — `SshExecutor` retired)
-- [ ] T013 [P] Delete `hackhaton/backend/src/vayobd/inventory/sync.py` and `hackhaton/backend/src/vayobd/inventory/scheduler.py`; remove their imports from `hackhaton/backend/src/vayobd/app.py`'s lifespan; **also delete `hackhaton/backend/tests/unit/test_inventory_scheduler.py`** (and any other test file importing from `vayobd.inventory.{sync,scheduler}` — confirmed empty by `grep -rlE 'from vayobd\.inventory\.(sync|scheduler)' backend/tests/` before merging) so pytest collection stays green after the modules are gone
-- [ ] T014 [P] Delete the `POST /api/inventory/refresh` route from `hackhaton/backend/src/vayobd/api/inventory.py`; delete the `useRefreshInventory` hook from `hackhaton/frontend/src/api/inventory.ts`
-- [ ] T015 [P] Delete `hackhaton/frontend/src/components/chrome/InventoryRefreshBanner.tsx` and remove its import + render site from `hackhaton/frontend/src/pages/PickerPage.tsx`
-- [ ] T016 [P] Backend: drop the `consecutive_failed_refreshes`-related settings keys from `hackhaton/backend/src/vayobd/config.py` (`refresh_failure_warning_threshold`, `refresh_backoff_base_seconds`, etc.) and the corresponding test fixtures
+- [X] T012 Delete `SshExecutor` class and its imports from `hackhaton/backend/src/vayobd/checks/executor.py`; `FixtureExecutor` stays (FR-001 — `SshExecutor` retired)
+- [X] T013 [P] Delete `hackhaton/backend/src/vayobd/inventory/sync.py` and `hackhaton/backend/src/vayobd/inventory/scheduler.py`; remove their imports from `hackhaton/backend/src/vayobd/app.py`'s lifespan; **also delete `hackhaton/backend/tests/unit/test_inventory_scheduler.py`** (and any other test file importing from `vayobd.inventory.{sync,scheduler}` — confirmed empty by `grep -rlE 'from vayobd\.inventory\.(sync|scheduler)' backend/tests/` before merging) so pytest collection stays green after the modules are gone
+- [X] T014 [P] Delete the `POST /api/inventory/refresh` route from `hackhaton/backend/src/vayobd/api/inventory.py`; delete the `useRefreshInventory` hook from `hackhaton/frontend/src/api/inventory.ts`
+- [X] T015 [P] Delete `hackhaton/frontend/src/components/chrome/InventoryRefreshBanner.tsx` and remove its import + render site from `hackhaton/frontend/src/pages/PickerPage.tsx`
+- [X] T016 [P] Backend: drop the `consecutive_failed_refreshes`-related settings keys from `hackhaton/backend/src/vayobd/config.py` (`refresh_failure_warning_threshold`, `refresh_backoff_base_seconds`, etc.) and the corresponding test fixtures
 
 ### Engine library types
 
-- [ ] T017 [P] Define the public `serde`-derivable types in `hackhaton/engine/ree-debug-engine/src/types.rs` per `data-model.md` Layer 1: `HostType`, `CheckStatus`, `RunOutcome`, `CheckEntry`, `EngineReport`, `EngineErrorKind`, `EngineError`. Add `serde` + `serde_yaml` + `serde_json` derives where shown
-- [ ] T018 [P] Re-export the public types from `hackhaton/engine/ree-debug-engine/src/lib.rs` (`pub use types::*;`) so the binaries can `use ree_debug_engine::EngineReport`
+- [X] T017 [P] Define the public `serde`-derivable types in `hackhaton/engine/ree-debug-engine/src/types.rs` per `data-model.md` Layer 1: `HostType`, `CheckStatus`, `RunOutcome`, `CheckEntry`, `EngineReport`, `EngineErrorKind`, `EngineError`. Add `serde` + `serde_yaml` + `serde_json` derives where shown
+- [X] T018 [P] Re-export the public types from `hackhaton/engine/ree-debug-engine/src/lib.rs` (`pub use types::*;`) so the binaries can `use ree_debug_engine::EngineReport`
 
 ### Frontend Zod + delete refresh hooks
 
-- [ ] T019 [P] Extend `itemStatusSchema` (add `warning`), `checkCategorySchema` (add `software` + `calibration`), and `diagnosticItemSchema` (`recommended_action_key` required for `warning` too) in `hackhaton/frontend/src/api/schemas.ts` per `data-model.md` Layer 3
-- [ ] T020 [P] Slim `inventoryMetaSchema` to drop `last_refresh_attempted_at` + `consecutive_failed_refreshes` in `hackhaton/frontend/src/api/schemas.ts`; replace with `last_read_at` + `source_path`
-- [ ] T021 [P] Add `inventorySettingsSchema`, `appSettingsSchema`, `settingsErrorSchema` in `hackhaton/frontend/src/api/schemas.ts`
+- [X] T019 [P] Extend `itemStatusSchema` (add `warning`), `checkCategorySchema` (add `software` + `calibration`), and `diagnosticItemSchema` (`recommended_action_key` required for `warning` too) in `hackhaton/frontend/src/api/schemas.ts` per `data-model.md` Layer 3
+- [X] T020 [P] Slim `inventoryMetaSchema` to drop `last_refresh_attempted_at` + `consecutive_failed_refreshes` in `hackhaton/frontend/src/api/schemas.ts`; replace with `last_read_at` + `source_path`
+- [X] T021 [P] Add `inventorySettingsSchema`, `appSettingsSchema`, `settingsErrorSchema` in `hackhaton/frontend/src/api/schemas.ts`
 
 **Checkpoint**: Backend + frontend compile clean with the new model shapes; the workspace stub is in place; the Phase 1 retirement deletes have shed every surface no longer needed. User-story phases can now begin in parallel (engine port + frontend setup-card + Python `ReeCliExecutor` are mostly independent).
 

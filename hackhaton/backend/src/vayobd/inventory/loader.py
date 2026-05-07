@@ -141,35 +141,10 @@ def load_inventory(inventory_path: Path, meta_path: Path) -> Inventory | None:
     if not hosts:
         log.warning("inventory_empty", path=str(inventory_path))
         return None
-    meta = _load_or_synthesise_meta(meta_path, host_count=len(hosts))
-    return Inventory(meta=meta, hosts=hosts)
-
-
-def _load_or_synthesise_meta(meta_path: Path, *, host_count: int) -> InventoryMeta:
-    if meta_path.exists():
-        try:
-            with meta_path.open("r", encoding="utf-8") as f:
-                raw = json.load(f)
-            attempted_raw = raw.get("last_refresh_attempted_at")
-            attempted = (
-                datetime.fromisoformat(attempted_raw) if isinstance(attempted_raw, str) else None
-            )
-            return InventoryMeta(
-                last_refreshed_at=datetime.fromisoformat(raw["last_refreshed_at"]),
-                last_refresh_attempted_at=attempted,
-                consecutive_failed_refreshes=int(raw.get("consecutive_failed_refreshes", 0) or 0),
-                source_revision=raw.get("source_revision", "unknown"),
-                host_count=host_count,
-            )
-        except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
-            log.warning("meta_parse_failed", path=str(meta_path), error=str(exc))
-
-    # Synthesise — first ever boot, no prior meta written yet.
-    now = datetime.now(UTC)
-    return InventoryMeta(
-        last_refreshed_at=now,
-        last_refresh_attempted_at=now,
-        consecutive_failed_refreshes=0,
-        source_revision="unknown",
-        host_count=host_count,
+    # 002 / FR-013a — no caching layer; freshness IS "now" by definition.
+    meta = InventoryMeta(
+        last_read_at=datetime.now(UTC),
+        source_path=str(inventory_path),
+        host_count=len(hosts),
     )
+    return Inventory(meta=meta, hosts=hosts)

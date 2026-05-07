@@ -1,0 +1,10 @@
+/home/waldemar-grabowski/GitHub/hackhathon/hackhaton/engine/target/release/deps/castaway-4ad8d93918e7e7ee.d: /home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/lib.rs /home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/internal.rs /home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/lifetime_free.rs /home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/utils.rs
+
+/home/waldemar-grabowski/GitHub/hackhathon/hackhaton/engine/target/release/deps/libcastaway-4ad8d93918e7e7ee.rlib: /home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/lib.rs /home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/internal.rs /home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/lifetime_free.rs /home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/utils.rs
+
+/home/waldemar-grabowski/GitHub/hackhathon/hackhaton/engine/target/release/deps/libcastaway-4ad8d93918e7e7ee.rmeta: /home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/lib.rs /home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/internal.rs /home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/lifetime_free.rs /home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/utils.rs
+
+/home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/lib.rs:
+/home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/internal.rs:
+/home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/lifetime_free.rs:
+/home/waldemar-grabowski/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/castaway-0.2.4/src/utils.rs:

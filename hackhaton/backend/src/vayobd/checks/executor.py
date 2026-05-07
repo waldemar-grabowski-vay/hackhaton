@@ -1,12 +1,12 @@
-"""Executor interface + implementations (T026 / T027 / T028, research R1).
+"""Executor interface + implementations.
 
-`ItemResult` is the per-item shape the executor returns; the runner joins
-that against `CheckSpec` to build a full `DiagnosticItem`.
+T012 (Phase 2): `SshExecutor` from 001 is retired. `FixtureExecutor`
+stays for dev / CI / demo. Phase 3 (US1 T036) adds `ReeCliExecutor` —
+the production-default executor that shells out to `ree-debug-cli`
+from the in-monorepo Rust workspace under `engine/`.
 
-Two executors:
-- `FixtureExecutor` — reads canned YAML from `backend/tests/fixtures/runs/`.
-- `SshExecutor` — connects via asyncssh + key auth + known_hosts and runs
-  one shell probe per catalog item.
+`ItemResult` is the per-item shape the executor returns; the runner
+joins that against `CheckSpec` to build a full `DiagnosticItem`.
 """
 
 from __future__ import annotations
@@ -99,7 +99,6 @@ class FixtureExecutor(Executor):
         items_raw = data.get("items") or []
         items: list[ItemResult] = []
         if outcome in (RunOutcome.UNREACHABLE, RunOutcome.TIMEOUT):
-            # Spec: items is empty for these outcomes regardless of fixture.
             return ExecutorResult(outcome=outcome, items=[])
 
         valid_ids = {spec.id for spec in catalog_for(host.host_class)}
@@ -122,107 +121,3 @@ class FixtureExecutor(Executor):
             seen.add(iid)
 
         return ExecutorResult(outcome=outcome, items=items)
-
-
-# --- SSH executor (live) ----------------------------------------------------
-
-
-class SshExecutor(Executor):
-    """asyncssh-based live executor.
-
-    Hackathon-grade: connects per-run, runs each catalog item's probe
-    command, classifies non-zero exit as `error`. Per-check timeout +
-    overall connection timeout. The exact probe-command-per-id mapping
-    intentionally lives here rather than in the catalog so the catalog
-    itself stays declarative.
-
-    For v1 the SSH probe set is illustrative — the demo build runs against
-    the FixtureExecutor.
-    """
-
-    PROBE_TIMEOUT_SECONDS = 4.0
-    CONNECT_TIMEOUT_SECONDS = 5.0
-
-    def __init__(self, *, ssh_key: Path, known_hosts: Path) -> None:
-        self._ssh_key = ssh_key
-        self._known_hosts = known_hosts
-
-    async def run(self, host: Host) -> ExecutorResult:
-        try:
-            import asyncssh  # imported lazily so dev installs that omit it still work
-        except ImportError:  # pragma: no cover
-            log.error("asyncssh_missing")
-            return ExecutorResult(outcome=RunOutcome.UNREACHABLE)
-
-        if not host.address:
-            log.warning("ssh_no_address", host_id=host.id)
-            return ExecutorResult(outcome=RunOutcome.UNREACHABLE)
-
-        probes = _ssh_probes_for(host.host_class)
-        items: list[ItemResult] = []
-        try:
-            async with asyncssh.connect(
-                host.address,
-                client_keys=[str(self._ssh_key)],
-                known_hosts=str(self._known_hosts),
-                connect_timeout=self.CONNECT_TIMEOUT_SECONDS,
-            ) as conn:
-                for spec_id, command in probes.items():
-                    try:
-                        result = await asyncio.wait_for(
-                            conn.run(command, check=False),
-                            timeout=self.PROBE_TIMEOUT_SECONDS,
-                        )
-                        status = (
-                            ItemStatus.WORKING if result.exit_status == 0 else ItemStatus.ERROR
-                        )
-                        raw = (result.stdout or "") + (result.stderr or "")
-                        items.append(
-                            ItemResult(id=spec_id, status=status, raw_detail=raw.strip() or None)
-                        )
-                    except TimeoutError:
-                        items.append(
-                            ItemResult(
-                                id=spec_id,
-                                status=ItemStatus.ERROR,
-                                raw_detail=f"probe timed out after {self.PROBE_TIMEOUT_SECONDS}s",
-                            )
-                        )
-        except (OSError, Exception) as exc:
-            # Any connection-layer failure → unreachable, items = [].
-            log.warning("ssh_connect_failed", host_id=host.id, error=str(exc))
-            return ExecutorResult(outcome=RunOutcome.UNREACHABLE, items=[])
-
-        # If we connected but didn't get a result for every catalog item it's
-        # `partial`. Otherwise `complete`.
-        catalog = catalog_for(host.host_class)
-        outcome = (
-            RunOutcome.COMPLETE
-            if {item.id for item in items} == {spec.id for spec in catalog}
-            else RunOutcome.PARTIAL
-        )
-        return ExecutorResult(outcome=outcome, items=items)
-
-
-_VEHICLE_PROBES: dict[str, str] = {
-    "main_can_bus_reachable": "candump -n 1 -T 2000 can0 >/dev/null 2>&1",
-    "expected_front_camera_connected": "lsusb | grep -q LI_IMX490",
-    "expected_left_camera_connected": "lsusb | grep -q LI_IMX490",
-    "expected_right_camera_connected": "lsusb | grep -q LI_IMX490",
-    "vehicle_integration_config_valid": "test -s /etc/vay/vehicle.yaml",
-    "network_addresses_reachable": "ping -c 1 -W 1 8.8.8.8 >/dev/null",
-}
-
-_TELESTATION_PROBES: dict[str, str] = {
-    "display_surface_reachable": "nc -z -w 2 localhost 5900",
-    "expected_input_devices_connected": "ls /dev/input/event* >/dev/null",
-    "telestation_config_valid": "test -s /etc/vay/telestation.yaml",
-}
-
-
-def _ssh_probes_for(host_class: str) -> dict[str, str]:
-    if host_class == "vehicle":
-        return _VEHICLE_PROBES
-    if host_class == "telestation":
-        return _TELESTATION_PROBES
-    raise KeyError(host_class)
