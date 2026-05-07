@@ -19,7 +19,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from vayobd.logging import get_logger
-from vayobd.models import AppSettings, InventorySettings
+from vayobd.models import AppSettings, InventorySettings, LiveSettings
 
 log = get_logger(__name__)
 
@@ -56,22 +56,35 @@ def load_settings(path: Path | None = None) -> AppSettings:
         log.warning("settings_toml_unreadable", path=str(p), error=str(exc))
         return AppSettings(inventory=None)
 
-    inventory_block = raw.get("inventory") if isinstance(raw, dict) else None
-    if not isinstance(inventory_block, dict):
-        return AppSettings(inventory=None)
-    candidate = inventory_block.get("path")
-    if not isinstance(candidate, str) or not candidate.strip():
-        return AppSettings(inventory=None)
+    raw_dict = raw if isinstance(raw, dict) else {}
+    inventory_block = raw_dict.get("inventory")
+    inventory_settings: InventorySettings | None = None
+    if isinstance(inventory_block, dict):
+        candidate = inventory_block.get("path")
+        if isinstance(candidate, str) and candidate.strip():
+            try:
+                inventory_settings = InventorySettings(path=Path(candidate))
+            except ValidationError as exc:
+                log.warning(
+                    "settings_inventory_invalid",
+                    path=candidate,
+                    errors=[str(e.get("msg", "")) for e in exc.errors()],
+                )
 
-    try:
-        return AppSettings(inventory=InventorySettings(path=Path(candidate)))
-    except ValidationError as exc:
-        log.warning(
-            "settings_inventory_invalid",
-            path=candidate,
-            errors=[str(e.get("msg", "")) for e in exc.errors()],
+    live_block = raw_dict.get("live")
+    live_settings = LiveSettings()
+    if isinstance(live_block, dict):
+        live_settings = LiveSettings(
+            developer_mode=bool(live_block.get("developer_mode", False)),
+            ree_reecu_path=Path(live_block["ree_reecu_path"])
+            if isinstance(live_block.get("ree_reecu_path"), str) and live_block["ree_reecu_path"].strip()
+            else None,
+            dbc_path=Path(live_block["dbc_path"])
+            if isinstance(live_block.get("dbc_path"), str) and live_block["dbc_path"].strip()
+            else None,
         )
-        return AppSettings(inventory=None)
+
+    return AppSettings(inventory=inventory_settings, live=live_settings)
 
 
 def save_settings(settings: AppSettings, path: Path | None = None) -> None:
@@ -90,11 +103,20 @@ def save_settings(settings: AppSettings, path: Path | None = None) -> None:
     log.info("settings_persisted", path=str(p))
 
 
+def _quote(raw: str) -> str:
+    return raw.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def _render_toml(settings: AppSettings) -> str:
-    if settings.inventory is None:
-        return ""
-    # Resolve to absolute string; quote-escape any embedded `"` defensively
-    # (Path.expanduser/resolve() in InventorySettings normalises this already).
-    raw = str(settings.inventory.path)
-    escaped = raw.replace("\\", "\\\\").replace('"', '\\"')
-    return f"[inventory]\npath = \"{escaped}\"\n"
+    parts: list[str] = []
+    if settings.inventory is not None:
+        parts.append(f'[inventory]\npath = "{_quote(str(settings.inventory.path))}"\n')
+    live = settings.live
+    if live.developer_mode or live.ree_reecu_path is not None or live.dbc_path is not None:
+        block = ["[live]", f"developer_mode = {'true' if live.developer_mode else 'false'}"]
+        if live.ree_reecu_path is not None:
+            block.append(f'ree_reecu_path = "{_quote(str(live.ree_reecu_path))}"')
+        if live.dbc_path is not None:
+            block.append(f'dbc_path = "{_quote(str(live.dbc_path))}"')
+        parts.append("\n".join(block) + "\n")
+    return "\n".join(parts)

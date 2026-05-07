@@ -36,6 +36,11 @@ pub enum CheckStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CheckEntry {
     pub id: String,
+    /// Human-readable name from the engine's planned-row table
+    /// (e.g., "SSH reachable", "vDrive package vs manifest"). The
+    /// Python backend uses this verbatim as operator-visible copy
+    /// when no catalog entry overrides it.
+    pub name: String,
     pub status: CheckStatus,
     pub raw_detail: Option<String>,
     pub duration_ms: u64,

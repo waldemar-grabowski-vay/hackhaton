@@ -24,8 +24,20 @@ export default defineConfig(({ mode }) => {
         "/api": {
           target: "http://localhost:8002",
           changeOrigin: false,
+          // 004 — WebSocket upgrades reach the backend through the same
+          // /api prefix (e.g. /api/live/{host_id}/ws). `ws: true` lets
+          // the proxy forward HTTP/1.1 Upgrade requests.
+          ws: true,
           configure: (proxy) => {
             proxy.on("proxyReq", (proxyReq) => {
+              if (!proxyReq.getHeader("X-Vay-User")) {
+                proxyReq.setHeader("X-Vay-User", devUser);
+              }
+            });
+            // 004 — inject X-Vay-User on WebSocket upgrades too. The
+            // HTTP `proxyReq` event doesn't fire for upgrades; the
+            // separate `proxyReqWs` event does.
+            proxy.on("proxyReqWs", (proxyReq) => {
               if (!proxyReq.getHeader("X-Vay-User")) {
                 proxyReq.setHeader("X-Vay-User", devUser);
               }

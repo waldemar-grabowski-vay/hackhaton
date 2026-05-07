@@ -1,0 +1,7 @@
+
+# TS_diagnostic_tool (Python desktop app)
+TS_diagnostic_tool/__pycache__/
+TS_diagnostic_tool/.venv/
+TS_diagnostic_tool/dist/
+TS_diagnostic_tool/build/
+TS_diagnostic_tool/*.spec.bak

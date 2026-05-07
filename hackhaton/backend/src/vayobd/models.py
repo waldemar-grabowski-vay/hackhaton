@@ -202,9 +202,15 @@ class EngineStatus(StrEnum):
 class EngineCheckEntry(BaseModel):
     """One element of `EngineReport.checks`. Mirrors the Rust
     `CheckEntry` shape from `data-model.md` Layer 1.
+
+    `name` is the engine's human-readable label for the check (e.g.,
+    "SSH reachable"); used verbatim as operator-visible copy when no
+    static catalog override exists. `id` is the slugified key used
+    for catalog lookup once T039's mapping table is populated.
     """
 
     id: str
+    name: str
     status: EngineStatus
     raw_detail: str | None = None
     duration_ms: int = Field(..., ge=0)
@@ -275,6 +281,17 @@ class InventorySettings(BaseModel):
         return p
 
 
+class LiveSettings(BaseModel):
+    """004 — Live diagnostic settings. Persisted under `[live]` in the
+    settings TOML; absent on disk = Developer mode off, defaults for
+    paths.
+    """
+
+    developer_mode: bool = False
+    ree_reecu_path: Path | None = None
+    dbc_path: Path | None = None
+
+
 class AppSettings(BaseModel):
     """Top-level persisted settings. `inventory is None` means the
     operator hasn't completed first-launch setup yet — the SPA shows
@@ -282,6 +299,7 @@ class AppSettings(BaseModel):
     """
 
     inventory: InventorySettings | None = None
+    live: LiveSettings = Field(default_factory=LiveSettings)
 
 
 # --- Wire payloads / error envelopes ----------------------------------------

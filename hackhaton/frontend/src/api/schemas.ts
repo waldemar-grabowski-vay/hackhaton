@@ -149,6 +149,28 @@ export const appSettingsSchema = z.object({
 });
 export type AppSettings = z.infer<typeof appSettingsSchema>;
 
+// --- 004 live diagnostic health block (T012) -----------------------------
+
+export const liveDiagnosticHealthSchema = z.object({
+  enabled: z.boolean(),
+  errq_loaded: z.boolean(),
+  errq_source_path: z.string().nullable(),
+  errq_load_error: z.string().nullable(),
+  dbc_loaded: z.boolean(),
+  dbc_source_path: z.string().nullable(),
+  dbc_load_error: z.string().nullable(),
+});
+export type LiveDiagnosticHealth = z.infer<typeof liveDiagnosticHealthSchema>;
+
+export const healthSchema = z.object({
+  status: z.string(),
+  version: z.string().optional(),
+  engine_mode: z.string(),
+  engine_version: z.string().nullable(),
+  live_diagnostic: liveDiagnosticHealthSchema.optional(),
+});
+export type Health = z.infer<typeof healthSchema>;
+
 // 002 / FR-007 + setup-card validation. The contract's structured
 // error codes (contracts/http-api.md). `meta.path` echoes the offending
 // path so the setup card can show it inline.

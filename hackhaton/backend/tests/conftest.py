@@ -1,7 +1,13 @@
-"""Shared pytest helpers — synthesise a tiny in-scope + out-of-scope inventory tree."""
+"""Shared pytest helpers — synthesise a tiny Ansible-style inventory.
+
+002 / FR-013: the inventory is now the combined `org/vay/inventory.yaml`
+file the operator's `ree-vehicle-configs` clone holds (matching what
+ree-debug-tui has always read), not the 001-style per-folder walker.
+"""
 
 from __future__ import annotations
 
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -18,55 +24,63 @@ def auth_headers() -> dict[str, str]:
     return dict(AUTH_HEADERS)
 
 
-def _write(path: Path, content: str = "") -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
-
-
 @pytest.fixture
 def synthetic_inventory(tmp_path: Path) -> Path:
-    """Builds a tiny inventory tree exercising every load-time filter:
+    """Build a tiny Ansible-style inventory exercising every load-time filter.
 
-      In-scope (Germany fleet only):
-        org/apollo/vehicles/{ve-de-apollo,ve-de-loki,ve-de-thor}.yaml
-        org/apollo/telestations/{ts-de-ber-zeus}.yaml
+    In-scope (Germany only):
+      vehicles:    ve-de-apollo, ve-de-loki, ve-de-thor, ve-de-saturn-slow
+      telestations: ts-de-ber-zeus
 
-      Filtered out:
-        - ve-be-bxl, ts-be-bxl-foo   (Belgium — FR-001b)
-        - ts-de-ham-poseidon         (Hamburg — telestations restricted to Berlin)
+    Filtered out:
+      - ve-be-bxl, ts-be-bxl-foo            (Belgium — FR-001b)
+      - ve-us-01001, ts-us-las-00001        (USA — Clarification 2026-05-07)
+      - ts-de-ham-poseidon                  (Hamburg — telestations restricted to Berlin)
 
-    Returns the inventory_path (root of the checkout).
+    Returns the **clone root** path. The loader appends
+    `org/vay/inventory.yaml` itself.
     """
     root = tmp_path / "ree-vehicle-configs"
-    org = root / "org" / "apollo"
-    vehicles = org / "vehicles"
-    telestations = org / "telestations"
+    yaml_path = root / "org" / "vay" / "inventory.yaml"
+    yaml_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # In-scope vehicles (Germany only)
-    _write(
-        vehicles / "ve-de-apollo.yaml",
-        "network:\n  ve_addresses:\n    - 10.0.1.5\n",
+    # Hamburg telestation gets a city slug the loader doesn't accept (telestations
+    # are scoped to Berlin); it appears under the right group but the loader
+    # logic drops it. We emit it here so tests can assert that the filter works.
+    yaml_path.write_text(
+        textwrap.dedent(
+            """
+            all:
+              children:
+                telestations:
+                  hosts:
+                    ts-de-ber-zeus:
+                      ansible_host: 192.168.60.2
+                    ts-be-bxl-foo:
+                      ansible_host: 10.10.0.1
+                    ts-us-las-00001:
+                      ansible_host: 10.20.0.1
+                    ts-de-ham-poseidon:
+                      ansible_host: 10.30.0.1
+                vehicles:
+                  hosts:
+                    ve-de-apollo:
+                      ansible_host: 10.0.1.5
+                    ve-de-loki:
+                      ansible_host: 10.0.2.5
+                    ve-de-thor:
+                      ansible_host: 10.0.3.5
+                    ve-de-saturn-slow:
+                      ansible_host: 10.0.4.5
+                    ve-de-no-fixture:
+                      ansible_host: 10.0.5.5
+                    ve-be-bxl:
+                      ansible_host: 10.0.99.1
+                    ve-us-01001:
+                      ansible_host: 10.0.99.2
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
     )
-    _write(vehicles / "ve-de-loki.yaml", "")
-    _write(vehicles / "ve-de-thor.yaml", "")
-    # ve-de-no-fixture: in-scope host with no corresponding run fixture, so
-    # FixtureExecutor returns unreachable — used by the unreachable-outcome test.
-    _write(vehicles / "ve-de-no-fixture.yaml", "")
-    # ve-de-saturn-slow: in-scope; paired with a sleep-heavy fixture so the
-    # FR-025 30 s timeout integration test (T086) has a real host id to
-    # POST against.
-    _write(vehicles / "ve-de-saturn-slow.yaml", "")
-
-    # Filtered vehicles
-    _write(vehicles / "ve-be-bxl.yaml", "")     # Belgium → FR-001b
-    _write(vehicles / "ve-us-01001.yaml", "")   # USA → DE-only Clarification 2026-05-07
-
-    # In-scope telestations (Berlin only)
-    _write(telestations / "ts-de-ber-zeus.yaml", "")
-
-    # Filtered telestations
-    _write(telestations / "ts-be-bxl-foo.yaml", "")       # Belgium → FR-001b
-    _write(telestations / "ts-us-las-00001.yaml", "")     # USA → DE-only Clarification 2026-05-07
-    _write(telestations / "ts-de-ham-poseidon.yaml", "")  # Hamburg → not Berlin
-
     return root

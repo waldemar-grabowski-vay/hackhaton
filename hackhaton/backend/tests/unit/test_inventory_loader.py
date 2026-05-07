@@ -17,6 +17,8 @@ def test_loader_returns_germany_fleet_only(synthetic_inventory: Path) -> None:
     assert "ts-be-bxl-foo" not in ids
     assert "ve-us-01001" not in ids
     assert "ts-us-las-00001" not in ids
+    # 002 / FR-014: any DE city is in scope, not just Berlin.
+    # `ts-de-ham-poseidon` (Hamburg) IS expected to load.
     assert ids == {
         "ve-de-apollo",
         "ve-de-loki",
@@ -24,6 +26,7 @@ def test_loader_returns_germany_fleet_only(synthetic_inventory: Path) -> None:
         "ve-de-thor",
         "ve-de-saturn-slow",
         "ts-de-ber-zeus",
+        "ts-de-ham-poseidon",
     }
 
 
@@ -39,12 +42,24 @@ def test_loader_drops_us_hosts_per_de_only_clarification(synthetic_inventory: Pa
     assert countries == {"de"}
 
 
-def test_loader_restricts_telestations_to_berlin(synthetic_inventory: Path) -> None:
+def test_loader_admits_all_de_telestation_cities(synthetic_inventory: Path) -> None:
+    """002 / FR-014 relaxes 001's Berlin-only ad-hoc restriction.
+
+    Any DE city is in scope; the loader derives the city from the host
+    id's third segment (e.g., `ber` from `ts-de-ber-zeus`, `ham` from
+    `ts-de-ham-poseidon`). City filtering happens at the wizard step,
+    not at load time.
+    """
     telestations = [h for h in load_hosts(synthetic_inventory) if h.type.value == "telestation"]
     cities = {h.city for h in telestations}
-    assert cities == {"ber"}
+    # Both Berlin and Hamburg telestations load.
+    assert cities == {"ber", "ham"}
     ids = {h.id for h in telestations}
-    assert "ts-de-ham-poseidon" not in ids
+    assert "ts-de-ber-zeus" in ids
+    assert "ts-de-ham-poseidon" in ids
+    # Non-DE telestations stay filtered.
+    assert "ts-be-bxl-foo" not in ids
+    assert "ts-us-las-00001" not in ids
 
 
 def test_loader_derives_country_type_city(synthetic_inventory: Path) -> None:

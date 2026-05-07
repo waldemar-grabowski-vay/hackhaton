@@ -20,8 +20,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class ExecutorMode(StrEnum):
     FIXTURE = "fixture"
-    # `ree` lands in Phase 3 (T036). Until then `dependencies.py` raises
-    # if asked for it.
+    REE = "ree"  # production default — shells out to engine/target/release/ree-debug-cli
+    HYBRID = "hybrid"  # demo — fixture first, falls through to ree when no fixture exists
 
 
 def _default_inventory_path() -> Path:
@@ -34,6 +34,10 @@ def _default_runs_dir() -> Path:
 
 def _default_meta_path() -> Path:
     return Path.home() / ".cache" / "vayobd" / "inventory.meta.json"
+
+
+def _default_ree_reecu_path() -> Path:
+    return Path.home() / "GitHub" / "ree-reecu"
 
 
 class Settings(BaseSettings):
@@ -50,10 +54,16 @@ class Settings(BaseSettings):
     # Executor selection.
     executor: ExecutorMode = ExecutorMode.FIXTURE
     fixtures_dir: Path | None = None  # Defaults under backend/tests/fixtures/runs
+    ree_cli_bin: Path | None = None  # Override; falls back to repo-relative engine/target/release/ree-debug-cli + $PATH
 
     # API
     run_timeout_seconds: float = 30.0  # FR-008 / 001 FR-025
     static_dir: Path | None = None  # Production-built SPA mounted here when set
+
+    # 004 — Live diagnostic surface (Developer mode only).
+    developer_mode: bool = False
+    ree_reecu_path: Path = Field(default_factory=_default_ree_reecu_path)
+    dbc_path: Path | None = None  # When None, dbc_decoder uses find_dbc() glob fallback under ree_reecu_path
 
 
 def get_settings() -> Settings:

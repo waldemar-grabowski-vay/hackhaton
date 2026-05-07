@@ -29,7 +29,7 @@ def test_inventory_returns_in_scope_hosts(client: TestClient) -> None:
     resp = client.get("/api/inventory")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["meta"]["host_count"] == 6
+    assert body["meta"]["host_count"] == 7
     ids = {h["id"] for h in body["hosts"]}
     assert ids == {
         "ve-de-apollo",
@@ -38,12 +38,14 @@ def test_inventory_returns_in_scope_hosts(client: TestClient) -> None:
         "ve-de-thor",
         "ve-de-saturn-slow",
         "ts-de-ber-zeus",
+        "ts-de-ham-poseidon",
     }
-    # Out-of-scope hosts are dropped at load.
+    # Out-of-scope hosts are dropped at load (non-DE only — DE cities
+    # other than Berlin are admitted under 002 / FR-014).
     assert "ve-be-bxl" not in ids
-    assert "ts-de-ham-poseidon" not in ids
     assert "ve-us-01001" not in ids
     assert "ts-us-las-00001" not in ids
+    assert "ts-be-bxl-foo" not in ids
     # Server-internal fields stripped.
     for host in body["hosts"]:
         assert "address" not in host or host["address"] is None
@@ -54,7 +56,7 @@ def test_inventory_returns_in_scope_hosts(client: TestClient) -> None:
     assert "last_read_at" in meta
     assert "source_path" in meta
     assert "host_count" in meta
-    assert meta["host_count"] == 6
+    assert meta["host_count"] == 7
     # 001's retired fields are NOT present any more.
     assert "consecutive_failed_refreshes" not in meta
     assert "last_refresh_attempted_at" not in meta

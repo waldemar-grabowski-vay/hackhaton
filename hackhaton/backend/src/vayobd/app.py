@@ -4,12 +4,20 @@ Mounts the API routers, the static SPA when present, the auth
 dependency, and the error handlers. Single entry point:
 `uvicorn vayobd.app:app --reload`.
 
-Notable change from 001: the periodic inventory refresh task is gone
-(FR-013a — inventory is re-read from disk per request, no caching).
+Notable changes from 001:
+- The periodic inventory refresh task is gone (FR-013a — inventory
+  is re-read from disk per request, no caching).
+- T035 startup self-check: when `VAYOBD_EXECUTOR=ree`, invoke
+  `ree-debug-cli --version` once during the lifespan startup to
+  prove the binary is reachable + cache the embedded SHA in
+  `app.state.engine_mode` / `app.state.engine_version`. Failure
+  surfaces via FR-007 (`engine_unavailable` / `engine_incompatible`)
+  on the first run attempt.
 """
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -19,17 +27,110 @@ from fastapi.staticfiles import StaticFiles
 from vayobd.api.errors import install_exception_handlers
 from vayobd.api.inventory import router as inventory_router
 from vayobd.api.runs import router as runs_router
-from vayobd.config import Settings, get_settings
+from vayobd.config import ExecutorMode, Settings, get_settings
+from vayobd.dependencies import _resolve_ree_cli_bin
+from vayobd.live.dbc_decoder import DbcDecoder
+from vayobd.live.errq_loader import ErrqModel, load_errq_model
+from vayobd.live.ws_router import router as live_router
 from vayobd.logging import configure_logging, get_logger
 
 log = get_logger(__name__)
 
 
-def _make_lifespan(_settings: Settings):
+async def _engine_self_check(settings: Settings) -> tuple[str, str | None]:
+    """T035 / FR-003a / FR-007 — ree-debug-cli startup probe.
+
+    Returns `(engine_mode, engine_version)`:
+    - `engine_mode` ∈ {"live", "fixture", "hybrid",
+      "engine_unavailable", "engine_incompatible"}.
+    - `engine_version` is the SHA the binary self-reported, or
+      None when the probe didn't succeed.
+    """
+    if settings.executor is ExecutorMode.FIXTURE:
+        return ("fixture", None)
+
+    bin_path = _resolve_ree_cli_bin(settings)
+    if bin_path is None:
+        log.warning(
+            "engine_unavailable",
+            reason="ree-debug-cli not found",
+            hint="cargo build --release --workspace from engine/, or set VAYOBD_REE_CLI_BIN",
+        )
+        return ("engine_unavailable", None)
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            str(bin_path),
+            "--version",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=5.0)
+    except (TimeoutError, OSError) as exc:
+        log.warning("engine_incompatible", binary=str(bin_path), error=str(exc))
+        return ("engine_incompatible", None)
+
+    if proc.returncode != 0:
+        log.warning(
+            "engine_incompatible",
+            binary=str(bin_path),
+            exit_code=proc.returncode,
+        )
+        return ("engine_incompatible", None)
+
+    version = stdout.decode("utf-8", errors="replace").strip()
+    # `ree-debug-cli --version` prints `ree-debug-cli <sha>`.
+    sha = version.split()[-1] if version else None
+    log.info("engine_ready", binary=str(bin_path), version=sha)
+    if settings.executor is ExecutorMode.HYBRID:
+        return ("hybrid", sha)
+    return ("live", sha)
+
+
+def _live_self_check(settings: Settings) -> tuple[ErrqModel, DbcDecoder]:
+    """T013 — load the errq model + DBC once at startup.
+
+    Both probes are best-effort: failure leaves the live diagnostic
+    surface in degraded mode (FR-012) rather than blocking app start.
+    """
+    errq = load_errq_model(settings.ree_reecu_path)
+    if errq.loaded:
+        log.info(
+            "live_errq_ready",
+            source=str(errq.source_path),
+            errors=len(getattr(errq.model, "errors", []) or []),
+            groups=len(getattr(errq.model, "error_groups", []) or []),
+        )
+    else:
+        log.warning("live_errq_degraded", reason=errq.load_error)
+
+    decoder = DbcDecoder()
+    if decoder.autoload(settings.ree_reecu_path, settings.dbc_path):
+        log.info(
+            "live_dbc_ready",
+            source=str(decoder.dbc_path),
+            messages=len(getattr(decoder.db, "messages", []) or []),
+        )
+    else:
+        log.warning("live_dbc_degraded", reason=decoder.load_error)
+
+    return errq, decoder
+
+
+def _make_lifespan(settings: Settings):
     @asynccontextmanager
-    async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         configure_logging()
-        log.info("vayobd_starting")
+        log.info("vayobd_starting", executor=settings.executor.value)
+        mode, version = await _engine_self_check(settings)
+        app.state.engine_mode = mode
+        app.state.engine_version = version
+
+        # 004 / T013 — live diagnostic startup probes.
+        errq, decoder = _live_self_check(settings)
+        app.state.errq_model = errq
+        app.state.dbc_decoder = decoder
+
         try:
             yield
         finally:
@@ -51,10 +152,29 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(inventory_router)
     app.include_router(runs_router)
+    app.include_router(live_router)
 
     @app.get("/api/health", tags=["meta"])
-    def _health() -> dict[str, str]:
-        return {"status": "ok", "version": app.version}
+    def _health() -> dict[str, object]:
+        engine_mode = getattr(app.state, "engine_mode", "unknown")
+        engine_version = getattr(app.state, "engine_version", None)
+        errq_model: ErrqModel | None = getattr(app.state, "errq_model", None)
+        decoder: DbcDecoder | None = getattr(app.state, "dbc_decoder", None)
+        return {
+            "status": "ok",
+            "version": app.version,
+            "engine_mode": engine_mode,
+            "engine_version": engine_version,
+            "live_diagnostic": {
+                "enabled": settings.developer_mode,
+                "errq_loaded": bool(errq_model and errq_model.loaded),
+                "errq_source_path": str(errq_model.source_path) if errq_model else None,
+                "errq_load_error": errq_model.load_error if errq_model else None,
+                "dbc_loaded": bool(decoder and decoder.loaded),
+                "dbc_source_path": str(decoder.dbc_path) if decoder and decoder.dbc_path else None,
+                "dbc_load_error": decoder.load_error if decoder else None,
+            },
+        }
 
     if settings.static_dir is not None and settings.static_dir.exists():
         app.mount(

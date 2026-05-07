@@ -1,0 +1,20 @@
+# Per-platform expected USB device set.
+# Format: <platform>: list of {vid_pid: "VVVV:PPPP", name: "..."}
+# Platforms: marmot (TS), qebra (VE)
+#
+# Baseline derived from a 6-host sweep across ts-de-ber-{00002,00005,00006,00010,00015,00016}.
+# These five appear on all 5 production-style TSes; 00002 is a lab outlier missing a couple.
+
+marmot:
+  - vid_pid: "1a40:0101"
+    name: "Terminus Technology Hub"
+  - vid_pid: "346e:0004"
+    name: "Gudsen MOZA R5 Base (steering wheel)"
+  - vid_pid: "2575:0001"
+    name: "Weida CoolTouch (touchscreen)"
+  - vid_pid: "248a:8208"
+    name: "Maxxter Wireless Receiver"
+  - vid_pid: "046d:0a9c"
+    name: "Logitech G432 Gaming Headset"
+
+qebra: []

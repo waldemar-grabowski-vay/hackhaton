@@ -1,5 +1,8 @@
 import { Activity } from "lucide-react";
+import { Link } from "react-router-dom";
 
+import { EngineModeBadge } from "@/components/chrome/EngineModeBadge";
+import { LiveDiagnosticButton } from "@/components/chrome/LiveDiagnosticButton";
 import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
@@ -17,7 +20,13 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="container flex h-14 items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5">
+        {/* Logo doubles as the "Home" link — clicking it from anywhere
+            (Live diagnostic, run result, etc.) returns to the picker. */}
+        <Link
+          to="/"
+          className="flex items-center gap-2.5 rounded-md transition-opacity hover:opacity-90"
+          aria-label="VayOBD home"
+        >
           <div className="grid h-8 w-8 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/30">
             <Activity className="h-4 w-4" />
           </div>
@@ -29,9 +38,11 @@ export function AppHeader() {
               {strings.app.tagline}
             </div>
           </div>
-        </div>
+        </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <LiveDiagnosticButton />
+          <EngineModeBadge />
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>

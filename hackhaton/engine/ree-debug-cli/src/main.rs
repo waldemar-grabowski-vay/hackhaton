@@ -1,32 +1,99 @@
-//! ree-debug-cli — Phase 1 stub.
+//! ree-debug-cli — non-interactive JSON-emitting frontend for the
+//! engine library. The Python backend shells out to this binary per
+//! `POST /api/runs`.
 //!
-//! Phase 3 (US1, T030) replaces this with a real clap-based subcommand
-//! parser that calls `ree_debug_engine::run_checks` and serialises the
-//! result to stdout per `contracts/engine-cli.md`. The Phase 1 stub
-//! prints an empty `EngineReport` so the FastAPI backend can compile
-//! its `ReeCliExecutor` against the contract shape.
+//! See `specs/002-real-executor/contracts/engine-cli.md` for the
+//! contract: arg shape, exit codes, stdout/stderr conventions.
 
-use ree_debug_engine::EngineReport;
+use std::path::PathBuf;
+use std::process::ExitCode;
 
-fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    if args.iter().any(|a| a == "--version") {
-        println!("ree-debug-cli {}", env!("REE_DEBUG_VERSION"));
-        return;
+use clap::{Parser, Subcommand};
+use ree_debug_engine::{run_checks, EngineError, EngineErrorKind, EngineRunError};
+
+const REE_DEBUG_VERSION: &str = env!("REE_DEBUG_VERSION");
+
+#[derive(Parser, Debug)]
+#[command(name = "ree-debug-cli", about = "JSON-emitting frontend for the Vay diagnostic engine.", version = REE_DEBUG_VERSION)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand, Debug)]
+enum Command {
+    /// Run the full diagnostic fan-out for one host and print the result as JSON.
+    Report {
+        /// Host id from `org/vay/inventory.yaml`. Pattern: `(ve|ts)-de-…`.
+        #[arg(long)]
+        host: String,
+
+        /// Path to the operator's local `ree-vehicle-configs` clone.
+        #[arg(long)]
+        inventory: PathBuf,
+
+        /// Required in v1. Reserves stdout for the JSON document.
+        /// Other output formats may follow; the flag exists so future
+        /// callers don't break.
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> ExitCode {
+    let cli = Cli::parse();
+    match cli.command {
+        Command::Report {
+            host,
+            inventory,
+            json,
+        } => {
+            if !json {
+                emit_error_to_stderr(EngineErrorKind::Internal, "v1 of ree-debug-cli requires --json");
+                return ExitCode::from(64);
+            }
+            run_report(host, inventory).await
+        }
     }
+}
 
-    // Hardcoded empty report. Real implementation lands in T030.
-    let report = EngineReport {
-        schema: "ree-debug-engine".to_string(),
-        version: env!("REE_DEBUG_VERSION").to_string(),
-        host_id: "stub".to_string(),
-        host_type: ree_debug_engine::HostType::Vehicle,
-        started_at: "1970-01-01T00:00:00Z".to_string(),
-        completed_at: "1970-01-01T00:00:00Z".to_string(),
-        outcome: ree_debug_engine::RunOutcome::Unreachable,
-        checks: Vec::new(),
+async fn run_report(host: String, inventory: PathBuf) -> ExitCode {
+    // Per `contracts/engine-cli.md`, `--inventory` is the operator's
+    // ree-vehicle-configs *clone root* — append the canonical relative
+    // path to the inventory YAML before handing it to the engine.
+    let inventory_yaml = inventory.join("org").join("vay").join("inventory.yaml");
+    let report = match run_checks(&host, &inventory_yaml).await {
+        Ok(r) => r,
+        Err(err) => {
+            let kind = (&err).into();
+            let exit = match &err {
+                EngineRunError::InventoryMissing { .. } | EngineRunError::InventoryUnparseable { .. } => 2,
+                EngineRunError::SshStartupFailed { .. } => 3,
+                EngineRunError::UnknownHostId { .. } | EngineRunError::Internal { .. } => 1,
+            };
+            emit_error_to_stderr(kind, err.to_string());
+            return ExitCode::from(exit);
+        }
     };
 
-    serde_json::to_writer_pretty(std::io::stdout(), &report).expect("stdout closed");
+    if let Err(io) = serde_json::to_writer(std::io::stdout().lock(), &report) {
+        emit_error_to_stderr(
+            EngineErrorKind::Internal,
+            format!("failed to serialise report to stdout: {io}"),
+        );
+        return ExitCode::from(1);
+    }
     println!();
+    ExitCode::SUCCESS
+}
+
+fn emit_error_to_stderr(kind: EngineErrorKind, message: impl Into<String>) {
+    let payload = EngineError {
+        kind,
+        message: message.into(),
+    };
+    if let Ok(line) = serde_json::to_string(&payload) {
+        eprintln!("{line}");
+    }
 }
