@@ -25,3 +25,6 @@ items:
   - id: peplink_vpn_tunnels_established
     status: working
     raw_detail: "=== gateway_1 :: http://192.168.50.1 ===\nauth ok\n  ok pepvpn tunnels: 5/5 (expected 5)"
+  - id: reecu_wake_line_active
+    status: working
+    raw_detail: "WAKE line on vehicle REECU X9 measures 12.0 V; KL15 supply nominal"

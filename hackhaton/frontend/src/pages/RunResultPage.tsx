@@ -171,7 +171,7 @@ function RenderRun({
         <StaggeredList className="space-y-2">
           {needsAttention.map((item) => (
             <StaggeredItem key={item.id}>
-              <DiagnosticItemRow item={item} />
+              <DiagnosticItemRow item={item} hostType={host.type} />
             </StaggeredItem>
           ))}
         </StaggeredList>
@@ -185,7 +185,7 @@ function RenderRun({
         <StaggeredList className="space-y-2">
           {working.map((item) => (
             <StaggeredItem key={item.id}>
-              <DiagnosticItemRow item={item} />
+              <DiagnosticItemRow item={item} hostType={host.type} />
             </StaggeredItem>
           ))}
         </StaggeredList>
