@@ -138,38 +138,104 @@ export const WAKE_PATH_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0
   <text x="20" y="92" fill="#475569" font-size="7.5" font-family="ui-monospace,Menlo,monospace">splice junction (S12 · WAKE_SPLICE in VIH)</text>
 </svg>`;
 
-export const APCB_2_VIH_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 200" role="img" aria-label="APCB_2_VIH connector pinout">
-  <rect width="280" height="200" rx="6" fill="#0f172a" stroke="#1e293b" stroke-width="1.5"/>
+export const APCB_2_VIH_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 422" role="img" aria-label="APCB_2_VIH connector pinout">
+  <rect width="280" height="422" rx="6" fill="#0f172a" stroke="#1e293b" stroke-width="1.5"/>
   <text x="140" y="17" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="ui-monospace,Menlo,monospace" font-weight="600">APCB_2_VIH · 12-pin &#x2640;</text>
   <text x="140" y="30" text-anchor="middle" fill="#475569" font-size="9" font-family="ui-monospace,Menlo,monospace">Molex 469921210 · VS040804 APCB Harness</text>
-  <text x="140" y="42" text-anchor="middle" fill="#334155" font-size="8" font-family="ui-monospace,Menlo,monospace" font-style="italic">key pins only — 4 of 12 shown</text>
-  <rect x="8" y="50" width="264" height="146" rx="4" fill="#0a1628" stroke="#1e3a5f" stroke-width="1"/>
-  <rect x="10" y="53" width="260" height="34" rx="3" fill="#1a0505" stroke="#7f1d1d" stroke-width="0.5" opacity="0.5"/>
-  <circle cx="28" cy="70" r="9" fill="#1a0505" stroke="#ef4444" stroke-width="1.5"/>
-  <text x="28" y="70" text-anchor="middle" dominant-baseline="central" fill="#fca5a5" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">1</text>
-  <text x="44" y="65" fill="#fca5a5" font-size="10" font-family="ui-monospace,Menlo,monospace" font-weight="600">PWR Main</text>
-  <text x="44" y="77" fill="#7f1d1d" font-size="8" font-family="ui-monospace,Menlo,monospace">W9 · 0.5 mm&#xB2;</text>
-  <rect x="244" y="63" width="22" height="14" rx="2" fill="#ef4444"/>
-  <text x="255" y="70" text-anchor="middle" dominant-baseline="central" fill="#0f172a" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">RED</text>
-  <rect x="10" y="89" width="260" height="34" rx="3" fill="#111827" stroke="#374151" stroke-width="0.5" opacity="0.5"/>
-  <circle cx="28" cy="106" r="9" fill="#111827" stroke="#6b7280" stroke-width="1.5"/>
-  <text x="28" y="106" text-anchor="middle" dominant-baseline="central" fill="#9ca3af" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">2</text>
-  <text x="44" y="101" fill="#9ca3af" font-size="10" font-family="ui-monospace,Menlo,monospace" font-weight="600">GND Main</text>
-  <text x="44" y="113" fill="#4b5563" font-size="8" font-family="ui-monospace,Menlo,monospace">W12 · 0.5 mm&#xB2;</text>
-  <rect x="244" y="99" width="22" height="14" rx="2" fill="#374151"/>
-  <text x="255" y="106" text-anchor="middle" dominant-baseline="central" fill="#9ca3af" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">BLK</text>
-  <rect x="10" y="125" width="260" height="34" rx="3" fill="#431407" stroke="#ea580c" stroke-width="0.8" opacity="0.85"/>
-  <circle cx="28" cy="142" r="9" fill="#431407" stroke="#f97316" stroke-width="1.5"/>
-  <text x="28" y="142" text-anchor="middle" dominant-baseline="central" fill="#fb923c" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">4</text>
-  <text x="44" y="137" fill="#fed7aa" font-size="10" font-family="ui-monospace,Menlo,monospace" font-weight="600">REECU WAKE</text>
-  <text x="44" y="149" fill="#ea580c" font-size="8" font-family="ui-monospace,Menlo,monospace">W66 · &#x2192; S12 · KL15 signal</text>
-  <rect x="244" y="135" width="22" height="14" rx="2" fill="#f97316"/>
-  <text x="255" y="142" text-anchor="middle" dominant-baseline="central" fill="#0f172a" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">ORG</text>
-  <rect x="10" y="161" width="260" height="30" rx="3" fill="#0a1a2e" stroke="#1e3a5f" stroke-width="0.5" opacity="0.5"/>
-  <circle cx="28" cy="176" r="9" fill="#0f2744" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="28" y="176" text-anchor="middle" dominant-baseline="central" fill="#93c5fd" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">5</text>
-  <text x="44" y="171" fill="#93c5fd" font-size="10" font-family="ui-monospace,Menlo,monospace">IPDU WAKE</text>
-  <text x="44" y="183" fill="#1e3a5f" font-size="8" font-family="ui-monospace,Menlo,monospace">W8 · &#x2192; S9 splice</text>
-  <rect x="244" y="169" width="22" height="14" rx="2" fill="#3b82f6"/>
-  <text x="255" y="176" text-anchor="middle" dominant-baseline="central" fill="#0f172a" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">BLU</text>
+  <!-- Pin 1: PWR Main -->
+  <rect x="8" y="38" width="264" height="30" rx="3" fill="#1a0505" stroke="#7f1d1d" stroke-width="0.5"/>
+  <circle cx="26" cy="53" r="9" fill="#1a0505" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="26" y="53" text-anchor="middle" dominant-baseline="central" fill="#fca5a5" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">1</text>
+  <text x="42" y="48" fill="#fca5a5" font-size="10" font-family="ui-monospace,Menlo,monospace" font-weight="600">PWR Main</text>
+  <text x="42" y="60" fill="#7f1d1d" font-size="8" font-family="ui-monospace,Menlo,monospace">W9 · 0.5 mm&#xB2;</text>
+  <rect x="244" y="46" width="22" height="14" rx="2" fill="#ef4444"/>
+  <text x="255" y="53" text-anchor="middle" dominant-baseline="central" fill="#0f172a" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">RED</text>
+  <!-- Pin 2: GND Main -->
+  <rect x="8" y="70" width="264" height="30" rx="3" fill="#111827" stroke="#374151" stroke-width="0.5"/>
+  <circle cx="26" cy="85" r="9" fill="#111827" stroke="#6b7280" stroke-width="1.5"/>
+  <text x="26" y="85" text-anchor="middle" dominant-baseline="central" fill="#9ca3af" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">2</text>
+  <text x="42" y="80" fill="#9ca3af" font-size="10" font-family="ui-monospace,Menlo,monospace" font-weight="600">GND Main</text>
+  <text x="42" y="92" fill="#4b5563" font-size="8" font-family="ui-monospace,Menlo,monospace">W12 · 0.5 mm&#xB2;</text>
+  <rect x="244" y="78" width="22" height="14" rx="2" fill="#374151"/>
+  <text x="255" y="85" text-anchor="middle" dominant-baseline="central" fill="#9ca3af" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">BLK</text>
+  <!-- Pin 3: Wire Data -->
+  <rect x="8" y="102" width="264" height="30" rx="3" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
+  <circle cx="26" cy="117" r="9" fill="#0f172a" stroke="#64748b" stroke-width="1.5"/>
+  <text x="26" y="117" text-anchor="middle" dominant-baseline="central" fill="#94a3b8" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">3</text>
+  <text x="42" y="112" fill="#94a3b8" font-size="10" font-family="ui-monospace,Menlo,monospace" font-weight="600">Wire Data</text>
+  <text x="42" y="124" fill="#475569" font-size="8" font-family="ui-monospace,Menlo,monospace">&#x2192; FMC130 pin 2</text>
+  <rect x="244" y="110" width="22" height="14" rx="2" fill="#475569"/>
+  <text x="255" y="117" text-anchor="middle" dominant-baseline="central" fill="#e2e8f0" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">SLT</text>
+  <!-- Pin 4: REECU WAKE (highlighted) -->
+  <rect x="8" y="134" width="264" height="30" rx="3" fill="#431407" stroke="#ea580c" stroke-width="1.2"/>
+  <circle cx="26" cy="149" r="9" fill="#431407" stroke="#f97316" stroke-width="1.5"/>
+  <text x="26" y="149" text-anchor="middle" dominant-baseline="central" fill="#fb923c" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">4</text>
+  <text x="42" y="144" fill="#fed7aa" font-size="10" font-family="ui-monospace,Menlo,monospace" font-weight="700">REECU WAKE &#x2605;</text>
+  <text x="42" y="156" fill="#ea580c" font-size="8" font-family="ui-monospace,Menlo,monospace">W66 · &#x2192; S12 splice · KL15</text>
+  <rect x="244" y="142" width="22" height="14" rx="2" fill="#f97316"/>
+  <text x="255" y="149" text-anchor="middle" dominant-baseline="central" fill="#0f172a" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">ORG</text>
+  <!-- Pin 5: IPDU WAKE -->
+  <rect x="8" y="166" width="264" height="30" rx="3" fill="#0a1a2e" stroke="#1e3a5f" stroke-width="0.5"/>
+  <circle cx="26" cy="181" r="9" fill="#0f2744" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="26" y="181" text-anchor="middle" dominant-baseline="central" fill="#93c5fd" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">5</text>
+  <text x="42" y="176" fill="#93c5fd" font-size="10" font-family="ui-monospace,Menlo,monospace" font-weight="600">IPDU WAKE</text>
+  <text x="42" y="188" fill="#1e3a5f" font-size="8" font-family="ui-monospace,Menlo,monospace">W8 · &#x2192; S9 splice</text>
+  <rect x="244" y="174" width="22" height="14" rx="2" fill="#3b82f6"/>
+  <text x="255" y="181" text-anchor="middle" dominant-baseline="central" fill="#0f172a" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">BLU</text>
+  <!-- Pin 6: Spare Digital Input 1 -->
+  <rect x="8" y="198" width="264" height="30" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="0.5"/>
+  <circle cx="26" cy="213" r="9" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+  <text x="26" y="213" text-anchor="middle" dominant-baseline="central" fill="#64748b" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">6</text>
+  <text x="42" y="208" fill="#64748b" font-size="10" font-family="ui-monospace,Menlo,monospace">Spare DI 1</text>
+  <text x="42" y="220" fill="#334155" font-size="8" font-family="ui-monospace,Menlo,monospace">Spare Digital Input</text>
+  <rect x="244" y="206" width="22" height="14" rx="2" fill="#1e293b"/>
+  <text x="255" y="213" text-anchor="middle" dominant-baseline="central" fill="#475569" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">SLT</text>
+  <!-- Pin 7: Spare Digital Input 2 -->
+  <rect x="8" y="230" width="264" height="30" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="0.5"/>
+  <circle cx="26" cy="245" r="9" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+  <text x="26" y="245" text-anchor="middle" dominant-baseline="central" fill="#64748b" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">7</text>
+  <text x="42" y="240" fill="#64748b" font-size="10" font-family="ui-monospace,Menlo,monospace">Spare DI 2</text>
+  <text x="42" y="252" fill="#334155" font-size="8" font-family="ui-monospace,Menlo,monospace">Spare Digital Input</text>
+  <rect x="244" y="238" width="22" height="14" rx="2" fill="#1e293b"/>
+  <text x="255" y="245" text-anchor="middle" dominant-baseline="central" fill="#475569" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">SLT</text>
+  <!-- Pin 8: Spare -->
+  <rect x="8" y="262" width="264" height="30" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="0.5" opacity="0.7"/>
+  <circle cx="26" cy="277" r="9" fill="#0f172a" stroke="#1e293b" stroke-width="1.5"/>
+  <text x="26" y="277" text-anchor="middle" dominant-baseline="central" fill="#334155" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">8</text>
+  <text x="42" y="272" fill="#334155" font-size="10" font-family="ui-monospace,Menlo,monospace">Spare</text>
+  <text x="42" y="284" fill="#1e293b" font-size="8" font-family="ui-monospace,Menlo,monospace">Not documented</text>
+  <rect x="244" y="270" width="22" height="14" rx="2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+  <text x="255" y="277" text-anchor="middle" dominant-baseline="central" fill="#334155" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">—</text>
+  <!-- Pin 9: Spare -->
+  <rect x="8" y="294" width="264" height="30" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="0.5" opacity="0.7"/>
+  <circle cx="26" cy="309" r="9" fill="#0f172a" stroke="#1e293b" stroke-width="1.5"/>
+  <text x="26" y="309" text-anchor="middle" dominant-baseline="central" fill="#334155" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">9</text>
+  <text x="42" y="304" fill="#334155" font-size="10" font-family="ui-monospace,Menlo,monospace">Spare</text>
+  <text x="42" y="316" fill="#1e293b" font-size="8" font-family="ui-monospace,Menlo,monospace">Not documented</text>
+  <rect x="244" y="302" width="22" height="14" rx="2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+  <text x="255" y="309" text-anchor="middle" dominant-baseline="central" fill="#334155" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">—</text>
+  <!-- Pin 10: Wire Data (Green) -->
+  <rect x="8" y="326" width="264" height="30" rx="3" fill="#052e16" stroke="#166534" stroke-width="0.5"/>
+  <circle cx="26" cy="341" r="9" fill="#052e16" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="26" y="341" text-anchor="middle" dominant-baseline="central" fill="#86efac" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">10</text>
+  <text x="42" y="336" fill="#86efac" font-size="10" font-family="ui-monospace,Menlo,monospace" font-weight="600">Wire Data</text>
+  <text x="42" y="348" fill="#166534" font-size="8" font-family="ui-monospace,Menlo,monospace">W63 · 0.5 mm&#xB2;</text>
+  <rect x="244" y="334" width="22" height="14" rx="2" fill="#22c55e"/>
+  <text x="255" y="341" text-anchor="middle" dominant-baseline="central" fill="#052e16" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">GRN</text>
+  <!-- Pin 11: S10 (White) -->
+  <rect x="8" y="358" width="264" height="30" rx="3" fill="#111827" stroke="#e2e8f0" stroke-width="0.4"/>
+  <circle cx="26" cy="373" r="9" fill="#1e293b" stroke="#e2e8f0" stroke-width="1.5"/>
+  <text x="26" y="373" text-anchor="middle" dominant-baseline="central" fill="#f1f5f9" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">11</text>
+  <text x="42" y="368" fill="#f1f5f9" font-size="10" font-family="ui-monospace,Menlo,monospace" font-weight="600">S10</text>
+  <text x="42" y="380" fill="#64748b" font-size="8" font-family="ui-monospace,Menlo,monospace">W15 · White</text>
+  <rect x="244" y="366" width="22" height="14" rx="2" fill="#f1f5f9"/>
+  <text x="255" y="373" text-anchor="middle" dominant-baseline="central" fill="#0f172a" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">WHT</text>
+  <!-- Pin 12: Spare -->
+  <rect x="8" y="390" width="264" height="28" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="0.5" opacity="0.7"/>
+  <circle cx="26" cy="404" r="9" fill="#0f172a" stroke="#1e293b" stroke-width="1.5"/>
+  <text x="26" y="404" text-anchor="middle" dominant-baseline="central" fill="#334155" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">12</text>
+  <text x="42" y="399" fill="#334155" font-size="10" font-family="ui-monospace,Menlo,monospace">Spare</text>
+  <text x="42" y="411" fill="#1e293b" font-size="8" font-family="ui-monospace,Menlo,monospace">Not documented</text>
+  <rect x="244" y="397" width="22" height="14" rx="2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+  <text x="255" y="404" text-anchor="middle" dominant-baseline="central" fill="#334155" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">—</text>
 </svg>`;

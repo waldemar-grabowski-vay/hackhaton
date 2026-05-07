@@ -664,6 +664,7 @@ export const guides: Record<string, RepairGuide> = {
         title: "Check the KL15 fuse",
         body: "Locate the KL15 fuse in the power distribution box. Replace it if blown and re-run the check.",
         physical: true,
+        connectors: [{ id: "K15_Fuse", label: "KL15 Fuse (PDU)" }],
       },
       {
         title: "Re-seat connector X9 (REECU WAKE)",
