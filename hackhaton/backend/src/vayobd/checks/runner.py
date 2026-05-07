@@ -115,16 +115,24 @@ def _build_item_from_executor_only(result: ItemResult) -> DiagnosticItem:
     002 ports ree-debug-engine into the monorepo; the engine produces
     ~37 items per host, but the operator-visible catalog (T039) is a
     follow-up. Until T039 lands, the runner uses this fallback so no
-    item is silently dropped — the engine's `id` doubles as the
-    operator-visible `name_key`, and the frontend's `t()` helper
-    renders the literal id as a placeholder when no string is found.
+    item is silently dropped — the engine's `display_name` is plumbed
+    through as the operator-visible `name_key` (the SPA's `t()` helper
+    falls through to the literal value when no strings.ts entry
+    matches).
     """
-    name_key = f"item.{result.id}.name"
+    # Prefer the engine-supplied human label; fall back to a key-shape
+    # if absent (which only happens for FixtureExecutor-style results
+    # that pre-date the display_name field).
+    name_key = result.display_name or f"item.{result.id}.name"
     # Default-bucket placeholder — concrete category lands with the
     # T039 catalog rebuild. Treat unknown checks as Communication for
     # now (the largest engine bucket — better default than e.g. Hardware).
     category = CheckCategory.COMMUNICATION
-    description_key = f"item.{result.id}.description.{result.status.value}"
+    description_key = (
+        f"item.{result.id}.description.{result.status.value}"
+        if not result.display_name
+        else None
+    )
     recommended_action = (
         f"item.{result.id}.action"
         if result.status in (ItemStatus.ERROR, ItemStatus.WARNING)

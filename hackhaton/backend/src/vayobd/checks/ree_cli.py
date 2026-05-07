@@ -135,6 +135,7 @@ class ReeCliExecutor(Executor):
                 id=entry.id,
                 status=_ENGINE_TO_ITEM_STATUS[entry.status],
                 raw_detail=entry.raw_detail,
+                display_name=entry.name,
             )
             for entry in report.checks
         ]

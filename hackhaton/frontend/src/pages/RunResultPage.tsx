@@ -144,7 +144,12 @@ function RenderRun({
   }
 
   const working = run.items.filter((i) => i.status === "working");
-  const needsAttention = run.items.filter((i) => i.status === "error");
+  // 002 / FR-004b — `warning` and `error` both surface under
+  // "Needs attention". The visual distinction (amber vs. red) lives in
+  // DiagnosticItemRow.
+  const needsAttention = run.items.filter(
+    (i) => i.status === "error" || i.status === "warning",
+  );
 
   // Confetti is opt-in (T069). Side-effect kept minimal: imported lazily and
   // fired once when the component sees a 100% complete pass.

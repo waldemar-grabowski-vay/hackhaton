@@ -1,5 +1,6 @@
 import { Activity } from "lucide-react";
 
+import { EngineModeBadge } from "@/components/chrome/EngineModeBadge";
 import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
@@ -31,25 +32,28 @@ export function AppHeader() {
           </div>
         </div>
 
-        <TooltipProvider delayDuration={200}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <label className="flex cursor-pointer items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-card/60">
-                <span className="font-medium">Developer mode</span>
-                <Switch
-                  checked={enabled}
-                  onCheckedChange={toggle}
-                  aria-label="Toggle Developer mode"
-                />
-              </label>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {enabled
-                ? "Showing raw output per item"
-                : "Operator view — no raw output"}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="flex items-center gap-3">
+          <EngineModeBadge />
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <label className="flex cursor-pointer items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-card/60">
+                  <span className="font-medium">Developer mode</span>
+                  <Switch
+                    checked={enabled}
+                    onCheckedChange={toggle}
+                    aria-label="Toggle Developer mode"
+                  />
+                </label>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {enabled
+                  ? "Showing raw output per item"
+                  : "Operator view — no raw output"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
     </header>
   );

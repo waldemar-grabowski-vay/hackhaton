@@ -140,6 +140,7 @@ pub async fn run_checks(host_id: &str, inventory_path: &Path) -> Result<EngineRe
         for row in rows {
             entries.push(CheckEntry {
                 id: slugify(&row.name),
+                name: row.name,
                 status: outcome_to_status(row.outcome),
                 raw_detail: if row.summary.is_empty() {
                     None

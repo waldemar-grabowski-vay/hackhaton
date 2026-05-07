@@ -1,13 +1,24 @@
 /**
- * DiagnosticItemRow (T054 + T066).
+ * DiagnosticItemRow.
  *
  * One row per diagnostic item. Plain-language name, category badge,
- * recommended action paragraph for errors. The raw_detail expand control is
- * rendered only when developer mode is ON (FR-022); the data is always in the
- * payload so toggling does not refetch (FR-021).
+ * recommended action paragraph for errors AND warnings. The raw_detail
+ * expand control is rendered only when developer mode is ON (FR-022);
+ * the data is always in the payload so toggling does not refetch
+ * (FR-021).
+ *
+ * 002 / FR-004a + FR-004b — three-status rendering:
+ *   working — green check, no border tint.
+ *   warning — amber AlertTriangle, amber border, amber Next-step pill.
+ *   error   — red X, red border, red Next-step pill.
+ *
+ * Both `error` and `warning` items live under "Needs attention" and
+ * carry a `recommended_action_key`; the visual distinction tells the
+ * operator which is alarming vs. soft signal.
  */
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  AlertTriangle,
   Check,
   X,
   ChevronDown,
@@ -19,36 +30,85 @@ import { Card } from "@/components/ui/card";
 import { CategoryBadge } from "@/components/result/CategoryBadge";
 import { useDeveloperMode } from "@/lib/developerMode";
 import { cn } from "@/lib/utils";
-import type { DiagnosticItem } from "@/api/schemas";
+import type { DiagnosticItem, ItemStatus } from "@/api/schemas";
 import { strings, t } from "@/strings";
 
 interface DiagnosticItemRowProps {
   item: DiagnosticItem;
 }
 
+interface StatusVisuals {
+  border: string | undefined;
+  iconBg: string;
+  iconRing: string;
+  iconClass: string;
+  IconComponent: typeof Check;
+  pillBg: string;
+  pillRing: string;
+  pillLabelClass: string;
+}
+
+const STATUS_VISUALS: Record<ItemStatus, StatusVisuals> = {
+  working: {
+    border: undefined,
+    iconBg: "bg-success/15",
+    iconRing: "ring-success/30",
+    iconClass: "text-success",
+    IconComponent: Check,
+    pillBg: "bg-success/8",
+    pillRing: "ring-success/25",
+    pillLabelClass: "text-success",
+  },
+  warning: {
+    border: "border-warning/40",
+    iconBg: "bg-warning/15",
+    iconRing: "ring-warning/30",
+    iconClass: "text-warning",
+    IconComponent: AlertTriangle,
+    pillBg: "bg-warning/10",
+    pillRing: "ring-warning/30",
+    pillLabelClass: "text-warning",
+  },
+  error: {
+    border: "border-destructive/40",
+    iconBg: "bg-destructive/15",
+    iconRing: "ring-destructive/30",
+    iconClass: "text-destructive",
+    IconComponent: X,
+    pillBg: "bg-destructive/10",
+    pillRing: "ring-destructive/30",
+    pillLabelClass: "text-destructive",
+  },
+};
+
 export function DiagnosticItemRow({ item }: DiagnosticItemRowProps) {
   const developer = useDeveloperMode((s) => s.enabled);
   const [open, setOpen] = useState(false);
-  const isError = item.status === "error";
+  const visuals = STATUS_VISUALS[item.status];
+  const Icon = visuals.IconComponent;
+  const showRecommendedAction =
+    (item.status === "error" || item.status === "warning") &&
+    Boolean(item.recommended_action_key);
 
   return (
     <Card
       className={cn(
         "glass overflow-hidden p-0 transition-colors",
-        isError && "border-warning/30",
+        visuals.border,
       )}
+      data-status={item.status}
     >
       <div className="flex items-start gap-3 p-4">
         <div
           className={cn(
             "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full ring-1",
-            isError
-              ? "bg-warning/15 text-warning ring-warning/30"
-              : "bg-success/15 text-success ring-success/30",
+            visuals.iconBg,
+            visuals.iconClass,
+            visuals.iconRing,
           )}
           aria-hidden
         >
-          {isError ? <X className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
+          <Icon className="h-3.5 w-3.5" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -60,9 +120,17 @@ export function DiagnosticItemRow({ item }: DiagnosticItemRowProps) {
               {t(item.description_key)}
             </p>
           )}
-          {isError && item.recommended_action_key && (
-            <div className="mt-2 rounded-md bg-warning/8 p-2.5 text-xs leading-snug text-warning-foreground/95 ring-1 ring-warning/25">
-              <span className="font-semibold text-warning">Next step:</span>{" "}
+          {showRecommendedAction && item.recommended_action_key && (
+            <div
+              className={cn(
+                "mt-2 rounded-md p-2.5 text-xs leading-snug ring-1",
+                visuals.pillBg,
+                visuals.pillRing,
+              )}
+            >
+              <span className={cn("font-semibold", visuals.pillLabelClass)}>
+                Next step:
+              </span>{" "}
               <span className="text-foreground/85">
                 {t(item.recommended_action_key)}
               </span>

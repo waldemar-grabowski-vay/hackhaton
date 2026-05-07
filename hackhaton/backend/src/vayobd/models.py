@@ -202,9 +202,15 @@ class EngineStatus(StrEnum):
 class EngineCheckEntry(BaseModel):
     """One element of `EngineReport.checks`. Mirrors the Rust
     `CheckEntry` shape from `data-model.md` Layer 1.
+
+    `name` is the engine's human-readable label for the check (e.g.,
+    "SSH reachable"); used verbatim as operator-visible copy when no
+    static catalog override exists. `id` is the slugified key used
+    for catalog lookup once T039's mapping table is populated.
     """
 
     id: str
+    name: str
     status: EngineStatus
     raw_detail: str | None = None
     duration_ms: int = Field(..., ge=0)
