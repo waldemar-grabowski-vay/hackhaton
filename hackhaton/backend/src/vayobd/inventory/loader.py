@@ -1,17 +1,34 @@
-"""Inventory loader (T014, FR-001b, Clarification 2026-05-07).
+"""Inventory loader (T037 / FR-001b / FR-013, FR-013a / Clarification 2026-05-07).
 
-Walks `org/*/{vehicles,telestations}/*.yaml` under the configured local
-checkout, derives country/type/city deterministically from the filename,
-and filters to v1's in-scope set (**Germany only**). United States,
-Belgium, and any other region are dropped at load time.
+Reads the **combined** `org/vay/inventory.yaml` file from the
+operator's local `ree-vehicle-configs` clone — the file
+`ree-debug-tui` has always read. Replaces 001's
+`org/*/{vehicles,telestations}/*.yaml` walker.
 
-The YAML body is parsed best-effort to discover an `address` (not always
-present). Address is server-internal and never reaches the SPA.
+Inventory shape (Ansible-style):
+
+```yaml
+all:
+  children:
+    telestations:
+      hosts:
+        ts-de-ber-zeus:
+          ansible_host: 192.168.60.2
+        ts-de-ber-00005:
+          ansible_host: ...
+    vehicles:
+      hosts:
+        ve-de-apollo:
+          ansible_host: 10.0.1.5
+```
+
+Each nested host name doubles as the `Host.id`. Country / type / city
+are derived from the host id regex per 001's rules; non-DE rows are
+dropped at load time.
 """
 
 from __future__ import annotations
 
-import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,116 +40,131 @@ from vayobd.models import Country, Host, HostType, Inventory, InventoryMeta
 
 log = get_logger(__name__)
 
-_FILENAME_RE = re.compile(r"^(ve|ts)-([a-z]{2})(?:-([a-z0-9]+))?(.*?)\.yaml$")
-# v1 is restricted to the Germany fleet. Any other country segment is
-# filtered out at load time.
-_IN_SCOPE_COUNTRIES = {"de": Country.DE}
+_INVENTORY_REL_PATH = Path("org") / "vay" / "inventory.yaml"
 
-# Telestations are scoped to Berlin only. Any other city segment is dropped
-# at load time.
-_IN_SCOPE_TELESTATION_CITIES = frozenset({"ber"})
+_HOST_ID_RE = re.compile(r"^(ve|ts)-(de)(?:-([a-z0-9]+))?(?:-([a-z0-9-]+))?$")
+_GROUP_TO_TYPE: dict[str, HostType] = {
+    "telestations": HostType.TELESTATION,
+    "vehicles": HostType.VEHICLE,
+}
+_IN_SCOPE_COUNTRIES: dict[str, Country] = {"de": Country.DE}
 
 
-def _parse_filename(stem_yaml: str) -> tuple[HostType, str, str | None, str] | None:
-    """Return (type, country_code, city_or_none, display_name_segment) or None."""
-    m = _FILENAME_RE.match(stem_yaml)
+def _resolve_inventory_yaml(inventory_path: Path) -> Path:
+    """Treat `inventory_path` as the operator's clone root (per the spec
+    + the CLI binary's `--inventory` semantics) and append the canonical
+    relative path. If `inventory_path` is itself the YAML file (legacy
+    callers / tests), return it as-is.
+    """
+    if inventory_path.is_file() and inventory_path.suffix in (".yaml", ".yml"):
+        return inventory_path
+    return inventory_path / _INVENTORY_REL_PATH
+
+
+def _parse_host_id(host_id: str) -> tuple[HostType, Country, str | None] | None:
+    """Return (type, country, city_or_None) or None when out-of-scope.
+
+    Vehicles: `ve-de-<rest>` — no city.
+    Telestations: `ts-de-<city>-<rest>` — third segment is the city code.
+    Anything else (non-DE country, malformed) is filtered out.
+    """
+    m = _HOST_ID_RE.match(host_id)
     if not m:
         return None
-    prefix, country_code, third_segment, rest = m.groups()
-    host_type = HostType.VEHICLE if prefix == "ve" else HostType.TELESTATION
-
-    # Vehicles: filename is ve-<country>-<rest>.yaml — third segment doesn't exist
-    # in our regex form (it's matched into the rest). Telestations: third segment
-    # is the city code (ber, las, lnc, nuq, ...).
-    if host_type is HostType.VEHICLE:
-        # "ve-de-apollo" → display = "apollo".
-        # third_segment captured the first segment of the suffix; restore it.
-        display = (third_segment or "") + rest
-        display = display.lstrip("-")
-        return host_type, country_code, None, display
-
-    # Telestation: ts-<country>-<city>-<rest>
-    city = third_segment
-    if city is None:
-        return None  # malformed telestation filename
-    display = rest.lstrip("-")
-    return host_type, country_code, city, display
-
-
-def _try_extract_address(yaml_path: Path) -> str | None:
-    try:
-        with yaml_path.open("r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
-    except (OSError, yaml.YAMLError) as exc:
-        log.warning("yaml_parse_failed", path=str(yaml_path), error=str(exc))
+    prefix, country_code, third, _rest = m.groups()
+    country = _IN_SCOPE_COUNTRIES.get(country_code)
+    if country is None:
         return None
-    network = data.get("network") if isinstance(data, dict) else None
-    if isinstance(network, dict):
-        addresses = network.get("ve_addresses")
-        if isinstance(addresses, list) and addresses:
-            first = addresses[0]
-            if isinstance(first, str):
-                return first
-    return None
+    host_type = HostType.VEHICLE if prefix == "ve" else HostType.TELESTATION
+    if host_type is HostType.VEHICLE:
+        return host_type, country, None
+    # telestation requires a city segment
+    if not third:
+        return None
+    return host_type, country, third
 
 
 def load_hosts(inventory_path: Path) -> list[Host]:
-    """Walk the checkout and return every in-scope Host."""
+    """Walk the Ansible-style inventory file and return every in-scope Host."""
+    yaml_path = _resolve_inventory_yaml(inventory_path)
+    if not yaml_path.is_file():
+        log.warning("inventory_yaml_missing", path=str(yaml_path))
+        return []
+
+    try:
+        with yaml_path.open("r", encoding="utf-8") as f:
+            doc = yaml.safe_load(f) or {}
+    except (OSError, yaml.YAMLError) as exc:
+        log.warning("inventory_yaml_unparseable", path=str(yaml_path), error=str(exc))
+        return []
+
+    if not isinstance(doc, dict):
+        return []
+    children = (doc.get("all") or {}).get("children") or {}
+    if not isinstance(children, dict):
+        return []
+
     hosts: list[Host] = []
-    org_root = inventory_path / "org"
-    if not org_root.exists():
-        log.warning("inventory_org_missing", path=str(org_root))
-        return hosts
-
-    for org_dir in sorted(org_root.iterdir()):
-        if not org_dir.is_dir():
+    source_repr = str(yaml_path.relative_to(inventory_path)) if yaml_path != inventory_path else str(yaml_path)
+    for group_name, group in children.items():
+        host_type_from_group = _GROUP_TO_TYPE.get(str(group_name))
+        if host_type_from_group is None:
             continue
-        for sub in ("vehicles", "telestations"):
-            sub_dir = org_dir / sub
-            if not sub_dir.is_dir():
+        if not isinstance(group, dict):
+            continue
+        host_block = group.get("hosts") or {}
+        if not isinstance(host_block, dict):
+            continue
+
+        for raw_id, info in host_block.items():
+            host_id = str(raw_id)
+            parsed = _parse_host_id(host_id)
+            if parsed is None:
                 continue
-            for yaml_path in sorted(sub_dir.glob("*.yaml")):
-                parsed = _parse_filename(yaml_path.name)
-                if parsed is None:
-                    log.warning("filename_unrecognised", path=str(yaml_path))
-                    continue
-                host_type, country_code, city, display_segment = parsed
-                country_enum = _IN_SCOPE_COUNTRIES.get(country_code)
-                if country_enum is None:
-                    # FR-001b: drop ve-be-* / ts-be-* etc.
-                    continue
-
-                # Telestation city allow-list — Berlin + Las Vegas only.
-                if host_type is HostType.TELESTATION and city not in _IN_SCOPE_TELESTATION_CITIES:
-                    continue
-
-                host_id = yaml_path.stem
-                display = display_segment or host_id
-                address = _try_extract_address(yaml_path)
-                source_file = str(yaml_path.relative_to(inventory_path))
-                hosts.append(
-                    Host(
-                        id=host_id,
-                        display_name=display,
-                        host_class=host_type.value,
-                        type=host_type,
-                        country=country_enum,
-                        city=city,
-                        address=address,
-                        source_file=source_file,
-                    )
+            host_type, country, city = parsed
+            # Cross-check the group declaration matches the id-derived type.
+            # If they disagree (e.g., a `ve-…` host nested under telestations),
+            # trust the id and drop the row — Ansible inventories are not
+            # immune to typos.
+            if host_type != host_type_from_group:
+                log.warning(
+                    "inventory_host_group_mismatch",
+                    host_id=host_id,
+                    group=group_name,
+                    derived_type=host_type.value,
                 )
+                continue
+            address: str | None = None
+            if isinstance(info, dict):
+                ah = info.get("ansible_host")
+                if isinstance(ah, str) and ah.strip():
+                    address = ah.strip()
+            display_name = host_id.split("-", 2)[-1] if host_type is HostType.VEHICLE else host_id.split("-")[-1]
+            hosts.append(
+                Host(
+                    id=host_id,
+                    display_name=display_name,
+                    host_class=host_type.value,
+                    type=host_type,
+                    country=country,
+                    city=city,
+                    address=address,
+                    source_file=source_repr,
+                )
+            )
+    hosts.sort(key=lambda h: (h.type.value, h.id))
     return hosts
 
 
-def load_inventory(inventory_path: Path, meta_path: Path) -> Inventory | None:
+def load_inventory(inventory_path: Path, _meta_path: Path | None = None) -> Inventory | None:
     """Compose the full Inventory payload, or None if the local copy is missing.
 
     Returns None when:
     - inventory_path doesn't exist on disk, OR
-    - the org/ subtree contains zero in-scope hosts.
+    - the resolved YAML file contains zero in-scope hosts.
 
-    The caller (api/inventory.py) translates None into HTTP 503 (FR-019).
+    The caller (`api/inventory.py`) translates None into HTTP 503
+    (`inventory_unavailable`).
     """
     if not inventory_path.exists():
         log.warning("inventory_path_missing", path=str(inventory_path))

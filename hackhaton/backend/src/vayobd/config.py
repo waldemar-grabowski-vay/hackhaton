@@ -20,8 +20,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class ExecutorMode(StrEnum):
     FIXTURE = "fixture"
-    # `ree` lands in Phase 3 (T036). Until then `dependencies.py` raises
-    # if asked for it.
+    REE = "ree"  # production default — shells out to engine/target/release/ree-debug-cli
 
 
 def _default_inventory_path() -> Path:
@@ -50,6 +49,7 @@ class Settings(BaseSettings):
     # Executor selection.
     executor: ExecutorMode = ExecutorMode.FIXTURE
     fixtures_dir: Path | None = None  # Defaults under backend/tests/fixtures/runs
+    ree_cli_bin: Path | None = None  # Override; falls back to repo-relative engine/target/release/ree-debug-cli + $PATH
 
     # API
     run_timeout_seconds: float = 30.0  # FR-008 / 001 FR-025
