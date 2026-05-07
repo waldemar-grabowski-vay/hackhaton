@@ -13,6 +13,8 @@ import {
   APP_CAN_PATH_SVG,
   VIH_2_REEBOX_F_SVG,
   REEBOX_MAIN_F_SVG,
+  WAKE_PATH_SVG,
+  APCB_2_VIH_SVG,
 } from "@/connectorSpecs";
 import { photosForPNs } from "@/connectorPhotos";
 
@@ -655,18 +657,27 @@ export const guides: Record<string, RepairGuide> = {
   reecu_wake_line_active: {
     steps: [
       {
+        title: "Verify KL15 (ignition) is on",
+        body: "Confirm the vehicle ignition or telestation power switch is in the ON position. The WAKE line is only energised when KL15 is active — a 0 V reading with ignition off is normal.",
+      },
+      {
         title: "Check the KL15 fuse",
-        body: "Locate the KL15 fuse in the telestation power distribution box. Replace it if blown.",
+        body: "Locate the KL15 fuse in the power distribution box. Replace it if blown and re-run the check.",
         physical: true,
       },
       {
-        title: "Inspect connector X9 pin 1",
-        body: "Unplug REECU connector X9 and check pin 1 (WAKE line). Look for corrosion, bent pins, or a loose crimp. Reseat the connector firmly.",
+        title: "Re-seat connector X9 (REECU WAKE)",
+        body: "Unplug REECU connector X9 and inspect pin 1 for corrosion, bent pins, or a loose crimp. Re-seat the connector firmly until it clicks.",
+        physical: true,
+      },
+      {
+        title: "Re-seat APCB_2_VIH connector (vehicle) or Integration harness connector (telestation)",
+        body: "Vehicle: find the APCB_2_VIH 12-pin Molex connector on the Vehicle Integration Harness and re-seat it. Telestation: re-seat the Integration harness connector at the REECU end. The WAKE line (orange wire, pin 4 / VIH WAKE_SPLICE) must make clean contact.",
         physical: true,
       },
       {
         title: "Measure the WAKE line voltage",
-        body: "With KL15 on, probe X9 pin 1 to ground. Expected: 12 V ±1 V. If absent, trace the wire back through the Integration harness toward the ignition relay.",
+        body: "With KL15 ON, probe X9 pin 1 to chassis ground. Expected: 11–13 V. If absent, trace the orange wire back through the harness toward the APCB board / FMC130 and the ignition relay.",
         physical: true,
       },
       {
@@ -676,15 +687,38 @@ export const guides: Record<string, RepairGuide> = {
     ],
     debugSuggestions: [
       {
-        label: "REECU X9 — WAKE line",
-        connectors: [{ id: "REECU_X9", label: "REECU X9" }],
+        label: "Signal path",
+        diagram: WAKE_PATH_SVG,
         body:
-          "Pin 1 on X9 carries the KL15 WAKE signal (12 V when ignition ON).\n" +
-          "Signal path: Ignition relay → Integration harness → X9 pin 1 → REECU.\n\n" +
+          "WAKE (KL15) signal — vehicle path:\n" +
+          "FMC130 on APCB board (W65.Orange) → S12 splice in APCB harness\n" +
+          "→ APCB_2_VIH pin 4 (W66.Orange) → VIH WAKE_SPLICE\n" +
+          "→ CREECU_1 (X8) pins 11 & 38\n\n" +
+          "Telestation path:\n" +
+          "Ignition relay → Integration harness → REECU X9 pin 1 (KL15, 12 V)",
+      },
+      {
+        label: "Connector: APCB_2_VIH (vehicle)",
+        diagram: APCB_2_VIH_SVG,
+        photos: photosForPNs(["469921210"]),
+        connectors: [{ id: "APCB_2_VIH", label: "APCB_2_VIH" }],
+        body:
+          "Molex 469921210 · 12-pin female — on the APCB Harness (VS040804).\n" +
+          "Pin 4 (Orange, W66) carries the REECU WAKE signal to the VIH splice.\n" +
+          "Re-seat both mating faces; inspect for orange wire corrosion or pushed-back pin.",
+      },
+      {
+        label: "REECU X9 — WAKE pin",
+        connectors: [
+          { id: "REECU_X9", label: "REECU X9 (vehicle)" },
+          { id: "CREECU_X9", label: "CREECU X9 (TS)" },
+        ],
+        body:
+          "Pin 1 on X9 carries the KL15 WAKE signal (12 V when ignition ON).\n\n" +
           "Quick checks:\n" +
           "  multimeter: X9 pin 1 → GND, key ON → expect 11–13 V\n" +
           "  if 0 V with key ON: check ignition relay coil and KL15 fuse\n" +
-          "  if 0 V at relay output: check supply to relay from KL30 bar",
+          "  if 0 V at relay output: check KL30 supply to relay coil",
       },
     ],
   },

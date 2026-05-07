@@ -129,6 +129,15 @@ export function HarnessDiagram({ focusLocation }: HarnessDiagramProps) {
       container?.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       return;
     }
+
+    // Connector chips always target the Board tab — switch if needed
+    if (activeHarness !== "board") {
+      setActiveHarness("board");
+      pendingConnectorScroll.current = true;
+      setZoom(CONNECTOR_ZOOM);
+      return;
+    }
+
     if (!container || !img) return;
 
     if (zoomRef.current === CONNECTOR_ZOOM) {
@@ -141,6 +150,7 @@ export function HarnessDiagram({ focusLocation }: HarnessDiagramProps) {
       pendingConnectorScroll.current = true;
       setZoom(CONNECTOR_ZOOM);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusLocation]);
 
   useLayoutEffect(() => {

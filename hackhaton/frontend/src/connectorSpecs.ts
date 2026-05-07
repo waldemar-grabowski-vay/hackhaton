@@ -111,3 +111,65 @@ export const REEBOX_MAIN_F_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBo
   <circle cx="292" cy="193" r="9" fill="#1e293b" stroke="#334155" stroke-width="1"/>
   <text x="292" y="193" text-anchor="middle" dominant-baseline="central" fill="#64748b" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">8</text>
 </svg>`;
+
+export const WAKE_PATH_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 342 96" role="img" aria-label="WAKE (KL15) signal path">
+  <rect width="342" height="96" rx="6" fill="#0f172a" stroke="#1e293b" stroke-width="1.5"/>
+  <text x="171" y="14" text-anchor="middle" fill="#64748b" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="600">WAKE (KL15) — Signal Path</text>
+  <rect x="4" y="22" width="76" height="32" rx="4" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="42" y="35" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-family="ui-monospace,Menlo,monospace" font-weight="600">KL15 / FMC130</text>
+  <text x="42" y="47" text-anchor="middle" fill="#475569" font-size="7.5" font-family="ui-monospace,Menlo,monospace">APCB board</text>
+  <line x1="80" y1="38" x2="92" y2="38" stroke="#f97316" stroke-width="2"/>
+  <circle cx="96" cy="38" r="4" fill="#f97316" stroke="#c2410c" stroke-width="1"/>
+  <text x="96" y="56" text-anchor="middle" fill="#334155" font-size="6.5" font-family="ui-monospace,Menlo,monospace">S12</text>
+  <line x1="100" y1="38" x2="112" y2="38" stroke="#f97316" stroke-width="2"/>
+  <rect x="112" y="22" width="92" height="32" rx="4" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="158" y="35" text-anchor="middle" fill="#94a3b8" font-size="8" font-family="ui-monospace,Menlo,monospace" font-weight="600">APCB_2_VIH</text>
+  <text x="158" y="47" text-anchor="middle" fill="#475569" font-size="7.5" font-family="ui-monospace,Menlo,monospace">pin 4 (Orange)</text>
+  <line x1="204" y1="38" x2="216" y2="38" stroke="#f97316" stroke-width="2"/>
+  <circle cx="220" cy="38" r="4" fill="#f97316" stroke="#c2410c" stroke-width="1"/>
+  <text x="220" y="56" text-anchor="middle" fill="#334155" font-size="6.5" font-family="ui-monospace,Menlo,monospace">WAKE_S</text>
+  <line x1="224" y1="38" x2="238" y2="38" stroke="#f97316" stroke-width="2"/>
+  <rect x="238" y="22" width="100" height="32" rx="4" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="288" y="35" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-family="ui-monospace,Menlo,monospace" font-weight="600">REECU X8 / X9</text>
+  <text x="288" y="47" text-anchor="middle" fill="#475569" font-size="7.5" font-family="ui-monospace,Menlo,monospace">CREECU_1 pins 11 &amp; 38</text>
+  <rect x="10" y="70" width="10" height="6" rx="1" fill="#f97316"/>
+  <text x="24" y="77" fill="#475569" font-size="7.5" font-family="ui-monospace,Menlo,monospace">WAKE / KL15 (Orange — W65, W66)</text>
+  <circle cx="12" cy="88" r="4" fill="#f97316" stroke="#c2410c" stroke-width="1"/>
+  <text x="20" y="92" fill="#475569" font-size="7.5" font-family="ui-monospace,Menlo,monospace">splice junction (S12 · WAKE_SPLICE in VIH)</text>
+</svg>`;
+
+export const APCB_2_VIH_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 200" role="img" aria-label="APCB_2_VIH connector pinout">
+  <rect width="280" height="200" rx="6" fill="#0f172a" stroke="#1e293b" stroke-width="1.5"/>
+  <text x="140" y="17" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="ui-monospace,Menlo,monospace" font-weight="600">APCB_2_VIH · 12-pin &#x2640;</text>
+  <text x="140" y="30" text-anchor="middle" fill="#475569" font-size="9" font-family="ui-monospace,Menlo,monospace">Molex 469921210 · VS040804 APCB Harness</text>
+  <text x="140" y="42" text-anchor="middle" fill="#334155" font-size="8" font-family="ui-monospace,Menlo,monospace" font-style="italic">key pins only — 4 of 12 shown</text>
+  <rect x="8" y="50" width="264" height="146" rx="4" fill="#0a1628" stroke="#1e3a5f" stroke-width="1"/>
+  <rect x="10" y="53" width="260" height="34" rx="3" fill="#1a0505" stroke="#7f1d1d" stroke-width="0.5" opacity="0.5"/>
+  <circle cx="28" cy="70" r="9" fill="#1a0505" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="28" y="70" text-anchor="middle" dominant-baseline="central" fill="#fca5a5" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">1</text>
+  <text x="44" y="65" fill="#fca5a5" font-size="10" font-family="ui-monospace,Menlo,monospace" font-weight="600">PWR Main</text>
+  <text x="44" y="77" fill="#7f1d1d" font-size="8" font-family="ui-monospace,Menlo,monospace">W9 · 0.5 mm&#xB2;</text>
+  <rect x="244" y="63" width="22" height="14" rx="2" fill="#ef4444"/>
+  <text x="255" y="70" text-anchor="middle" dominant-baseline="central" fill="#0f172a" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">RED</text>
+  <rect x="10" y="89" width="260" height="34" rx="3" fill="#111827" stroke="#374151" stroke-width="0.5" opacity="0.5"/>
+  <circle cx="28" cy="106" r="9" fill="#111827" stroke="#6b7280" stroke-width="1.5"/>
+  <text x="28" y="106" text-anchor="middle" dominant-baseline="central" fill="#9ca3af" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">2</text>
+  <text x="44" y="101" fill="#9ca3af" font-size="10" font-family="ui-monospace,Menlo,monospace" font-weight="600">GND Main</text>
+  <text x="44" y="113" fill="#4b5563" font-size="8" font-family="ui-monospace,Menlo,monospace">W12 · 0.5 mm&#xB2;</text>
+  <rect x="244" y="99" width="22" height="14" rx="2" fill="#374151"/>
+  <text x="255" y="106" text-anchor="middle" dominant-baseline="central" fill="#9ca3af" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">BLK</text>
+  <rect x="10" y="125" width="260" height="34" rx="3" fill="#431407" stroke="#ea580c" stroke-width="0.8" opacity="0.85"/>
+  <circle cx="28" cy="142" r="9" fill="#431407" stroke="#f97316" stroke-width="1.5"/>
+  <text x="28" y="142" text-anchor="middle" dominant-baseline="central" fill="#fb923c" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">4</text>
+  <text x="44" y="137" fill="#fed7aa" font-size="10" font-family="ui-monospace,Menlo,monospace" font-weight="600">REECU WAKE</text>
+  <text x="44" y="149" fill="#ea580c" font-size="8" font-family="ui-monospace,Menlo,monospace">W66 · &#x2192; S12 · KL15 signal</text>
+  <rect x="244" y="135" width="22" height="14" rx="2" fill="#f97316"/>
+  <text x="255" y="142" text-anchor="middle" dominant-baseline="central" fill="#0f172a" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">ORG</text>
+  <rect x="10" y="161" width="260" height="30" rx="3" fill="#0a1a2e" stroke="#1e3a5f" stroke-width="0.5" opacity="0.5"/>
+  <circle cx="28" cy="176" r="9" fill="#0f2744" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="28" y="176" text-anchor="middle" dominant-baseline="central" fill="#93c5fd" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="700">5</text>
+  <text x="44" y="171" fill="#93c5fd" font-size="10" font-family="ui-monospace,Menlo,monospace">IPDU WAKE</text>
+  <text x="44" y="183" fill="#1e3a5f" font-size="8" font-family="ui-monospace,Menlo,monospace">W8 · &#x2192; S9 splice</text>
+  <rect x="244" y="169" width="22" height="14" rx="2" fill="#3b82f6"/>
+  <text x="255" y="176" text-anchor="middle" dominant-baseline="central" fill="#0f172a" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">BLU</text>
+</svg>`;
