@@ -135,12 +135,12 @@ _TELESTATION_CATALOG: tuple[CheckSpec, ...] = (
         recommended_action_key="item.telestation_config.action",
     ),
     CheckSpec(
-        id="reecu_wake_line_active",
-        name_key="item.reecu_wake_line_active.name",
-        category=CheckCategory.HARDWARE,
-        description_key_working="item.reecu_wake_line.description.working",
-        description_key_error="item.reecu_wake_line.description.error",
-        recommended_action_key="item.reecu_wake_line.action",
+        id="main_can_bus_reachable",
+        name_key="item.main_can_bus_reachable.name",
+        category=CheckCategory.COMMUNICATION,
+        description_key_working="item.main_can_bus_reachable.description.working",
+        description_key_error="item.main_can_bus_reachable.description.error",
+        recommended_action_key="item.main_can_bus_reachable.action",
     ),
 )
 

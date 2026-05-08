@@ -153,6 +153,11 @@ export const strings = {
   item: {
     main_can_bus_reachable: {
       name: "Main CAN bus reachable",
+      description: {
+        working: "APP CAN bus is up and receiving frames.",
+        error: "No frames detected on the APP CAN bus.",
+      },
+      action: "Re-seat the Integration Harness connectors and re-run the check.",
     },
     front_camera: {
       description: {

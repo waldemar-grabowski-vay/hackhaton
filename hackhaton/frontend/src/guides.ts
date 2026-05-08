@@ -11,6 +11,7 @@
 
 import {
   APP_CAN_PATH_SVG,
+  TS_APP_CAN_PATH_SVG,
   VIH_2_REEBOX_F_SVG,
   REEBOX_MAIN_F_SVG,
   WAKE_PATH_SVG,
@@ -44,10 +45,13 @@ export type DebugSuggestion = {
 export type RepairGuide = {
   steps: RepairStep[];
   debugSuggestions: DebugSuggestion[];
+  /** If true, this guide is suppressed for telestation hosts. */
+  vehicleOnly?: true;
 };
 
 export const guides: Record<string, RepairGuide> = {
   main_can_bus_reachable: {
+    vehicleOnly: true,
     steps: [
       {
         title: "Confirm the REEBox is powered on",
@@ -656,6 +660,7 @@ export const guides: Record<string, RepairGuide> = {
   },
 
   reecu_wake_line_active: {
+    vehicleOnly: true,
     steps: [
       {
         title: "Verify KL15 (ignition) is on",
@@ -817,6 +822,84 @@ export const guides: Record<string, RepairGuide> = {
           "In the pepvpn response, response.peer[] lists each tunnel.\n" +
           "Peers with status != \"CONNECTED\" will show a reason code.\n" +
           "Common codes: NO_ROUTE (WAN down), AUTH_FAIL (key mismatch), TIMEOUT (hub unreachable).",
+      },
+    ],
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Telestation-specific guides — override the vehicle guide for the same item ID.
+// Looked up first for hostType === "telestation"; falls back to guides[] if absent.
+// ---------------------------------------------------------------------------
+
+export const tsGuides: Record<string, RepairGuide> = {
+  main_can_bus_reachable: {
+    steps: [
+      {
+        title: "Verify the telestation is powered on",
+        body: "Confirm the main power switch is in the ON position and the REECU status LEDs are lit. APP CAN is only active when the telestation is fully booted.",
+      },
+      {
+        title: "Re-seat the TIH_REECU_F connector at the REECU",
+        body: "Locate the Integration Harness connector at the REECU end (TIH_REECU_F). Press the locking tab, pull it off, inspect the pins for corrosion or bending, then push it back in firmly until it clicks.",
+        physical: true,
+        connectors: [{ id: "TIH_REECU_F", label: "TIH_REECU_F" }],
+      },
+      {
+        title: "Re-seat the TIH_Main connectors at the docking interface",
+        body: "Find the TIH_Main_M and TIH_Main_F mating pair on the telestation docking side. Disconnect and re-seat both halves. APP CAN (pins 1 & 2) must make clean contact.",
+        physical: true,
+        connectors: [
+          { id: "TIH_Main_M", label: "TIH_Main_M" },
+          { id: "TIH_Main_F", label: "TIH_Main_F" },
+        ],
+      },
+      {
+        title: "Inspect the Integration Harness for damage",
+        body: "Trace the cable run from the REECU to the docking connector. Look for pinching, cuts, or chafing. Pay attention to the yellow (CAN H) and grey (CAN L) twisted pair.",
+        physical: true,
+      },
+      {
+        title: "Re-run the diagnostic",
+        body: "After any repair, re-run the diagnostic and confirm the APP CAN check passes.",
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Signal path",
+        diagram: TS_APP_CAN_PATH_SVG,
+        body:
+          "APP CAN — telestation path:\n" +
+          "REECU PCB X8 (CREECU_X9) → Integration Harness → TIH_REECU_F\n" +
+          "→ TIH_Main_M pin 1 (CAN H, Yellow) & pin 2 (CAN L, Gray)\n" +
+          "→ TIH_Main_F (vehicle docking interface)\n\n" +
+          "Note: the telestation does NOT use VIH_2_REEBOX_F or the Accessory Harness.\n" +
+          "The Integration Harness (TIH) is the sole CAN carrier on the TS side.",
+      },
+      {
+        label: "CAN bus health check",
+        connectors: [{ id: "CREECU_X9", label: "CREECU X9 (TS)" }],
+        body:
+          "On the REECU host:\n" +
+          "  ip -details link show canX\n" +
+          "  candump canX\n\n" +
+          "Expected: frames from APP CAN devices when docked to a vehicle.\n" +
+          "Bus-off / heavy TX errors → check 120 Ω termination at each harness end.\n" +
+          "Silent bus with no errors → suspect open at TIH_REECU_F pin 1 or 2.",
+      },
+      {
+        label: "TIH connector continuity",
+        connectors: [
+          { id: "TIH_REECU_F", label: "TIH_REECU_F" },
+          { id: "TIH_Main_M", label: "TIH_Main_M" },
+        ],
+        body:
+          "Measure continuity across the Integration Harness:\n" +
+          "  TIH_REECU_F pin 1 → TIH_Main_M pin 1  (CAN H)\n" +
+          "  TIH_REECU_F pin 2 → TIH_Main_M pin 2  (CAN L)\n\n" +
+          "Open circuit = broken wire or pushed-back pin inside the TIH.\n" +
+          "Also measure termination: TIH_Main_M pin 1 → pin 2 should read ~60 Ω\n" +
+          "(two 120 Ω resistors in parallel when the vehicle is connected).",
       },
     ],
   },

@@ -34,6 +34,7 @@ import { useDeveloperMode } from "@/lib/developerMode";
 import { cn } from "@/lib/utils";
 import type { DiagnosticItem, ItemStatus } from "@/api/schemas";
 import { strings, t } from "@/strings";
+import { guides, tsGuides } from "@/guides";
 
 interface DiagnosticItemRowProps {
   item: DiagnosticItem;
@@ -91,6 +92,10 @@ export function DiagnosticItemRow({ item, hostType }: DiagnosticItemRowProps) {
   const visuals = STATUS_VISUALS[item.status];
   const Icon = visuals.IconComponent;
   const isError = item.status === "error";
+  const guide = hostType === "telestation"
+    ? (tsGuides[item.id] ?? (!guides[item.id]?.vehicleOnly ? guides[item.id] : undefined))
+    : guides[item.id];
+  const showGuideButton = isError && Boolean(guide);
   const showRecommendedAction =
     (item.status === "error" || item.status === "warning") &&
     Boolean(item.recommended_action_key);
@@ -141,7 +146,7 @@ export function DiagnosticItemRow({ item, hostType }: DiagnosticItemRowProps) {
               </span>
             </div>
           )}
-          {isError && (
+          {showGuideButton && (
             <Button
               type="button"
               size="sm"
@@ -153,7 +158,7 @@ export function DiagnosticItemRow({ item, hostType }: DiagnosticItemRowProps) {
               {strings.guide.viewButton}
             </Button>
           )}
-          {isError && (
+          {showGuideButton && (
             <RepairGuideSheet
               item={item}
               hostType={hostType}

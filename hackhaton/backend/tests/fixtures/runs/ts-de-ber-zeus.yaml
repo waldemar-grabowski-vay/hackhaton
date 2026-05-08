@@ -10,6 +10,6 @@ items:
   - id: telestation_config_valid
     status: working
     raw_detail: "telestation.yaml parsed; all required keys present"
-  - id: reecu_wake_line_active
+  - id: main_can_bus_reachable
     status: error
-    raw_detail: "WAKE line on X9 pin 1 measures 0 V; expected 12 V KL15 supply"
+    raw_detail: "candump can0: no frames received in 5 s; bus-off state detected"

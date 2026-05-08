@@ -1,26 +1,25 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { ConnectorLocation } from "@/connectorLocations";
+import {
+  type VehicleHarnessKey,
+  HARNESS_IMAGES,
+  HARNESS_LABELS,
+  HARNESS_ORDER,
+  CONNECTOR_HARNESS,
+  vehicleConnectorLocations,
+} from "@/connectorLocations";
 
 const CONNECTOR_ZOOM = 4;
 const DRAG_THRESHOLD = 4;
 
-type VehicleHarnessKey = "board";
-
-const HARNESS_IMAGES: Record<VehicleHarnessKey, string> = {
-  board: "/harness-diagram.png",
-};
-
-const HARNESS_LABELS: Record<VehicleHarnessKey, string> = {
-  board: "Board",
-};
-
-const HARNESS_ORDER: VehicleHarnessKey[] = ["board"];
-
-interface HarnessDiagramProps {
-  focusLocation?: ConnectorLocation;
+export interface VehicleFocusTarget {
+  connectorId: string;
 }
 
-export function HarnessDiagram({ focusLocation }: HarnessDiagramProps) {
+interface HarnessDiagramProps {
+  focusTarget?: VehicleFocusTarget;
+}
+
+export function HarnessDiagram({ focusTarget }: HarnessDiagramProps) {
   const [activeHarness, setActiveHarness] = useState<VehicleHarnessKey>("board");
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -33,6 +32,10 @@ export function HarnessDiagram({ focusLocation }: HarnessDiagramProps) {
   const pendingConnectorScroll = useRef(false);
   const dragOrigin = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
   const hasDragged = useRef(false);
+
+  const focusLocation = focusTarget
+    ? vehicleConnectorLocations[activeHarness]?.[focusTarget.connectorId]
+    : undefined;
 
   function zoomAroundPoint(fx: number, fy: number, factor: number) {
     const container = containerRef.current;
@@ -120,30 +123,34 @@ export function HarnessDiagram({ focusLocation }: HarnessDiagramProps) {
     zoomAroundPoint((e.clientX - rect.left) / rect.width, (e.clientY - rect.top) / rect.height, 0.5);
   }
 
+  // When focusTarget changes: switch to the correct harness tab then zoom in.
   useEffect(() => {
-    const container = containerRef.current;
-    const img = imgRef.current;
-
-    if (!focusLocation) {
+    if (!focusTarget) {
       setZoom(1);
-      container?.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      containerRef.current?.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       return;
     }
+    const targetHarness = CONNECTOR_HARNESS[focusTarget.connectorId];
+    if (!targetHarness) return;
 
-    // Connector chips always target the Board tab — switch if needed
-    if (activeHarness !== "board") {
-      setActiveHarness("board");
+    if (targetHarness !== activeHarness) {
+      setActiveHarness(targetHarness);
       pendingConnectorScroll.current = true;
       setZoom(CONNECTOR_ZOOM);
       return;
     }
 
+    const loc = vehicleConnectorLocations[activeHarness]?.[focusTarget.connectorId];
+    if (!loc) return;
+
+    const container = containerRef.current;
+    const img = imgRef.current;
     if (!container || !img) return;
 
     if (zoomRef.current === CONNECTOR_ZOOM) {
       container.scrollTo({
-        left: Math.max(0, focusLocation.fx * img.offsetWidth  - container.clientWidth  / 2),
-        top:  Math.max(0, focusLocation.fy * img.offsetHeight - container.clientHeight / 2),
+        left: Math.max(0, loc.fx * img.offsetWidth  - container.clientWidth  / 2),
+        top:  Math.max(0, loc.fy * img.offsetHeight - container.clientHeight / 2),
         behavior: "smooth",
       });
     } else {
@@ -151,20 +158,22 @@ export function HarnessDiagram({ focusLocation }: HarnessDiagramProps) {
       setZoom(CONNECTOR_ZOOM);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusLocation]);
+  }, [focusTarget]);
 
   useLayoutEffect(() => {
-    if (!pendingConnectorScroll.current || !focusLocation) return;
+    if (!pendingConnectorScroll.current || !focusTarget) return;
     pendingConnectorScroll.current = false;
     const container = containerRef.current;
     const img = imgRef.current;
     if (!container || !img) return;
+    const loc = vehicleConnectorLocations[activeHarness]?.[focusTarget.connectorId];
+    if (!loc) return;
     container.scrollTo({
-      left: Math.max(0, focusLocation.fx * img.offsetWidth  - container.clientWidth  / 2),
-      top:  Math.max(0, focusLocation.fy * img.offsetHeight - container.clientHeight / 2),
+      left: Math.max(0, loc.fx * img.offsetWidth  - container.clientWidth  / 2),
+      top:  Math.max(0, loc.fy * img.offsetHeight - container.clientHeight / 2),
       behavior: "smooth",
     });
-  }, [zoom, focusLocation]);
+  }, [zoom, focusTarget, activeHarness]);
 
   function switchHarness(h: VehicleHarnessKey) {
     setActiveHarness(h);
@@ -229,7 +238,7 @@ export function HarnessDiagram({ focusLocation }: HarnessDiagramProps) {
             key={activeHarness}
             ref={imgRef}
             src={HARNESS_IMAGES[activeHarness]}
-            alt={`${HARNESS_LABELS[activeHarness]} diagram`}
+            alt={`${HARNESS_LABELS[activeHarness]} harness diagram`}
             draggable={false}
             onClick={handleImgClick}
             onContextMenu={handleImgContextMenu}
@@ -239,7 +248,7 @@ export function HarnessDiagram({ focusLocation }: HarnessDiagramProps) {
             }}
           />
 
-          {focusLocation && activeHarness === "board" && (
+          {focusLocation && (
             <div style={{ position: "absolute", left: `${focusLocation.fx * 100}%`, top: `${focusLocation.fy * 100}%`, pointerEvents: "none" }}>
               <div style={{ position: "absolute", width: 40, height: 40, borderRadius: "50%", border: "2.5px solid #ef4444", animation: "hd-pulse 1.6s ease-out infinite" }} />
               <div style={{ position: "absolute", width: 32, height: 32, borderRadius: "50%", border: "3px solid #ef4444", background: "rgba(239,68,68,0.18)", transform: "translate(-50%, -50%)", boxShadow: "0 0 0 2px rgba(239,68,68,0.35)" }} />

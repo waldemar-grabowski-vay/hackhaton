@@ -239,3 +239,30 @@ export const APCB_2_VIH_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="
   <rect x="244" y="397" width="22" height="14" rx="2" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
   <text x="255" y="404" text-anchor="middle" dominant-baseline="central" fill="#334155" font-size="7" font-family="ui-monospace,Menlo,monospace" font-weight="700">—</text>
 </svg>`;
+
+export const TS_APP_CAN_PATH_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 96" role="img" aria-label="TS APP CAN signal path">
+  <rect width="380" height="96" rx="6" fill="#0f172a" stroke="#1e293b" stroke-width="1.5"/>
+  <text x="190" y="14" text-anchor="middle" fill="#64748b" font-size="9" font-family="ui-monospace,Menlo,monospace" font-weight="600">APP CAN — Telestation Signal Path</text>
+  <rect x="4" y="22" width="78" height="32" rx="4" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="43" y="35" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-family="ui-monospace,Menlo,monospace" font-weight="600">REECU X8</text>
+  <text x="43" y="47" text-anchor="middle" fill="#475569" font-size="7.5" font-family="ui-monospace,Menlo,monospace">CREECU_X9</text>
+  <line x1="82" y1="35" x2="102" y2="35" stroke="#eab308" stroke-width="1.5"/>
+  <line x1="82" y1="43" x2="102" y2="43" stroke="#9ca3af" stroke-width="1.5"/>
+  <rect x="102" y="22" width="88" height="32" rx="4" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="146" y="35" text-anchor="middle" fill="#94a3b8" font-size="8" font-family="ui-monospace,Menlo,monospace" font-weight="600">TIH_REECU_F</text>
+  <text x="146" y="47" text-anchor="middle" fill="#475569" font-size="7.5" font-family="ui-monospace,Menlo,monospace">Integration harness</text>
+  <line x1="190" y1="35" x2="210" y2="35" stroke="#eab308" stroke-width="1.5"/>
+  <line x1="190" y1="43" x2="210" y2="43" stroke="#9ca3af" stroke-width="1.5"/>
+  <rect x="210" y="22" width="80" height="32" rx="4" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="250" y="35" text-anchor="middle" fill="#94a3b8" font-size="8" font-family="ui-monospace,Menlo,monospace" font-weight="600">TIH_Main_M</text>
+  <text x="250" y="47" text-anchor="middle" fill="#475569" font-size="7.5" font-family="ui-monospace,Menlo,monospace">pin 1 (H) · pin 2 (L)</text>
+  <line x1="290" y1="35" x2="310" y2="35" stroke="#eab308" stroke-width="1.5"/>
+  <line x1="290" y1="43" x2="310" y2="43" stroke="#9ca3af" stroke-width="1.5"/>
+  <rect x="310" y="22" width="66" height="32" rx="4" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="343" y="35" text-anchor="middle" fill="#94a3b8" font-size="8" font-family="ui-monospace,Menlo,monospace" font-weight="600">TIH_Main_F</text>
+  <text x="343" y="47" text-anchor="middle" fill="#475569" font-size="7.5" font-family="ui-monospace,Menlo,monospace">vehicle dock</text>
+  <rect x="10" y="70" width="10" height="6" rx="1" fill="#eab308"/>
+  <text x="24" y="77" fill="#475569" font-size="7.5" font-family="ui-monospace,Menlo,monospace">CAN H (Yellow)</text>
+  <rect x="120" y="70" width="10" height="6" rx="1" fill="#9ca3af"/>
+  <text x="134" y="77" fill="#475569" font-size="7.5" font-family="ui-monospace,Menlo,monospace">CAN L (Gray)</text>
+</svg>`;

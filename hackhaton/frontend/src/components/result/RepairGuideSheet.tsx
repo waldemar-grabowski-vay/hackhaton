@@ -16,8 +16,7 @@ import { CategoryBadge } from "@/components/result/CategoryBadge";
 import { useDeveloperMode } from "@/lib/developerMode";
 import { cn } from "@/lib/utils";
 import { strings, t } from "@/strings";
-import { guides } from "@/guides";
-import { connectorLocations } from "@/connectorLocations";
+import { guides, tsGuides } from "@/guides";
 import type { DiagnosticItem } from "@/api/schemas";
 
 interface RepairGuideSheetProps {
@@ -29,7 +28,9 @@ interface RepairGuideSheetProps {
 
 export function RepairGuideSheet({ item, hostType, open, onClose }: RepairGuideSheetProps) {
   const developer = useDeveloperMode((s) => s.enabled);
-  const guide = guides[item.id];
+  const guide = hostType === "telestation"
+    ? (tsGuides[item.id] ?? (!guides[item.id]?.vehicleOnly ? guides[item.id] : undefined))
+    : guides[item.id];
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [debugOpen, setDebugOpen] = useState(false);
   const [focusedConnector, setFocusedConnector] = useState<string | null>(null);
@@ -46,8 +47,6 @@ export function RepairGuideSheet({ item, hostType, open, onClose }: RepairGuideS
   function locateConnector(id: string) {
     setFocusedConnector((prev) => (prev === id ? null : id));
   }
-
-  const focusLocation = focusedConnector ? connectorLocations[focusedConnector] : undefined;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -272,7 +271,9 @@ export function RepairGuideSheet({ item, hostType, open, onClose }: RepairGuideS
                   focusTarget={focusedConnector ? { connectorId: focusedConnector } : undefined}
                 />
               ) : (
-                <HarnessDiagram focusLocation={focusLocation} />
+                <HarnessDiagram
+                  focusTarget={focusedConnector ? { connectorId: focusedConnector } : undefined}
+                />
               )}
             </div>
           </div>
