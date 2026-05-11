@@ -130,8 +130,7 @@ export function HarnessDiagram({ focusTarget }: HarnessDiagramProps) {
       containerRef.current?.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       return;
     }
-    const targetHarness = CONNECTOR_HARNESS[focusTarget.connectorId];
-    if (!targetHarness) return;
+    const targetHarness = CONNECTOR_HARNESS[focusTarget.connectorId] ?? "board";
 
     if (targetHarness !== activeHarness) {
       setActiveHarness(targetHarness);

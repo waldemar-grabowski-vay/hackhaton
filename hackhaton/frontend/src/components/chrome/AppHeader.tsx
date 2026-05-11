@@ -1,4 +1,4 @@
-import { Activity } from "lucide-react";
+import { Activity, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { EngineModeBadge } from "@/components/chrome/EngineModeBadge";
@@ -20,8 +20,6 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="container flex h-14 items-center justify-between gap-4">
-        {/* Logo doubles as the "Home" link — clicking it from anywhere
-            (Live diagnostic, run result, etc.) returns to the picker. */}
         <Link
           to="/"
           className="flex items-center gap-2.5 rounded-md transition-opacity hover:opacity-90"
@@ -41,6 +39,13 @@ export function AppHeader() {
         </Link>
 
         <div className="flex items-center gap-3">
+          <Link
+            to="/repair-guides"
+            className="flex items-center gap-1.5 rounded-md border border-border/60 bg-card/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+            Repair Guides
+          </Link>
           <LiveDiagnosticButton />
           <EngineModeBadge />
           <TooltipProvider delayDuration={200}>

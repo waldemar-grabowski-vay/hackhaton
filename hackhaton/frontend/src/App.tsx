@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ErrorBoundary } from "@/lib/ErrorBoundary";
 import { LiveDiagnosticPage } from "@/pages/LiveDiagnostic/LiveDiagnosticPage";
 import { PickerPage } from "@/pages/PickerPage";
+import { RepairGuidesPage } from "@/pages/RepairGuidesPage";
 import { RunResultPage } from "@/pages/RunResultPage";
 
 const queryClient = new QueryClient({
@@ -36,6 +37,7 @@ export default function App() {
                 <Route path="/" element={<PickerPage />} />
                 <Route path="/host/:hostId" element={<RunResultPage />} />
                 <Route path="/live" element={<LiveDiagnosticPage />} />
+                <Route path="/repair-guides" element={<RepairGuidesPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
