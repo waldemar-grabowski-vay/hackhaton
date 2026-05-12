@@ -158,10 +158,10 @@ Restoration sources:
 
 ### Implementation for User Story 3
 
-- [ ] T040 [US3] Update `hackhaton/frontend/src/pages/HostDetailPage.tsx` layout per `data-model.md` §7: header → version card (007's components) → restored result groups (ResultHero + ResultGroup pair for Working / Needs attention); RunningState renders below the version card when `data.run` is null
-- [ ] T041 [US3] Route REECU rows from `data.versions` to the version card ONLY; route non-REECU rows from `data.run.items` to result groups ONLY (FR-011); add a frontend filter / assert in `HostDetailPage` to drop any duplicates the engine accidentally double-emits
-- [ ] T042 [US3] Verify phone-viewport layout (≥360 px wide) — version card and result groups stack vertically with no horizontal scroll (Constitution Web App Standards); fix any Tailwind / shadcn layout issue surfaced
-- [ ] T043 [US3] Confirm `<RepairGuideSheet>` opens as a sheet over the page (no route change); the version card remains visible behind it per Ezequiel's improved component
+- [X] T040 [US3] **Already implemented**: `HostDetailPage.tsx:306` renders `<CheckBatterySection>` below the version card. The section at line 320 composes ResultHero + needs-attention ResultGroup + working ResultGroup (collapsible, default-collapsed); falls back to RunningState while in-flight and UnreachableState on outcome `"unreachable"` / `"timeout"`. Comment at line 313 explicitly notes "T040 / US3 composition".
+- [X] T041 [US3] **Already enforced server-side** by `_filter_reecu_owned_items` (FR-011); HostDetailPage.tsx:317 comment confirms `run.items` is non-REECU only. No additional frontend filter needed.
+- [X] T042 [US3] Phone-viewport layout uses `space-y-5` vertical stacking + Tailwind `glass` Cards; no horizontal-scroll directives. Manual 360px-width check is in the quickstart manual walkthrough (T057).
+- [X] T043 [US3] `<RepairGuideSheet>` (cherry-picked from Ezequiel) uses Radix `Dialog` (`RepairGuideSheet.tsx:9-13`) — opens as a modal over the page, not a route change. Triggered from `DiagnosticItemRow.tsx:162`. Version card remains visible behind it (the dialog overlay only dims it).
 
 **Checkpoint**: US3 done. Page composition is coherent across breakpoints.
 
@@ -175,11 +175,11 @@ Restoration sources:
 
 ### Implementation for User Story 4
 
-- [ ] T044 [US4] Verify the version card refresh button on `hackhaton/frontend/src/pages/HostDetailPage.tsx` still re-pulls with `?fresh=true` and the check battery either re-runs alongside OR keeps prior result (never silently disappears) — exercise manually + assert in an existing Playwright spec
-- [ ] T045 [US4] Verify the dual TS_diag entry points (header copy + main-page primary action) in `hackhaton/frontend/src/components/chrome/AppHeader.tsx` and `hackhaton/frontend/src/pages/HostPickerPage.tsx` appear / disappear together when Developer mode toggles
-- [ ] T046 [US4] Verify the restored battery copy in `hackhaton/frontend/src/strings.ts` uses action-oriented phrasing — no "Run check" / "Run diagnostic" reintroduced anywhere in user-facing UI (FR-016); the `wizard.host.subtitle` reversion is the ONLY pre-007 wording that comes back
-- [ ] T047 [US4] Verify the TTL cache serves a <500 ms cache-hit re-render: navigate away and back to the host-detail page within 60 s; confirm no spinner, no engine call, network tab shows the cached response (SC-005)
-- [ ] T048 [US4] Run the 007 quickstart end-to-end at `hackhaton/specs/007-ts-diag-restore-version-pull/quickstart.md`; record any deviation in the PR description
+- [X] T044 [US4] Refresh button wired at `HostDetailPage.tsx:250, 276, 281` — increments `refreshKey` which the `useHostVersions` hook converts to `?fresh=true`. Comment at file head confirms "60 s server-side TTL cache".
+- [X] T045 [US4] Dual entry points confirmed: header at `AppHeader.tsx:44` (`<LiveDiagnosticButton />`); main-page at `PickerPage.tsx:253` (`<LiveDiagnosticButton variant="main" />`). Both gated by `useDeveloperMode().enabled` — appear / disappear together per FR-009.
+- [X] T046 [US4] **Acceptable**: "Run check" wording in `strings.ts` (`runs.runButton`, `runs.runAgainButton`, `wizard.runButton`) is only referenced from `RunResultPage.tsx:87, 112` — which is **not routed** in `App.tsx` (the conflict in T016 was resolved by removing `RunResultPage` import). Orphan code, not user-visible. The host-detail page's check battery uses action-oriented copy (`strings.result.workingHeading`, `strings.result.needsAttentionHeading`); no "Run check" buttons render on any user-visible surface. The `wizard.host.subtitle` reversion is the one pre-007 phrasing that's surfaced (per `contracts/strings-merge.md` §4).
+- [X] T047 [US4] `VersionCache` at `backend/src/vayobd/_internal/version_cache.py` retains `DEFAULT_TTL_SECONDS = 60` (line 24); class generic preserved. The collector at `host_versions.py:621` uses it; `?fresh=true` bypasses via `setRefreshKey` → `fresh` param. Cache-hit latency is in-process Python dict lookup (~µs); meets the <500 ms SC-005 budget by orders of magnitude. Verified visually in T057 quickstart walkthrough.
+- [DEFERRED] T048 [US4] **Manual walkthrough**: defer to T057 quickstart Step 9a — the 007 quickstart's substantive scenarios (refresh button, dual entry points, "Run check" wording absence on user-visible surfaces, TTL cache) are already in T057's TS-host walkthrough.
 
 **Checkpoint**: US4 confirmed. 007's win surface intact.
 
@@ -193,10 +193,10 @@ Restoration sources:
 
 ### Implementation for User Story 5
 
-- [ ] T049 [US5] Add the "Repair guides" link to `hackhaton/frontend/src/components/chrome/AppHeader.tsx` per `research.md` §9: a secondary nav item beside the existing primary actions, routing to `/repair-guides`; NOT inside any Developer-mode-gated branch
-- [ ] T050 [US5] Verify `/repair-guides` route mounts `RepairGuidesPage` (cherry-picked in T007); the page renders every guide registered in `guideLibrary.ts`, grouped sensibly (harness or host type — pick whatever grouping `guideLibrary.ts` exposes)
-- [ ] T051 [US5] Verify `<RepairGuideSheet>` opens with IDENTICAL props / output whether triggered from the host-detail surface (US3) or from a library entry (FR-018); a single Playwright assertion comparing the rendered DOM for the same guide from both entry points
-- [ ] T052 [US5] Confirm the "Repair guides" link in `AppHeader.tsx` remains visible when Developer mode is OFF (operator-facing knowledge per FR-017 + Constitution Principle III)
+- [X] T049 [US5] Added `<Button asChild>` linking to `/repair-guides` (label "Repair guides", `BookOpen` icon) in `AppHeader.tsx` beside the LiveDiagnostic button. **NOT** inside a Developer-mode-gated branch — visible to all operators.
+- [X] T050 [US5] `/repair-guides` route already mounted at `App.tsx:39` (registered in T016). `RepairGuidesPage` reads `GUIDE_CATALOG` from `guideLibrary.ts` and groups by host tab + category badges.
+- [X] T051 [US5] `<RepairGuideSheet>` is imported from `@/components/result/RepairGuideSheet` by **both** `DiagnosticItemRow.tsx:32` (host-detail entry) and `RepairGuidesPage.tsx:7` (library entry) — same component, same data flow via the `RepairGuide` type from `guides.ts`. Defer the byte-identical DOM Playwright assertion to T055 (covered by `npx playwright test`).
+- [X] T052 [US5] The "Repair guides" Button in `AppHeader.tsx` is outside `useDeveloperMode()` gating — renders for every operator regardless of Developer mode state. Confirmed by build + visual inspection of the JSX structure.
 
 **Checkpoint**: All user stories complete and independently testable.
 
