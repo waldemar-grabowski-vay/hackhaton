@@ -16,8 +16,7 @@ import { CategoryBadge } from "@/components/result/CategoryBadge";
 import { useDeveloperMode } from "@/lib/developerMode";
 import { cn } from "@/lib/utils";
 import { strings, t } from "@/strings";
-import { guides } from "@/guides";
-import { connectorLocations } from "@/connectorLocations";
+import { guides, tsGuides } from "@/guides";
 import type { DiagnosticItem } from "@/api/schemas";
 
 interface RepairGuideSheetProps {
@@ -29,7 +28,9 @@ interface RepairGuideSheetProps {
 
 export function RepairGuideSheet({ item, hostType, open, onClose }: RepairGuideSheetProps) {
   const developer = useDeveloperMode((s) => s.enabled);
-  const guide = guides[item.id];
+  const guide = hostType === "telestation"
+    ? (tsGuides[item.id] ?? (!guides[item.id]?.vehicleOnly ? guides[item.id] : undefined))
+    : guides[item.id];
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [debugOpen, setDebugOpen] = useState(false);
   const [focusedConnector, setFocusedConnector] = useState<string | null>(null);
@@ -46,8 +47,6 @@ export function RepairGuideSheet({ item, hostType, open, onClose }: RepairGuideS
   function locateConnector(id: string) {
     setFocusedConnector((prev) => (prev === id ? null : id));
   }
-
-  const focusLocation = focusedConnector ? connectorLocations[focusedConnector] : undefined;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -77,47 +76,71 @@ export function RepairGuideSheet({ item, hostType, open, onClose }: RepairGuideS
                   {guide.steps.map((step, i) => {
                     const done = completedSteps.has(i);
                     return (
-                      <button
+                      <div
                         key={i}
-                        type="button"
-                        onClick={() => toggleStep(i)}
                         className={cn(
-                          "w-full rounded-lg border p-3.5 text-left transition-colors",
+                          "w-full rounded-lg border transition-colors",
                           done
                             ? "border-success/30 bg-success/8"
-                            : "border-border/50 bg-card hover:bg-muted/30",
+                            : "border-border/50 bg-card",
                         )}
                       >
-                        <div className="flex items-start gap-3">
-                          <div
-                            className={cn(
-                              "mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ring-1 transition-colors",
-                              done
-                                ? "bg-success/20 text-success ring-success/40"
-                                : "bg-muted text-muted-foreground ring-border",
-                            )}
-                          >
-                            {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                              <span className={cn("text-sm font-semibold", done && "line-through text-muted-foreground")}>
-                                {step.title}
-                              </span>
-                              {step.physical && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning ring-1 ring-warning/25">
-                                  <Wrench className="h-2.5 w-2.5" />
-                                  {strings.guide.stepPhysical}
-                                </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleStep(i)}
+                          className="w-full p-3.5 text-left hover:bg-muted/30 rounded-lg transition-colors"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={cn(
+                                "mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ring-1 transition-colors",
+                                done
+                                  ? "bg-success/20 text-success ring-success/40"
+                                  : "bg-muted text-muted-foreground ring-border",
                               )}
+                            >
+                              {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
                             </div>
-                            <p className={cn("mt-1 text-xs leading-relaxed text-muted-foreground", done && "opacity-60")}>
-                              {step.body}
-                            </p>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <span className={cn("text-sm font-semibold", done && "line-through text-muted-foreground")}>
+                                  {step.title}
+                                </span>
+                                {step.physical && (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning ring-1 ring-warning/25">
+                                    <Wrench className="h-2.5 w-2.5" />
+                                    {strings.guide.stepPhysical}
+                                  </span>
+                                )}
+                              </div>
+                              <p className={cn("mt-1 text-xs leading-relaxed text-muted-foreground", done && "opacity-60")}>
+                                {step.body}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      </button>
+                        </button>
+                        {step.connectors && step.connectors.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 border-t border-border/20 px-3.5 py-2">
+                            {step.connectors.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => locateConnector(c.id)}
+                                className={cn(
+                                  "inline-flex items-center gap-1 rounded border px-2 py-1 text-[10px] font-medium transition-colors",
+                                  focusedConnector === c.id
+                                    ? "border-primary/50 bg-primary/15 text-primary"
+                                    : "border-border/50 bg-muted/30 text-muted-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary",
+                                )}
+                              >
+                                <MapPin className="h-2.5 w-2.5" />
+                                {c.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
 
@@ -248,7 +271,9 @@ export function RepairGuideSheet({ item, hostType, open, onClose }: RepairGuideS
                   focusTarget={focusedConnector ? { connectorId: focusedConnector } : undefined}
                 />
               ) : (
-                <HarnessDiagram focusLocation={focusLocation} />
+                <HarnessDiagram
+                  focusTarget={focusedConnector ? { connectorId: focusedConnector } : undefined}
+                />
               )}
             </div>
           </div>

@@ -11,6 +11,7 @@
 
 import {
   APP_CAN_PATH_SVG,
+  TS_APP_CAN_PATH_SVG,
   VIH_2_REEBOX_F_SVG,
   REEBOX_MAIN_F_SVG,
   WAKE_PATH_SVG,
@@ -22,6 +23,7 @@ export type RepairStep = {
   title: string;
   body: string;
   physical?: true;
+  connectors?: Array<{ id: string; label: string }>;
 };
 
 export type ConnectorPhoto = {
@@ -43,10 +45,13 @@ export type DebugSuggestion = {
 export type RepairGuide = {
   steps: RepairStep[];
   debugSuggestions: DebugSuggestion[];
+  /** If true, this guide is suppressed for telestation hosts. */
+  vehicleOnly?: true;
 };
 
 export const guides: Record<string, RepairGuide> = {
   main_can_bus_reachable: {
+    vehicleOnly: true,
     steps: [
       {
         title: "Confirm the REEBox is powered on",
@@ -655,6 +660,7 @@ export const guides: Record<string, RepairGuide> = {
   },
 
   reecu_wake_line_active: {
+    vehicleOnly: true,
     steps: [
       {
         title: "Verify KL15 (ignition) is on",
@@ -664,6 +670,7 @@ export const guides: Record<string, RepairGuide> = {
         title: "Check the KL15 fuse",
         body: "Locate the KL15 fuse in the power distribution box. Replace it if blown and re-run the check.",
         physical: true,
+        connectors: [{ id: "K15_Fuse", label: "KL15 Fuse (PDU)" }],
       },
       {
         title: "Re-seat connector X9 (REECU WAKE)",
@@ -815,6 +822,312 @@ export const guides: Record<string, RepairGuide> = {
           "In the pepvpn response, response.peer[] lists each tunnel.\n" +
           "Peers with status != \"CONNECTED\" will show a reason code.\n" +
           "Common codes: NO_ROUTE (WAN down), AUTH_FAIL (key mismatch), TIMEOUT (hub unreachable).",
+      },
+    ],
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Telestation-specific guides — override the vehicle guide for the same item ID.
+// Looked up first for hostType === "telestation"; falls back to guides[] if absent.
+// ---------------------------------------------------------------------------
+
+export const tsGuides: Record<string, RepairGuide> = {
+  main_can_bus_reachable: {
+    steps: [
+      {
+        title: "Verify the telestation is powered on",
+        body: "Confirm the main power switch is in the ON position and the REECU status LEDs are lit. APP CAN is only active when the telestation is fully booted.",
+      },
+      {
+        title: "Re-seat the TIH_REECU_F connector at the REECU",
+        body: "Locate the Integration Harness connector at the REECU end (TIH_REECU_F). Press the locking tab, pull it off, inspect the pins for corrosion or bending, then push it back in firmly until it clicks.",
+        physical: true,
+        connectors: [{ id: "TIH_REECU_F", label: "TIH_REECU_F" }],
+      },
+      {
+        title: "Re-seat the TIH_Main connectors at the docking interface",
+        body: "Find the TIH_Main_M and TIH_Main_F mating pair on the telestation docking side. Disconnect and re-seat both halves. APP CAN (pins 1 & 2) must make clean contact.",
+        physical: true,
+        connectors: [
+          { id: "TIH_Main_M", label: "TIH_Main_M" },
+          { id: "TIH_Main_F", label: "TIH_Main_F" },
+        ],
+      },
+      {
+        title: "Inspect the Integration Harness for damage",
+        body: "Trace the cable run from the REECU to the docking connector. Look for pinching, cuts, or chafing. Pay attention to the yellow (CAN H) and grey (CAN L) twisted pair.",
+        physical: true,
+      },
+      {
+        title: "Re-run the diagnostic",
+        body: "After any repair, re-run the diagnostic and confirm the APP CAN check passes.",
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Signal path",
+        diagram: TS_APP_CAN_PATH_SVG,
+        body:
+          "APP CAN — telestation path:\n" +
+          "REECU PCB X8 (CREECU_X9) → Integration Harness → TIH_REECU_F\n" +
+          "→ TIH_Main_M pin 1 (CAN H, Yellow) & pin 2 (CAN L, Gray)\n" +
+          "→ TIH_Main_F (vehicle docking interface)\n\n" +
+          "Note: the telestation does NOT use VIH_2_REEBOX_F or the Accessory Harness.\n" +
+          "The Integration Harness (TIH) is the sole CAN carrier on the TS side.",
+      },
+      {
+        label: "CAN bus health check",
+        connectors: [{ id: "CREECU_X9", label: "CREECU X9 (TS)" }],
+        body:
+          "On the REECU host:\n" +
+          "  ip -details link show canX\n" +
+          "  candump canX\n\n" +
+          "Expected: frames from APP CAN devices when docked to a vehicle.\n" +
+          "Bus-off / heavy TX errors → check 120 Ω termination at each harness end.\n" +
+          "Silent bus with no errors → suspect open at TIH_REECU_F pin 1 or 2.",
+      },
+      {
+        label: "TIH connector continuity",
+        connectors: [
+          { id: "TIH_REECU_F", label: "TIH_REECU_F" },
+          { id: "TIH_Main_M", label: "TIH_Main_M" },
+        ],
+        body:
+          "Measure continuity across the Integration Harness:\n" +
+          "  TIH_REECU_F pin 1 → TIH_Main_M pin 1  (CAN H)\n" +
+          "  TIH_REECU_F pin 2 → TIH_Main_M pin 2  (CAN L)\n\n" +
+          "Open circuit = broken wire or pushed-back pin inside the TIH.\n" +
+          "Also measure termination: TIH_Main_M pin 1 → pin 2 should read ~60 Ω\n" +
+          "(two 120 Ω resistors in parallel when the vehicle is connected).",
+      },
+    ],
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Offline / unreachable guides — keyed by offline_reason value.
+// Looked up in UnreachableState via offlineGuides[reason] ?? offlineGuides.__default.
+// ---------------------------------------------------------------------------
+
+export const offlineGuides: Record<string, RepairGuide> = {
+  network_unreachable: {
+    steps: [
+      {
+        title: "Confirm the vehicle or telestation is powered on",
+        body: "Check the PDU status LEDs and main power switch. The REECU only comes online once PDU output rails are live.",
+        physical: true,
+      },
+      {
+        title: "Check the Peplink router status",
+        body: "Look at the Peplink router LEDs. A solid green WAN LED means the modem has a data connection. An amber or off LED means the cellular uplink is down — check SIM and antenna.",
+        physical: true,
+      },
+      {
+        title: "Verify the network cable from REECU to the in-vehicle switch",
+        body: "Unplug and re-seat the Ethernet cable between the REECU and the in-vehicle network switch. A link light should appear on both ends within 10 seconds.",
+        physical: true,
+      },
+      {
+        title: "Ping the host from the diagnostic laptop",
+        body: "Open a terminal and run: ping <host-ip>. If there is no reply, the route to the host is broken. Try pinging the Peplink router IP first to isolate whether the issue is cellular or LAN.",
+      },
+      {
+        title: "Re-run the diagnostic",
+        body: "Once the host responds to ping, re-run the diagnostic to confirm connectivity.",
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Route check",
+        body:
+          "From the diagnostic laptop:\n" +
+          "  ping <host-ip>            # basic reachability\n" +
+          "  traceroute <host-ip>      # where does routing stop?\n" +
+          "  ip route get <host-ip>    # verify the local route table\n\n" +
+          "If ping fails at hop 1, the issue is LAN-local (cable / switch).\n" +
+          "If ping fails at hop 2+, the issue is cellular / VPN routing.",
+      },
+      {
+        label: "Peplink modem status",
+        body:
+          "SSH into the Peplink admin interface (default 192.168.50.1) or\n" +
+          "use the InControl cloud dashboard to check:\n" +
+          "  - WAN uplink status (SIM signal, data plan)\n" +
+          "  - LAN client list — the REECU should appear with its IP\n" +
+          "  - PepVPN tunnel state (if VPN is used for access)",
+      },
+    ],
+  },
+
+  ssh_auth_failed: {
+    steps: [
+      {
+        title: "Verify the operator SSH key is deployed to the REECU",
+        body: "The REECU accepts only pre-authorised operator keys. Ask the fleet ops team to confirm your public key is in /home/ree/.ssh/authorized_keys on the target REECU.",
+      },
+      {
+        title: "Check SSH service is running on the REECU",
+        body: "If you have an alternative access path (console cable or jump host), run: systemctl status ssh. If it is not running, start it: systemctl start ssh.",
+      },
+      {
+        title: "Attempt a manual SSH connection",
+        body: "From the diagnostic laptop: ssh ree@<host-ip> -v. The verbose output (-v) will show exactly which key was offered and why authentication was rejected.",
+      },
+      {
+        title: "Re-enrol credentials if the key was rotated",
+        body: "If your SSH key was recently rotated, re-run the key-provisioning playbook against this host and retry.",
+      },
+      {
+        title: "Re-run the diagnostic",
+        body: "After credentials are restored, re-run the diagnostic to confirm SSH access.",
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "SSH verbose output",
+        body:
+          "ssh ree@<host-ip> -vvv 2>&1 | head -60\n\n" +
+          "Look for lines like:\n" +
+          "  debug1: Offering public key: ...\n" +
+          "  debug1: Authentications that can continue: publickey\n" +
+          "  Permission denied (publickey)  ← key not accepted\n\n" +
+          "If the server sends no 'Authentications' line, sshd may be\n" +
+          "misconfigured — check /etc/ssh/sshd_config AllowUsers.",
+      },
+      {
+        label: "Authorized keys check",
+        body:
+          "Once you have access via console/jump host:\n" +
+          "  cat /home/ree/.ssh/authorized_keys\n" +
+          "  ls -la /home/ree/.ssh/\n\n" +
+          "Permissions must be:\n" +
+          "  .ssh/             700 (drwx------)\n" +
+          "  authorized_keys   600 (-rw-------)",
+      },
+    ],
+  },
+
+  ssh_timeout: {
+    steps: [
+      {
+        title: "Check if the REECU is responsive",
+        body: "Look at the REECU status LEDs. A slow blink usually means the OS is booting; no lights means no power. Wait 60 seconds if the REECU was recently powered on.",
+        physical: true,
+      },
+      {
+        title: "Attempt a manual SSH connection with verbose output",
+        body: "From the diagnostic laptop: ssh ree@<host-ip> -v -o ConnectTimeout=10. If it hangs at 'connecting', the TCP port is closed — either sshd crashed or a firewall is blocking port 22.",
+      },
+      {
+        title: "Check CPU load on the REECU",
+        body: "If you have console access, run: top or uptime. A load average above 10 on a 4-core REECU means the system is overloaded and SSH will time out. Identify the CPU-consuming process.",
+      },
+      {
+        title: "Restart the REECU if it is stuck",
+        body: "Graceful: ssh ree@<host-ip> sudo reboot (if SSH partially works).\nHard: cycle PDU power to the REECU rail. Wait 90 seconds for full boot before re-running the diagnostic.",
+        physical: true,
+      },
+      {
+        title: "Re-run the diagnostic",
+        body: "Once the REECU is responsive, re-run the diagnostic.",
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Port check",
+        body:
+          "From the diagnostic laptop:\n" +
+          "  nc -zv <host-ip> 22          # is port 22 open?\n" +
+          "  ssh ree@<host-ip> -o ConnectTimeout=5 -v\n\n" +
+          "If nc times out: firewall or sshd not listening.\n" +
+          "If nc connects but SSH hangs: sshd is alive but slow (high load?).",
+      },
+      {
+        label: "Process load (via console)",
+        body:
+          "If you have console access:\n" +
+          "  uptime                        # load average\n" +
+          "  ps aux --sort=-%cpu | head    # top CPU consumers\n" +
+          "  journalctl -u reecu -n 50     # REECU service logs\n\n" +
+          "A stuck reecu process can saturate a CPU core.\n" +
+          "  systemctl restart reecu       # restart the service",
+      },
+    ],
+  },
+
+  service_unresponsive: {
+    steps: [
+      {
+        title: "SSH to the REECU and check the diagnostic service",
+        body: "ssh ree@<host-ip> and run: systemctl status ree-debug. If it shows 'failed' or 'inactive', the service is not running.",
+      },
+      {
+        title: "Review recent service logs",
+        body: "Run: journalctl -u ree-debug -n 100 --no-pager. Look for panic, segfault, or 'address already in use' errors that may explain why the service exited.",
+      },
+      {
+        title: "Restart the diagnostic service",
+        body: "systemctl restart ree-debug. Wait 10 seconds, then check: systemctl status ree-debug to confirm it is active.",
+      },
+      {
+        title: "Re-run the diagnostic",
+        body: "Once the service reports active, re-run the diagnostic.",
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Service status",
+        body:
+          "ssh ree@<host-ip>\n" +
+          "  systemctl status ree-debug\n" +
+          "  journalctl -u ree-debug -n 100 --no-pager\n" +
+          "  ss -tlnp | grep <port>        # confirm port is listening\n\n" +
+          "Common failure modes:\n" +
+          "  - port conflict: another process holds the port\n" +
+          "  - binary crash: check journalctl for 'core dumped'\n" +
+          "  - dependency missing: check /var/log/ree-debug.log",
+      },
+    ],
+  },
+
+  __default: {
+    steps: [
+      {
+        title: "Confirm the host is powered on",
+        body: "Check the power LEDs on the REECU and PDU. No lights means no power — check fuses and the main power cable.",
+        physical: true,
+      },
+      {
+        title: "Check the network connection",
+        body: "Verify the Ethernet cable is seated and the Peplink router is online (green WAN LED). Ping the host IP from the diagnostic laptop to confirm basic network reachability.",
+      },
+      {
+        title: "Verify SSH access",
+        body: "Run: ssh ree@<host-ip> -o ConnectTimeout=10. If this fails, the issue is either network (no route) or authentication (wrong key).",
+      },
+      {
+        title: "Restart the host if it is unresponsive",
+        body: "If network is up but SSH fails, cycle PDU power to the REECU. Wait 90 seconds for a full boot before retrying.",
+        physical: true,
+      },
+      {
+        title: "Re-run the diagnostic",
+        body: "Once the host is reachable, re-run the diagnostic.",
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Connectivity quick check",
+        body:
+          "ping <host-ip>                  # network reachability\n" +
+          "ssh ree@<host-ip> -v            # SSH connection attempt\n" +
+          "nc -zv <host-ip> 22             # TCP port 22 open?\n\n" +
+          "Triage order:\n" +
+          "  1. ping fails    → network / routing issue\n" +
+          "  2. nc fails      → SSH not listening (sshd down or firewall)\n" +
+          "  3. SSH auth fail → key not authorised\n" +
+          "  4. SSH timeout   → host overloaded or stuck",
       },
     ],
   },

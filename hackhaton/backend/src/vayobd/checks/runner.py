@@ -166,14 +166,17 @@ async def execute_run(
 
     started_at = datetime.now(UTC)
     async with lock:
+        offline_reason: str | None = None
         try:
             executor_result = await asyncio.wait_for(
                 executor.run(host), timeout=timeout_seconds
             )
             outcome = executor_result.outcome
+            offline_reason = executor_result.offline_reason
             results_by_id = {r.id: r for r in executor_result.items}
         except TimeoutError:
             outcome = RunOutcome.TIMEOUT
+            offline_reason = "ssh_timeout"
             results_by_id = {}
 
     completed_at = datetime.now(UTC)
@@ -217,4 +220,5 @@ async def execute_run(
         completed_at=completed_at,
         outcome=outcome,
         items=items,
+        offline_reason=offline_reason if outcome in (RunOutcome.UNREACHABLE, RunOutcome.TIMEOUT) else None,
     )

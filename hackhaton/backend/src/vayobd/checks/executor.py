@@ -46,6 +46,7 @@ class ExecutorResult:
 
     outcome: RunOutcome
     items: list[ItemResult] = field(default_factory=list)
+    offline_reason: str | None = None
 
 
 class Executor(ABC):
@@ -103,7 +104,7 @@ class FixtureExecutor(Executor):
         path = self._dir / f"{host.id}.yaml"
         if not path.exists():
             log.warning("fixture_missing", host_id=host.id, path=str(path))
-            return ExecutorResult(outcome=RunOutcome.UNREACHABLE, items=[])
+            return ExecutorResult(outcome=RunOutcome.UNREACHABLE, items=[], offline_reason="network_unreachable")
 
         try:
             with path.open("r", encoding="utf-8") as f:
@@ -123,10 +124,14 @@ class FixtureExecutor(Executor):
             log.error("fixture_unknown_outcome", host_id=host.id, outcome=outcome_raw)
             outcome = RunOutcome.UNREACHABLE
 
+        offline_reason: str | None = data.get("offline_reason") or None
+        if isinstance(offline_reason, str):
+            offline_reason = offline_reason.strip() or None
+
         items_raw = data.get("items") or []
         items: list[ItemResult] = []
         if outcome in (RunOutcome.UNREACHABLE, RunOutcome.TIMEOUT):
-            return ExecutorResult(outcome=outcome, items=[])
+            return ExecutorResult(outcome=outcome, items=[], offline_reason=offline_reason)
 
         valid_ids = {spec.id for spec in catalog_for(host.host_class)}
         seen: set[str] = set()

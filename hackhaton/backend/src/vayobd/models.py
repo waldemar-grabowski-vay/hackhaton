@@ -183,6 +183,7 @@ class DiagnosticRun(BaseModel):
     completed_at: datetime
     outcome: RunOutcome
     items: list[DiagnosticItem]
+    offline_reason: str | None = None
 
 
 # --- 002 engine integration models ------------------------------------------

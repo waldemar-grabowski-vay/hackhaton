@@ -140,7 +140,7 @@ function RenderRun({
   hostLabel: string;
 }) {
   if (run.outcome === "unreachable" || run.outcome === "timeout") {
-    return <UnreachableState outcome={run.outcome} hostLabel={hostLabel} />;
+    return <UnreachableState outcome={run.outcome} hostLabel={hostLabel} offlineReason={run.offline_reason} />;
   }
 
   const working = run.items.filter((i) => i.status === "working");
