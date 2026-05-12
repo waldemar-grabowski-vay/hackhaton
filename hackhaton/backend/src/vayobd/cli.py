@@ -100,14 +100,21 @@ def _cmd_run(args: argparse.Namespace) -> int:
     # through a pyenv/editable install that doesn't set VAYOBD_STATIC_DIR
     # the way the .deb's /usr/bin/vayobd wrapper does.
     if settings.static_dir is None:
-        repo_relative_spa = Path(__file__).resolve().parents[3] / "frontend" / "dist" / "index.html"
-        if not repo_relative_spa.is_file():
-            sys.stderr.write(
-                "⚠ SPA static dir not configured — the web UI will return 404 on every page.\n"
-                "  Use /usr/bin/vayobd (the .deb wrapper) or export "
-                "VAYOBD_STATIC_DIR=/usr/share/vayobd/spa before starting `vayobd run`.\n"
-            )
-            sys.stderr.flush()
+        # Always warn — existence of a source-tree `frontend/dist/index.html`
+        # doesn't help, because app.py only mounts StaticFiles when
+        # `Settings.static_dir` is explicitly set. Without the mount, every
+        # page returns 404 regardless of where the built SPA happens to live
+        # on disk. (Bug: prior versions suppressed this warning when the
+        # source-tree SPA existed, which silently masked the pyenv-shim-
+        # shadows-.deb-wrapper scenario.)
+        sys.stderr.write(
+            "⚠ SPA static dir not configured — the web UI will return 404 on every page.\n"
+            "  Use /usr/bin/vayobd (the .deb wrapper) or export "
+            "VAYOBD_STATIC_DIR=/usr/share/vayobd/spa before starting `vayobd run`.\n"
+            "  Check `which vayobd` — a pyenv shim ahead of /usr/bin on PATH\n"
+            "  is the most common cause.\n"
+        )
+        sys.stderr.flush()
 
     url = f"http://127.0.0.1:{args.port}/"
     if not args.no_browser:
