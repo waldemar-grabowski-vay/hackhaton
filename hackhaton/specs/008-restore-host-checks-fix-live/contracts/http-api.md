@@ -4,7 +4,9 @@
 `backend/src/vayobd/api/runs.py` (restored runs endpoint).
 **Phase**: 008 — extends 007's `GET /api/host/{id}/versions` to carry
 the restored check battery and re-exposes the pre-007 `/api/runs`
-route.
+route. **2026-05-12 update**: host-type aware (TS / VE). No new
+endpoints; existing `/api/inventory` surface already exposes
+`host.type` for the SPA's inventory `TS` / `VE` pill (FR-019).
 
 This file specifies wire shape, query parameters, status codes, and
 caching semantics for the two endpoints the host-detail page
@@ -192,3 +194,11 @@ the restored result page for direct-link sharing of a recorded run.
 - **No batch endpoint.** Same as 007 — one host per request.
 - **No "list recent runs" endpoint.** The persisted run records
   exist for future use; 008 does not add a list surface over them.
+- **No host-type filter on `/api/inventory`.** The inventory already
+  serialises `host.type` per host; the SPA filters / pills in
+  the client. No new query parameter.
+- **No VE-specific endpoint variant.** The unified
+  `GET /api/host/{host_id}/versions` handles both TS and VE hosts;
+  the backend chooses the signal allowlist + errq subpath internally
+  from the inventory's `host.type` (see `contracts/reecu-pipeline.md`
+  §8a and `contracts/ve-errq.md`).

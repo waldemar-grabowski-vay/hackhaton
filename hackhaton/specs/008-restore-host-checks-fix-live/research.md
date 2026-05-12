@@ -1,7 +1,7 @@
-# Phase 0 Research — Restore host check battery, fix Live Diagnostic regression
+# Phase 0 Research — Restore host check battery, fix Live Diagnostic regression, integrate Wilhelm + Ezequiel
 
-**Date**: 2026-05-11
-**Status**: complete — all NEEDS CLARIFICATION resolved (5-question clarification round 2026-05-11 + this document)
+**Date**: 2026-05-11 (sections 1–7) · extended 2026-05-12 (sections 8–12)
+**Status**: complete — all NEEDS CLARIFICATION resolved (5-question clarification round 2026-05-11 + 5-question clarification round 2026-05-12 + this document)
 
 This file resolves the plan-level questions that the clarification
 round deferred to implementation time. Each section has one decision,
@@ -367,6 +367,299 @@ in `quickstart.md` follow-ups.
 
 **Rationale**: Avoid over-engineering. Independent sessions are
 the established 004 contract.
+
+---
+
+## 8. Ezequiel cherry-pick — source map and 3-way merge mechanics
+
+**Decision**: Source restoration files by tier, and resolve the four
+3-way-merge files with "post-007 HEAD wins on collision; otherwise
+union" precedence.
+
+### 8a. Source tiers
+
+Per the 2026-05-12 clarifications, restoration sources split three ways:
+
+```text
+Tier A — Frontend (from origin/005-ve-harness-repair-guide):
+  improved (replace HEAD)
+    frontend/src/components/result/HarnessDiagram.tsx
+    frontend/src/components/result/RepairGuideSheet.tsx
+    frontend/src/components/result/TelestationDiagram.tsx
+  net-new (add)
+    frontend/src/components/chrome/RepairGuideLibraryDialog.tsx
+    frontend/src/pages/RepairGuidesPage.tsx
+    frontend/src/guideLibrary.ts
+  net-new assets (add, under public/)
+    frontend/public/ve-pigtail-f61-harness.jpg
+    frontend/public/ve-reebox-power-cable-harness.jpg
+    frontend/public/ve-vs040815-harness-p1.png
+    frontend/public/ve-vs040815-harness.pdf
+  pre-007 FE deletions, recovered (add)
+    frontend/src/api/runs.ts
+    frontend/src/components/result/CategoryBadge.tsx
+    frontend/src/components/result/DiagnosticItemRow.tsx
+    frontend/src/components/result/ResultGroup.tsx
+    frontend/src/components/result/ResultHero.tsx
+    frontend/src/components/states/EmptyInventoryState.tsx
+    frontend/src/components/states/PartialRunState.tsx
+    frontend/src/components/states/RunningState.tsx
+    frontend/src/components/states/UnreachableState.tsx
+    frontend/src/components/motion/StaggeredList.tsx
+    frontend/src/pages/RunResultPage.tsx
+  3-way merge (do NOT clobber HEAD; see §8b)
+    frontend/src/strings.ts
+    frontend/src/connectorLocations.ts
+    frontend/src/connectorSpecs.ts
+    frontend/src/guides.ts
+    frontend/src/App.tsx                       (route registration only)
+
+Tier B — Backend (from local pre-007 commit 01d3979):
+  backend/src/vayobd/api/runs.py
+  backend/src/vayobd/checks/__init__.py
+  backend/src/vayobd/checks/catalog.py
+  backend/src/vayobd/checks/executor.py
+  backend/src/vayobd/checks/peplink.py
+  backend/src/vayobd/checks/ree_cli.py
+  backend/src/vayobd/checks/runner.py
+  backend/tests/integration/test_runs_endpoint.py
+  backend/tests/unit/test_catalog.py
+
+Tier C — Engine (from local pre-007 commit 01d3979):
+  engine/ree-debug-engine/src/checks/cameras.rs
+  engine/ree-debug-engine/src/checks/connectivity.rs
+  engine/ree-debug-engine/src/checks/decode.rs
+  engine/ree-debug-engine/src/checks/mod.rs
+  engine/ree-debug-engine/src/checks/reecu.rs
+  engine/ree-debug-engine/src/checks/usb.rs
+```
+
+The full table is exported as `contracts/ezequiel-cherry-pick.md`.
+
+### 8b. 3-way merge files
+
+Four files have legitimate edits in all three sources:
+
+| File | post-007 HEAD owns | Ezequiel adds | Pre-007 restores |
+|---|---|---|---|
+| `frontend/src/strings.ts` | `hostVersions` block; refresh + dev-mode keys | `+107` keys (harness / guide / library) | `runs / outcomes / result / category / guide / item` blocks; `categoryLabel()` |
+| `frontend/src/connectorLocations.ts` | any 007 edits (verify; expected: none) | `+86` lines of VE-side locations | — |
+| `frontend/src/connectorSpecs.ts` | any 007 edits (verify; expected: minimal) | `+863` lines of VE connector specs | — |
+| `frontend/src/guides.ts` | any 007 edits (verify; expected: none — was orphan) | `+763` lines of guide content | — |
+
+**Merge rule**: post-007 HEAD is the base. Ezequiel's additions are
+unioned in. Pre-007 deleted blocks (only `strings.ts` has them) are
+unioned in. **On any key collision, post-007 HEAD wins.**
+
+**Implementation choice**: per file, use:
+
+```bash
+git checkout origin/005-ve-harness-repair-guide -- <path>
+```
+
+then re-introduce the post-007 HEAD blocks by hand-edit. NOT a clean
+`git cherry-pick` — Ezequiel's branch has unrelated backend
+deletions in the same commits that would corrupt a `cherry-pick`.
+
+**Rationale**: The merge is union-by-default, conflict-resolution
+deterministic ("HEAD wins"). One precedence rule covers every case;
+no per-file judgement needed beyond verifying the rule applied.
+
+**Alternatives considered**:
+
+- *Resolve conflicts in Ezequiel's favour.* Loses the 007 wins
+  FR-008 / FR-009 commit to. Rejected by clarification Q2.
+- *Hand-merge per file with named owner in `/speckit-tasks`.* Higher
+  ceremony, same outcome. Rejected for cost.
+
+---
+
+## 9. Library chrome entry point — header link (not Developer-mode-gated)
+
+**Decision**: Add a **header** link to `RepairGuidesPage`. The link
+lives in `frontend/src/components/chrome/AppHeader.tsx` as a
+secondary nav item beside the existing primary actions. It is
+**not** Developer-mode-gated — harness and repair knowledge is
+operator-facing.
+
+**Placement**:
+
+```text
+┌─ AppHeader ─────────────────────────────────────────┐
+│  [Vay logo]  [Hosts]  [Repair guides]   …   [Dev▸] │
+└──────────────────────────────────────────────────────┘
+```
+
+The new "Repair guides" link routes to the `/repair-guides` route
+registered in Ezequiel's `App.tsx` delta.
+
+**Rationale**: Header placement is reachable from every page in the
+SPA (the constitution Web App Standards already require responsive
+layout; header keeps the entry point reachable on phone-sized
+viewports too). Operator-facing (not gated) per Q3 of the 2026-05-12
+clarification round.
+
+**Alternatives considered**:
+
+- *Main-page secondary action only.* Reachable only from `/`; an
+  operator three pages deep into a host-detail flow would have to
+  navigate back. Rejected for UX cost.
+- *Developer-mode-gated header link.* Conflicts with the
+  clarification (Q3) and the constitution Principle III
+  (operator-facing knowledge should not be gated).
+
+---
+
+## 10. VE state-signal port from Wilhelm's desktop tool
+
+**Decision**: Lift Wilhelm's `TS_STATE_SIGNALS` allowlist from
+`TS_diagnostic_tool/config.py` and merge it into the web app's
+state-panel allowlist on `/live`. Specifically, the web app's
+`backend/src/vayobd/live/candump_runner.py` (or wherever the
+allowlist lives — `/speckit-plan` confirms the exact location at
+task time) MUST be extended to include every entry in Wilhelm's
+list, with no de-duplication: the web app already includes the
+`TS_*` entries; the additions are the `VE_*` entries:
+
+```python
+VE_STATE_SIGNALS_ADDED: tuple[str, ...] = (
+    "VE_ChA_SSMAN_State",
+    "VE_ChB_SSMAN_State",
+    "VE_PRND_STATE",
+    # …plus any additional VE_* signals in Wilhelm's TS_STATE_SIGNALS
+    # — exact list is the verbatim grep result at task time.
+)
+```
+
+The state-panel decode pipeline is unchanged: `candump → cantools
+decode against the TS APP DBC → filter by allowlist`. The TS APP DBC
+already carries the VE signals (Wilhelm's config.py and his README
+both confirm this — the DBC is the unified application protocol).
+
+### 10a. Host-type routing
+
+The Live Diagnostic backend already knows the host type (the
+inventory loader tags `ve-*` IDs as `HostType.VEHICLE`). The
+state-panel renderer receives the entire decoded signal stream and
+filters by allowlist; the host's type doesn't gate which signals
+appear — whichever signals the bus broadcasts, get displayed.
+
+**Rationale**: Mirrors Wilhelm's desktop tool exactly. Zero new
+transport. No host-type-specific filter on the decoder side keeps
+the code path the same for both host classes; the bus broadcasts
+naturally decide which signals are visible.
+
+**Alternatives considered**:
+
+- *Per-host-type allowlist (TS-only on TS hosts, VE-only on VE hosts).*
+  Adds gating with no benefit — a VE bus simply does not broadcast
+  `TS_*` signals (and vice versa), so the filter falls through
+  naturally on the data.
+- *Configurable allowlist.* No team value; Principle I says no.
+
+---
+
+## 11. VE errq CSV subpath resolution
+
+**Decision**: `errq_bridge` (the web app's port of Wilhelm's
+`errq_bridge.py`) gains a second resolver path for VE-side CSVs
+inside the **same** local `ree-reecu` clone the runtime already
+uses for TS errq. The TS subpath is unchanged:
+
+```
+{ree_reecu_root}/ts/6_tools/TS_Generators/Errq/ts_errq_cfg_generator/csv/
+```
+
+The VE subpath is (preliminary, to be confirmed against the actual
+clone at task time):
+
+```
+{ree_reecu_root}/ve/6_tools/VE_Generators/Errq/ve_errq_cfg_generator/csv/
+```
+
+The path is a **lookup**, not a guess: `/speckit-tasks` includes a
+short investigative step against the team's `ree-reecu` clone
+to confirm the actual VE subpath (the directory may be `ve_errq_*`
+or `ve/.../errq/`; the exact spelling is what gets baked in).
+
+### 11a. Fallback semantics
+
+If the VE subpath is missing or the clone is partial, the errq
+panel falls back to the 004 FR-012 degraded-mode message — same
+fallback as for missing TS CSVs. No fabricated data, no silent
+empty panel.
+
+### 11b. .deb packaging unchanged
+
+The 006 `.deb` does NOT bundle either TS or VE errq CSVs — it
+expects the operator to have a `ree-reecu` clone locally
+(documented in 006's quickstart). 008 does not modify this:
+the new VE resolver reads from the same local clone.
+
+**Rationale**: Single source of truth (one `ree-reecu` clone for both
+TS and VE errq) keeps the operator's mental model simple — they
+have one clone, not two. The .deb stays slim.
+
+**Alternatives considered**:
+
+- *Bundle VE CSVs in the .deb.* Expands 006's packaging surface;
+  also requires the .deb build to know where to fetch VE CSVs from
+  at build time. Out of 008 scope.
+- *Separate `ree-reecu-ve` repo.* Two clones for one feature.
+  Rejected for operator cost.
+- *Network-fetch VE CSVs at startup.* New external dependency, new
+  failure mode. Rejected for risk.
+
+---
+
+## 12. 005 → 009 rename mechanics for Ezequiel's spec dir
+
+**Decision**: Pull Ezequiel's `specs/005-ve-harness-repair-guide/`
+directory into the local repo under a new name:
+`specs/009-ve-harness-repair-guide/`. The local
+`specs/005-ui-readability-pass/` stays untouched.
+
+### 12a. Concrete steps
+
+```bash
+# 1. Copy the directory from Ezequiel's branch
+git checkout origin/005-ve-harness-repair-guide -- \
+  hackhaton/specs/005-ve-harness-repair-guide/
+
+# 2. Move it to the renamed slot
+git mv hackhaton/specs/005-ve-harness-repair-guide \
+       hackhaton/specs/009-ve-harness-repair-guide
+
+# 3. Inside the renamed spec.md, repoint the metadata
+#    - **Feature Branch**: `005-ve-harness-repair-guide` → `009-ve-harness-repair-guide`
+#    - any inline references to "005" (self-references) → "009"
+# (Note: cross-references to other 005-* features — e.g., to 005's
+#  plain-language work in the local repo — stay as 005 since they
+#  point at a different feature.)
+```
+
+### 12b. Reading order for future contributors
+
+- `specs/008-restore-host-checks-fix-live/spec.md` — what changed,
+  how it composed (the integration mechanics + Wilhelm port).
+- `specs/009-ve-harness-repair-guide/spec.md` — Ezequiel's design
+  rationale for the harness / repair-guide UI 008 absorbed.
+
+The 009 spec is read-only documentation; no code lives under it
+(all code is integrated into the hackhaton/ tree via the
+cherry-pick).
+
+**Rationale**: Numbering preserves uniqueness (constitution
+implicitly assumes feature slots are unique — tooling builds on
+the dir name). Documentation is preserved for future readers tracing
+back `git blame` on harness files.
+
+**Alternatives considered**:
+
+- *Drop entirely.* Loses design rationale; future contributors
+  read code without context. Rejected.
+- *Pull as-is, accept double 005.* Breaks the slot-unique
+  assumption. Rejected.
 
 ---
 

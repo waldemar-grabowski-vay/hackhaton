@@ -1,49 +1,190 @@
-# Implementation Plan: Restore host check battery, fix Live Diagnostic regression, keep version pull surface
+# Implementation Plan: Restore host check battery, fix Live Diagnostic regression, integrate Wilhelm + Ezequiel
 
-**Branch**: `008-restore-host-checks-fix-live` | **Date**: 2026-05-11 | **Spec**: [spec.md](./spec.md)
-**Input**: Feature specification from `/specs/008-restore-host-checks-fix-live/spec.md`
+**Branch**: `008-restore-host-checks-fix-live` | **Date**: 2026-05-12 | **Spec**: [`spec.md`](./spec.md)
+**Input**: Feature specification from `specs/008-restore-host-checks-fix-live/spec.md`
 
 ## Summary
 
-Regression-recovery round on top of 007. Three concrete pieces:
+008 is a regression-recovery + contributor-integration round. It restores
+the host check battery that 007 over-removed, fixes the Live Diagnostic
+surface that 007 left non-working, and absorbs the two outstanding
+contributor streams into one consistent app:
 
-1. **`git checkout HEAD --` the deletions** that 007 introduced (per Clarification Q3). The pre-007 working tree at commit `01d3979` still contains every file 007 staged-for-delete — backend `checks/` package, `/api/runs.py`, the result-page React components (`CategoryBadge`, `ResultGroup`, `ResultHero`, `DiagnosticItemRow`, `RepairGuideSheet`, `HarnessDiagram`, `TelestationDiagram`, `RunningState`, `PartialRunState`, `UnreachableState`, `StaggeredList`), `RunResultPage`, plus the matching tests. Restoration is mechanical; the only file that needs hand-merging is `frontend/src/strings.ts` (007 kept the new `hostVersions` block; 008 needs to re-introduce the `runs / outcomes / result / category / guide / item` blocks alongside it).
-2. **Diagnose + fix Live Diagnostic** (per Clarification Q2's deferred-diagnosis answer). The most likely root cause based on observed evidence is the SPA-mount path: the user's `vayobd` command resolves to the pyenv-installed editable build (a leftover from the 007 test pass) which doesn't set `VAYOBD_STATIC_DIR`, so the SPA is never mounted at `/` and every page (including `/live`) returns 404. Secondary causes worth checking during the spike: the DBC glob pattern preferring `Env.dbc` over `application_protocol.dbc` on this user's `ree-reecu` clone layout, and a possible `strings.ts` reference orphaned by 007's scrub that the Live Diagnostic page hits. The plan calls for a focused 30-minute spike against the .deb-installed runtime before scoping the fix.
-3. **Wire the REECU pipeline as a one-shot capture** (per Clarification Q4). The host-detail backend opens a brief candump+DBC session per host (3–5 s wall-clock), extracts vREECU / SEC / ERRQ fields, caches the response under 007's 60 s TTL, then routes the values into 007's existing version card AND the restored check battery. The non-REECU rows (vDrive, Peplink, network, etc.) keep coming from `ree-debug-cli report` per Clarification Q1.
+- **Ezequiel's `origin/005-ve-harness-repair-guide`** — frontend-only
+  cherry-pick of the improved harness / repair-guide UI, the new
+  `RepairGuidesPage` + `RepairGuideLibraryDialog` + `guideLibrary.ts`,
+  the four new harness assets, and the additive blocks in
+  `connectorSpecs.ts`, `guides.ts`, `connectorLocations.ts`, `strings.ts`.
+- **Wilhelm's `TS_DIAG_TOOL_V1.9`** — already an ancestor of HEAD via
+  PR #1 (commit `b3e79ff`). 008 ports the VE-channel state signals his
+  desktop tool surfaces (`VE_ChA_SSMAN_State`, `VE_ChB_SSMAN_State`,
+  `VE_PRND_STATE`, plus all `VE_*` entries in his `TS_STATE_SIGNALS`)
+  onto the hackhaton web app's `/live` Live Diagnostic surface, with
+  VE-side errq CSVs resolved from the same `ree-reecu` clone the
+  runtime already uses for TS errq.
 
-The diff revives ~22 deleted files (or ~2.5k LoC of restored code), adds two thin coordination layers (a new REECU-capture path that reuses `vayobd.live.session`, and a unified `HostDetailPage` layout composing the version card above the restored result page), preserves every 007 improvement (per-field verdicts, TTL cache, refresh button, dual TS_diag entry points, plain-language copy), and ships with no rust-side change.
+Technical approach:
+
+1. **Restoration source by tier**: frontend pre-007 deletions come from
+   `origin/005-ve-harness-repair-guide` (one consistent FE source);
+   backend + engine pre-007 deletions come from the local pre-007 commit
+   `01d3979` (his backend/engine snapshot is stale relative to recent
+   pushes).
+2. **3-way hand-merge** for the four shared files
+   (`strings.ts`, `connectorLocations.ts`, `connectorSpecs.ts`,
+   `guides.ts`): post-007 HEAD is the base, Ezequiel's branch layers
+   on top, pre-007 blocks restore from `HEAD~N` for `strings.ts`. On
+   any key collision, post-007 HEAD wins (preserves the FR-008 / FR-009
+   commitments to 007's version-pull surface).
+3. **Live Diagnostic fixes** stay as scoped by the 2026-05-11 research:
+   SPA mount path (pyenv shim vs `/usr/bin/vayobd`), DBC glob tightening,
+   errq degraded-mode prominence, strings.ts orphan refs.
+4. **Host-type-aware Live Diagnostic** uses the existing `host.type`
+   inventory tag (already populated for `ve-*` / `ts-*` prefixed IDs).
+   The `errq_bridge` gets a VE subpath resolver; the state-panel
+   allowlist gains the `VE_*` signal names; the inventory dialog gains
+   a `TS` / `VE` pill per row.
+5. **Library surface (US5)**: cherry-picked `RepairGuidesPage` +
+   `RepairGuideLibraryDialog` + `guideLibrary.ts` land with the
+   `App.tsx` route. Chrome entry point chosen in research §8 (header
+   link, not Developer-mode-gated). One `RepairGuideSheet` component,
+   two entry points, no parallel guide definition.
+6. **Spec dir 005 rename**: Ezequiel's `specs/005-ve-harness-repair-guide/`
+   is pulled in as `specs/009-ve-harness-repair-guide/` to avoid
+   colliding with the local `specs/005-ui-readability-pass/`. Code
+   lands as part of 008; 009 is the design-intent doc.
 
 ## Technical Context
 
-**Language/Version**: Python 3.12 (bundled python-build-standalone in the .deb); TypeScript 5.6 + React 18.3 (existing SPA); Rust 1.75+ (engine — no changes here, same as 007).
-**Primary Dependencies**: FastAPI / uvicorn / Pydantic (backend, unchanged); `cantools` + `asyncssh` (already used by `vayobd.live.session`); existing `ree-debug-cli` binary on PATH; React Router + @tanstack/react-query (SPA, unchanged); shadcn/ui primitives the restored result page already relies on.
-**Storage**: Same as 007 — in-memory per-process TTL cache for host detail responses (now keyed by host_id, carrying the combined REECU + non-REECU + version response). No new disk artefacts.
-**Testing**: pytest for the new REECU-capture wiring + the unified host-detail collector; restored unit tests (`test_catalog.py`) come back via git checkout; restored `test_runs_endpoint.py` comes back via git checkout; Playwright e2e for the combined host-detail page + the Live Diagnostic happy path after the spike-driven fix.
-**Target Platform**: Same as 007 — Ubuntu 24.04+ (and any glibc-based amd64 Linux via the bundled-python .deb).
-**Project Type**: web-service + SPA in the existing monorepo.
-**Performance Goals**: SC-001 (versions + checks rendered within 10 s on a reachable host, 95% of attempts); SC-002 (LD reaches decoded-signal state within 10 s or surfaces a plain-language error within 5 s, 100% of attempts); SC-005 (007's cache-served re-visit <500 ms holds — extended to the unified response); SC-006 (operator can scan the page in <3 s and distinguish versions from checks from repair-guide entry points).
+**Language/Version**:
+- Frontend: TypeScript 5.6.3, React 18.3.1
+- Backend: Python 3.11+ (FastAPI + Pydantic v2)
+- Engine: Rust (ree-debug-engine, edition 2021)
+- Desktop reference (TS_diagnostic_tool/): Python 3.11, PyQt6
+
+**Primary Dependencies**:
+- Frontend: Tailwind CSS 3.4.13, shadcn/ui (New York, slate baseColor),
+  tailwindcss-animate, Zod (for the API schema), React Router 6 (route
+  registration for `RepairGuidesPage`), `@tanstack/react-query` (host
+  versions fetch + cache).
+- Backend: FastAPI, Pydantic v2, paramiko (SSH), cantools (DBC decode),
+  python-dateutil. The restored `vayobd.checks.*` package re-imports
+  `httpx` (Peplink probes), `subprocess` (ree-debug-cli, ssh).
+- Engine: `clap`, `serde_json`, `serde_yaml`, the
+  in-tree `engine/ree-debug-engine` workspace.
+
+**Storage**:
+- Run records: `backend/.cache/vayobd/runs/<operator-slug>/<host-id>.json`
+  (pre-007 location restored).
+- Host-versions TTL cache: in-process via `VersionCache[HostDetailResponse]`
+  (60 s TTL, per-host key).
+- errq CSVs: read from the local `ree-reecu` clone (TS subpath +
+  new VE subpath); no app-side persistence.
+
+**Testing**:
+- Backend: pytest (`pytest -q`), incl. restored `test_runs_endpoint.py`,
+  `test_catalog.py`, new `test_reecu_capture.py`, new
+  `test_ve_signals_decode.py`.
+- Frontend: `npm run build && npm run lint` plus Playwright specs
+  for the `/live` flow (including the new VE-host scenario) and the
+  library page.
+- Manual: the 8-step quickstart, now incl. dual-host (TS + VE) Live
+  Diagnostic walkthrough.
+
+**Target Platform**:
+- Web: browser-based SPA (Chrome / Firefox / Safari / Edge current
+  versions per Constitution Web App Standards).
+- Backend: Linux server, shipped as the 006 `.deb` (`vayobd_0.0.7_amd64.deb`
+  for this round). Bundled Python via python-build-standalone; no
+  system Python dependency.
+- Engine: Linux x86-64 (debian-stable–compatible glibc).
+- Desktop reference: Windows (Wilhelm's PyQt6 + Inno Setup), out of
+  scope for 008 modifications — only its signal-list / errq pipeline
+  is *referenced* by the web port.
+
+**Project Type**: Web application (FastAPI backend + React SPA) with
+a companion native engine and a reference desktop tool.
+
+**Performance Goals**:
+- Live Diagnostic decoded-signals state within **10 s** of clicking
+  Connect (TS or VE) — matches 004 SC-001 and the new SC-009.
+- Host-detail page renders BOTH version card AND check battery
+  within **10 s** for a cold load; **<500 ms** for a TTL-served
+  re-render within 60 s (per SC-005).
+- Quickstart end-to-end: dev path under **15 min** for one developer
+  on a tested machine (the +5 min vs 2026-05-11 covers the VE step).
+
 **Constraints**:
-  - **Web app standards loopback-HTTP exception** — inherited from 006 / 007, no new constraint.
-  - **No rust-side change** — Clarification Q1 locks the engine as a black box; if a rust change turns out to be needed during implementation, that's a separate spec.
-  - **No new packaging change** — the bundled-Python .deb work from the recent fix carries forward unchanged.
-  - **Restoration via `git checkout`, not re-implementation** — Clarification Q3 binds us to mechanical recovery + hand-merged strings only.
-  - **REECU capture is one-shot, 3–5 s per page mount** — Clarification Q4; no long-lived background sessions, no live streaming on the host-detail page.
-**Scale/Scope**: Single-user desktop; ≤ a few hosts in flight per session; the in-scope German fleet (tens of hosts) is the TTL-cache audience. No multi-tenant or horizontal-scaling considerations.
+- No regressions of 007's wins (per FR-008 / FR-009 / FR-015 / FR-016).
+- No expansion of the 006 `.deb` packaging surface (FR-006 explicitly
+  re-uses the existing `ree-reecu` clone for VE errq).
+- Ezequiel's backend / engine code is **not** sourced — only frontend.
+- The Constitution's Principle III (Non-Technical User UX) keeps the
+  bar for plain-language degraded states across all new VE paths.
+
+**Scale/Scope**:
+- Inventory: O(100) hosts (mixed TS + VE) typical; O(1000) tolerated.
+- Restored components: ~12 React components, ~7 Python modules,
+  ~6 Rust files (per research §2 + the cherry-pick path lists).
+- Library catalogue: ~20–40 registered guides initially (count
+  matches `guideLibrary.ts` on Ezequiel's branch — exact count is a
+  research §8 lookup).
 
 ## Constitution Check
 
-*Gates evaluated against `.specify/memory/constitution.md` v1.0.0. Re-checked after Phase 1.*
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-| Gate | Status | Evidence |
-|------|--------|----------|
-| **I. Simplicity First (NON-NEGOTIABLE)** | ✅ Pass | The largest part of US1 is a mechanical revert (`git checkout HEAD --` per deleted path) — no new abstractions introduced. The new REECU-capture path reuses `vayobd.live.session` rather than introducing a new SSH/decode pipeline. The cache is the same `VersionCache` 007 added, extended in-place to hold a richer response. No new packages, no new tables, no DI rework. |
-| **II. Ship Fast** | ✅ Pass | The plan is staged so US1 (mechanical revert) can land alone in a small PR before US2's spike-driven fix is even started. Even the most complex story (US4 — REECU pipeline) is a thin wrapper around existing code. Every user story is independently testable per the spec's Independent Test sections. |
-| **III. Non-Technical User UX (NON-NEGOTIABLE)** | ⚠️ Engineering-audience scope — passes intent | Same disposition as 007: the operator audience is internal Vay engineers; the restored battery uses 005's plain-language copy conventions verbatim (since we're reverting to the state 005 already landed); the new REECU-capture loading state reuses 007's em-dash + spinner pattern. No new operator-facing copy is invented for 008 except where strings.ts needs hand-merging — and the merge target is 005's wording, which Principle III already approved. |
-| **Web App Standards — HTTPS** | ⚠️ Inherited exception | Loopback-only HTTP; no change from 006 / 007. |
-| **Web App Standards — browsers, responsive, privacy** | ✅ Pass | No new external scripts or network calls. The REECU one-shot capture is a backend → host SSH call, no new client-side traffic. The combined layout uses `flex-col md:flex-row` patterns already in the SPA. |
-| **Development Workflow — demo always working** | ✅ Pass | Each US lands as an independently shippable increment. The revert is staged for US1 alone; LD fix is US2; layout composition is US3. The demo state never regresses because 008 only ADDS what 007 over-removed, never removes anything 007 kept. |
+The constitution has three principles. 008 is evaluated against each:
 
-**Result**: All gates pass with one inherited HTTPS exception (Complexity Tracking below). No new exceptions.
+### I. Simplicity First — PASS
+
+- **Cherry-pick over rewrite**: pulling Ezequiel's frontend files
+  verbatim (via `git checkout origin/005-ve-harness-repair-guide --`)
+  is simpler than re-implementing his harness improvements from his
+  spec.
+- **Existing host-type infrastructure reused**: the backend already
+  has `HostType` enum, `host_class`, `catalog_for(host_class)`, and
+  `parse_engine_report(host_type=…)`. VE support is a signal-list
+  + CSV-path pass-through, not new architecture.
+- **`VersionCache[HostDetailResponse]`**: 007's generic cache is
+  reused unchanged — only the type parameter at the import site
+  changes (research §6).
+- **One `RepairGuideSheet` component, two entry points** (host-detail
+  + library): no parallel guide definitions (FR-018).
+- **No new clones / packages / repos**: VE errq uses the existing
+  `ree-reecu` clone (FR-006); no `ree-reecu-ve` second repo, no
+  bundled VE CSVs in the .deb.
+
+The only mild complexity: the 3-way hand-merge across
+`strings.ts` / `connectorLocations.ts` / `connectorSpecs.ts` /
+`guides.ts`. Justified — these files have legitimate edits from
+three sources, and a clean precedence rule ("007 wins on
+collision") keeps the merge mechanical, not judgement-heavy.
+
+### II. Ship Fast — PASS
+
+- 008 lands as **one PR** (the user's stated goal: "one consistent
+  app"). No multi-PR sequencing.
+- The mainline branch remains demo-deployable: nothing in the
+  restoration or Wilhelm-port path requires a feature flag; the
+  TTL cache + degraded-mode fallbacks keep cold paths safe.
+- The .deb path (006) is untouched, so the demo .deb stays current.
+
+### III. Non-Technical User UX — PASS
+
+- All restored copy goes through `strings.ts` (FR-007); no literal
+  path keys leak (SC-004).
+- Plain-language degraded modes preserved for missing errq CSVs
+  (FR-006, TS and VE), missing or stale DBC (research §1b/§1c),
+  and unreachable hosts (FR-013).
+- The `TS` / `VE` inventory pill (FR-019) tells the operator what
+  they're connecting to *before* they click Connect.
+- The repair-guide library (US5) is **not** Developer-mode-gated;
+  harness/repair knowledge is operator-facing knowledge.
+- Action-oriented copy: no "Run check / Run diagnostic" wording
+  (FR-016).
+
+**No violations. No Complexity Tracking entries needed.**
 
 ## Project Structure
 
@@ -51,72 +192,146 @@ The diff revives ~22 deleted files (or ~2.5k LoC of restored code), adds two thi
 
 ```text
 specs/008-restore-host-checks-fix-live/
-├── plan.md              # This file
-├── spec.md              # Feature spec (clarified 2026-05-11; 5 questions resolved)
-├── research.md          # Phase 0 — LD failure-mode spike findings, restoration mechanics, REECU capture pattern, strings.ts merge strategy
-├── data-model.md        # Phase 1 — HostDetail wire shape (versions + REECU rows + non-REECU rows), CheckResult restored from pre-007
+├── plan.md              # This file (/speckit-plan output)
+├── research.md          # Phase 0 — extended 2026-05-12 with new sections
+├── data-model.md        # Phase 1 — VE host extensions
+├── quickstart.md        # Phase 1 — 8-step walkthrough (was 7; +VE step)
 ├── contracts/
-│   ├── http-api.md      # Unified GET /api/host/{id}/versions response shape; existing /api/runs/* endpoints restored
-│   ├── reecu-pipeline.md  # One-shot REECU capture: capture window, signal extraction, error semantics
-│   └── strings-merge.md   # Hand-merge guide for frontend/src/strings.ts (which blocks to restore from HEAD; which to keep from 007)
-├── quickstart.md        # Acceptance walkthrough: revert lands → restored battery works → LD works → unified page renders
-└── checklists/
-    └── requirements.md  # Spec-quality checklist (already exists, all pass)
+│   ├── http-api.md            # GET /api/host/{id}/versions (unified)
+│   ├── reecu-pipeline.md      # One-shot REECU capture (TS + VE)
+│   ├── strings-merge.md       # 3-way hand-merge guide
+│   ├── ezequiel-cherry-pick.md  # NEW — exact file list, source tier
+│   ├── ve-signals.md          # NEW — VE state signal list, decode
+│   └── ve-errq.md             # NEW — VE errq CSV subpath resolution
+├── checklists/
+│   └── requirements.md  # (untouched)
+└── tasks.md             # Phase 2 — regenerated by /speckit-tasks
 ```
 
-### Source Code (repository root)
+### Source Code (repository root: `/home/waldemar-grabowski/GitHub/hackhathon/`)
 
 ```text
-backend/
-├── src/vayobd/
-│   ├── api/
-│   │   ├── host_versions.py       # EDIT — extend 007's collector with a REECU-capture step (one-shot 3-5 s),
-│   │   │                          #         merge REECU rows into the unified response, keep the version-card surface intact,
-│   │   │                          #         cache under existing VersionCache (TTL 60 s).
-│   │   ├── runs.py                # RESTORE — `git checkout HEAD -- backend/src/vayobd/api/runs.py`
-│   │   └── (no new module)
-│   ├── checks/                    # RESTORE — `git checkout HEAD -- backend/src/vayobd/checks/`
-│   │                              # (six files: __init__.py, catalog.py, executor.py, peplink.py, ree_cli.py, runner.py)
-│   ├── live/                      # UNCHANGED — session.py exposes the SSH+candump+DBC pipeline the new REECU capture wraps
-│   ├── _internal/version_cache.py # MINOR — generic enough as-is; the cached payload type changes; unit tests update
-│   └── app.py                     # EDIT — re-register the restored runs_router (single line)
-└── tests/
-    ├── unit/
-    │   ├── test_catalog.py        # RESTORE — `git checkout HEAD --`
-    │   ├── test_host_versions_collector.py  # EDIT — extend assertions to cover REECU-row routing
-    │   └── test_reecu_capture.py  # NEW — assert one-shot capture extracts vREECU + SEC fields from a recorded DBC fixture
-    └── integration/
-        ├── test_runs_endpoint.py  # RESTORE — `git checkout HEAD --`
-        └── test_host_versions_endpoint.py  # EDIT — extend to cover the unified response (versions + REECU + non-REECU + 60 s TTL)
+hackhaton/                            # the SPA + backend (008 work lives here)
+├── backend/
+│   └── src/vayobd/
+│       ├── api/
+│       │   ├── host_versions.py      # 007 — extended for HostDetailResponse + VE
+│       │   ├── refresh.py            # 007 — kept
+│       │   ├── runs.py               # RESTORED from 01d3979
+│       │   └── auth.py
+│       ├── checks/                   # RESTORED from 01d3979
+│       │   ├── catalog.py            # full pre-007 catalog
+│       │   ├── executor.py
+│       │   ├── peplink.py
+│       │   ├── ree_cli.py
+│       │   └── runner.py
+│       ├── _internal/
+│       │   └── version_cache.py      # 007 — generic, kept; new type parameter
+│       ├── install/                  # 007 / 006 — kept
+│       ├── inventory/                # — kept; already supplies HostType
+│       ├── live/                     # 004 / 007 — kept; VE signal + errq
+│       │   ├── candump_runner.py     # +VE allowlist
+│       │   ├── dbc_decoder.py        # glob tightening (research §1b)
+│       │   ├── errq_bridge.py        # +VE CSV resolver
+│       │   ├── session.py
+│       │   └── ws_router.py
+│       └── app.py                    # re-include runs_router
+├── frontend/
+│   ├── public/                       # +4 harness assets from Ezequiel
+│   │   ├── ve-pigtail-f61-harness.jpg
+│   │   ├── ve-reebox-power-cable-harness.jpg
+│   │   ├── ve-vs040815-harness-p1.png
+│   │   └── ve-vs040815-harness.pdf
+│   └── src/
+│       ├── api/
+│       │   ├── runs.ts               # RESTORED from Ezequiel's branch
+│       │   └── hostVersions.ts       # 007 — schema gains optional `run`
+│       ├── components/
+│       │   ├── chrome/
+│       │   │   ├── AppHeader.tsx     # +library entry point (research §8)
+│       │   │   └── RepairGuideLibraryDialog.tsx  # NEW from Ezequiel
+│       │   ├── result/               # FE pre-007 restorations from Ezequiel
+│       │   │   ├── CategoryBadge.tsx
+│       │   │   ├── DiagnosticItemRow.tsx
+│       │   │   ├── HarnessDiagram.tsx       # Ezequiel's improved version
+│       │   │   ├── RepairGuideSheet.tsx     # Ezequiel's improved version
+│       │   │   ├── ResultGroup.tsx
+│       │   │   ├── ResultHero.tsx
+│       │   │   └── TelestationDiagram.tsx   # Ezequiel's improved version
+│       │   ├── states/               # FE pre-007 restorations from Ezequiel
+│       │   │   ├── PartialRunState.tsx
+│       │   │   ├── RunningState.tsx
+│       │   │   ├── UnreachableState.tsx
+│       │   │   └── EmptyInventoryState.tsx
+│       │   ├── motion/
+│       │   │   └── StaggeredList.tsx
+│       │   └── live/
+│       │       └── InventoryDialog.tsx        # +TS / VE pill (FR-019)
+│       ├── pages/
+│       │   ├── HostDetailPage.tsx    # composes version card + check battery
+│       │   ├── LiveDiagnosticPage.tsx
+│       │   ├── RepairGuidesPage.tsx  # NEW from Ezequiel
+│       │   └── RunResultPage.tsx     # RESTORED from Ezequiel's branch
+│       ├── connectorLocations.ts     # 3-way merged (research §4)
+│       ├── connectorSpecs.ts         # 3-way merged
+│       ├── guides.ts                 # 3-way merged
+│       ├── guideLibrary.ts           # NEW from Ezequiel
+│       ├── strings.ts                # 3-way merged
+│       └── App.tsx                   # +/repair-guides route from Ezequiel
+├── engine/
+│   └── ree-debug-engine/
+│       └── src/checks/               # RESTORED from 01d3979
+│           ├── cameras.rs
+│           ├── connectivity.rs
+│           ├── decode.rs
+│           ├── mod.rs
+│           ├── reecu.rs
+│           └── usb.rs
+└── specs/
+    ├── 008-restore-host-checks-fix-live/  # this feature
+    └── 009-ve-harness-repair-guide/       # Ezequiel's spec, renamed from 005-…
 
-frontend/
-└── src/
-    ├── api/
-    │   ├── runs.ts                # RESTORE — `git checkout HEAD --`
-    │   └── hostVersions.ts        # EDIT — extend the response schema to carry the restored check battery alongside the version cells
-    ├── components/
-    │   ├── motion/
-    │   │   └── StaggeredList.tsx  # RESTORE — `git checkout HEAD --`
-    │   ├── result/                # RESTORE — `git checkout HEAD -- frontend/src/components/result/`
-    │   │                          # (CategoryBadge, DiagnosticItemRow, HarnessDiagram, RepairGuideSheet,
-    │   │                          #  ResultGroup, ResultHero, TelestationDiagram)
-    │   └── states/
-    │       ├── PartialRunState.tsx     # RESTORE — `git checkout HEAD --`
-    │       ├── RunningState.tsx        # RESTORE — `git checkout HEAD --`
-    │       └── UnreachableState.tsx    # RESTORE — `git checkout HEAD --`
-    ├── pages/
-    │   ├── HostDetailPage.tsx     # EDIT — compose 007's version card (kept) + restored result-page sections; route REECU rows from versions, non-REECU into the result groups
-    │   ├── RunResultPage.tsx      # RESTORE then merge into HostDetailPage during US3 — defer the merge-vs-keep-separate decision to implementation
-    │   └── LiveDiagnostic/        # EDIT during US2 spike — whatever the diagnosis points at (likely DBC selector tightening + SPA-mount note for the .deb wrapper)
-    ├── strings.ts                 # HAND-MERGE — keep 007's hostVersions block + restored runs/outcomes/result/category/guide/item blocks
-    └── guides.ts                  # UNCHANGED — already in the tree (007 didn't delete it; it became orphan); becomes live again under US1
+TS_diagnostic_tool/                   # repo-root sibling — Wilhelm's desktop tool
+                                       # (untouched by 008; reference source for VE signals)
 ```
 
-**Structure Decision**: Stay inside the existing monorepo. The revert is mechanical and reversible — any file that turns out to need 007-flavoured updates can be edited in place after the checkout. The single new file (`backend/tests/unit/test_reecu_capture.py`) lives next to its consumer. No new top-level directory; no new package. The frontend gets no new components — every "new" component is something we're restoring from HEAD.
+**Structure Decision**: Web application with two tiers + reference
+desktop tool. The frontend / backend split mirrors the standing
+hackhaton layout — 008 doesn't reorganise anything, it restores +
+absorbs into the existing structure. The 009 spec directory is a
+documentation companion (no code under it); all 008 code lands
+inside `hackhaton/`.
+
+## Phase 0 Output
+
+`research.md` was authored on 2026-05-11 (sections 1–7) and extended
+on 2026-05-12 (sections 8–12) to absorb the cherry-pick mechanics,
+VE state-signal port, VE errq CSV resolution, library entry point,
+and 005→009 rename. All `NEEDS CLARIFICATION` items are resolved.
+
+## Phase 1 Output
+
+- `data-model.md` — updated with VE host extensions, host-type
+  routing, and the inventory `TS` / `VE` pill source field.
+- `contracts/http-api.md` — extended with the host-type behaviour for
+  the unified `GET /api/host/{id}/versions` endpoint.
+- `contracts/reecu-pipeline.md` — extended for VE-host capture
+  (additional signal allowlist; no transport change).
+- `contracts/strings-merge.md` — extended to a 3-way merge guide
+  (post-007 HEAD ↔ Ezequiel ↔ `HEAD~N` for the deleted blocks).
+- `contracts/ezequiel-cherry-pick.md` (new) — file-by-file source
+  table (which files come from which source tier).
+- `contracts/ve-signals.md` (new) — VE state-signal allowlist and
+  decode contract.
+- `contracts/ve-errq.md` (new) — VE errq CSV subpath resolution
+  contract.
+- `quickstart.md` — 8-step walkthrough (added Step 4½: VE-host
+  acceptance against the same testbed).
 
 ## Complexity Tracking
 
+> No constitution violations. No entries needed.
+
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| Loopback HTTP instead of HTTPS (Web App Standards exception, inherited from 006) | Local-loopback-only traffic; HTTPS would force a self-signed cert browser-trust warning (Principle III conflict). | Same disposition as 006 and 007 — no new analysis needed. |
-| Two pipelines feeding one page (REECU via Live Diagnostic code path; everything else via `ree-debug-cli`) | Clarification Q1 — the team's REECU information already exists as decoded CAN signals; re-deriving it via `ree-debug-cli` over a separate SSH session would duplicate work and re-derive the same fields by a slower path. | Single pipeline (all via `ree-debug-cli`): the rust engine doesn't currently parse REECU CAN frames into a JSON report — it relies on out-of-band signals. Forcing it to would be more work than reusing `vayobd.live.session`. Single pipeline (all via Live Diagnostic): would need to reimplement Peplink HTTP probes, network reachability, `dpkg-query`, etc., inside the live session — far larger scope. The two-pipeline split is the smallest correct shape. |
+| _(none)_ | _(n/a)_ | _(n/a)_ |

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Wrench, Check, ChevronDown, ChevronUp, Camera, MapPin, X } from "lucide-react";
+import { Wrench, Check, ChevronDown, ChevronUp, Camera, MapPin, PanelRightClose, PanelRightOpen, X } from "lucide-react";
 import { useState } from "react";
 
 import { HarnessDiagram } from "@/components/result/HarnessDiagram";
@@ -16,7 +16,7 @@ import { CategoryBadge } from "@/components/result/CategoryBadge";
 import { useDeveloperMode } from "@/lib/developerMode";
 import { cn } from "@/lib/utils";
 import { strings, t } from "@/strings";
-import { guides, tsGuides } from "@/guides";
+import { guides, tsGuides, signalGuides } from "@/guides";
 import type { DiagnosticItem } from "@/api/schemas";
 
 interface RepairGuideSheetProps {
@@ -29,11 +29,12 @@ interface RepairGuideSheetProps {
 export function RepairGuideSheet({ item, hostType, open, onClose }: RepairGuideSheetProps) {
   const developer = useDeveloperMode((s) => s.enabled);
   const guide = hostType === "telestation"
-    ? (tsGuides[item.id] ?? (!guides[item.id]?.vehicleOnly ? guides[item.id] : undefined))
-    : guides[item.id];
+    ? (tsGuides[item.id] ?? (!guides[item.id]?.vehicleOnly ? guides[item.id] : undefined) ?? signalGuides[item.id])
+    : (guides[item.id] ?? signalGuides[item.id]);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [debugOpen, setDebugOpen] = useState(false);
   const [focusedConnector, setFocusedConnector] = useState<string | null>(null);
+  const [showHarness, setShowHarness] = useState(true);
 
   function toggleStep(index: number) {
     setCompletedSteps((prev) => {
@@ -69,7 +70,7 @@ export function RepairGuideSheet({ item, hostType, open, onClose }: RepairGuideS
         {/* Two-panel body */}
         <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
           {/* Left panel — repair guide */}
-          <div className="flex w-[44%] shrink-0 flex-col overflow-y-auto border-r border-border/30 px-5 py-4">
+          <div className={cn("flex flex-col overflow-y-auto border-r border-border/30 px-5 py-4", showHarness ? "w-[44%] shrink-0" : "flex-1 min-w-0")}>
             <div className="space-y-3">
               {guide ? (
                 <>
@@ -246,37 +247,62 @@ export function RepairGuideSheet({ item, hostType, open, onClose }: RepairGuideS
             </div>
           </div>
 
-          {/* Right panel — harness diagram */}
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div className="flex items-center justify-between border-b border-border/30 bg-muted/10 px-3 py-1.5" style={{ flexShrink: 0 }}>
-              <span className="text-[11px] font-medium text-muted-foreground">
-                {focusedConnector
-                  ? `Locating: ${focusedConnector}`
-                  : hostType === "telestation" ? "Telestation harness" : "Vehicle diagram"}
-              </span>
-              {focusedConnector && (
-                <button
-                  type="button"
-                  onClick={() => setFocusedConnector(null)}
-                  className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3 w-3" />
-                  Reset view
-                </button>
-              )}
+          {/* Right panel — harness diagram (hidden when showHarness=false) */}
+          {showHarness && (
+            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <div className="flex items-center justify-between border-b border-border/30 bg-muted/10 px-3 py-1.5" style={{ flexShrink: 0 }}>
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  {focusedConnector
+                    ? `Locating: ${focusedConnector}`
+                    : hostType === "telestation" ? "Telestation harness" : "Vehicle diagram"}
+                </span>
+                <div className="flex items-center gap-2">
+                  {focusedConnector && (
+                    <button
+                      type="button"
+                      onClick={() => setFocusedConnector(null)}
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                      Reset view
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowHarness(false)}
+                    className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                  >
+                    <PanelRightClose className="h-3 w-3" />
+                    Hide
+                  </button>
+                </div>
+              </div>
+              <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+                {hostType === "telestation" ? (
+                  <TelestationDiagram
+                    focusTarget={focusedConnector ? { connectorId: focusedConnector } : undefined}
+                  />
+                ) : (
+                  <HarnessDiagram
+                    focusTarget={focusedConnector ? { connectorId: focusedConnector } : undefined}
+                  />
+                )}
+              </div>
             </div>
-            <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
-              {hostType === "telestation" ? (
-                <TelestationDiagram
-                  focusTarget={focusedConnector ? { connectorId: focusedConnector } : undefined}
-                />
-              ) : (
-                <HarnessDiagram
-                  focusTarget={focusedConnector ? { connectorId: focusedConnector } : undefined}
-                />
-              )}
+          )}
+          {/* Show panel button when hidden */}
+          {!showHarness && (
+            <div className="flex shrink-0 items-center border-l border-border/30 bg-muted/10 px-2 py-1.5">
+              <button
+                type="button"
+                onClick={() => setShowHarness(true)}
+                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                <PanelRightOpen className="h-3 w-3" />
+                Show
+              </button>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer */}

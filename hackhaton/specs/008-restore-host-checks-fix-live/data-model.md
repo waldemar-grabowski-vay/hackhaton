@@ -1,6 +1,6 @@
-# Phase 1 Data Model — Restore host check battery, fix Live Diagnostic regression
+# Phase 1 Data Model — Restore host check battery, fix Live Diagnostic regression, integrate Wilhelm + Ezequiel
 
-**Date**: 2026-05-11
+**Date**: 2026-05-11 (sections 1–12) · extended 2026-05-12 (section 13)
 **Status**: complete
 
 This file captures the shapes 008 touches — both the wire shape
@@ -267,3 +267,63 @@ The unit test `test_host_versions_collector.py` is extended to
 assert (a) REECU rows from the engine fixture get routed into
 `versions`, not `run.items` (FR-011), and (b) every non-REECU row
 in the engine fixture appears in `run.items` exactly once.
+
+---
+
+## 13. Host-type extensions (2026-05-12)
+
+The data model already supports VE hosts — `HostType.VEHICLE` and
+`HostType.TELESTATION` are declared in
+`backend/src/vayobd/models.py:37`, the inventory loader tags
+`ve-*` IDs as `VEHICLE`, and `parse_engine_report(host_type=…)`
+branches on it. 008 does not add a new model; it surfaces the
+existing fields in three places:
+
+### 13a. `Host` carries the type pill source
+
+```python
+class Host(BaseModel):
+    # ...existing fields...
+    type: HostType            # already there — drives the TS / VE pill
+    host_class: str           # already there — drives catalog_for(host_class)
+```
+
+The `/api/inventory` response already serialises `host.type` per
+007. The SPA's inventory dialog (FR-019) reads it directly; no
+new field, no new endpoint.
+
+### 13b. `HostDetailResponse` is host-type-agnostic
+
+The shape in §7 above is unchanged by VE. The collector populates
+`versions` from `parse_engine_report(report, host_type=host.type)`
+(already host-aware); `run.items` comes from
+`catalog_for(host.host_class)` (already host-class-aware). VE hosts
+return whatever the engine + catalog produce for them.
+
+### 13c. Live Diagnostic state-signal allowlist (extends; no new type)
+
+The live state-panel allowlist is a Python tuple in the backend
+(or constant in the frontend; `/speckit-plan` confirms at task
+time). It gains the VE entries:
+
+```python
+VE_STATE_SIGNALS_ADDED: tuple[str, ...] = (
+    "VE_ChA_SSMAN_State",
+    "VE_ChB_SSMAN_State",
+    "VE_PRND_STATE",
+    # …plus any further VE_* signals carried by Wilhelm's
+    # TS_diagnostic_tool/config.py TS_STATE_SIGNALS list.
+)
+```
+
+No new wire shape — the decoded-frame payload already streams
+arbitrary signal name + value pairs; the allowlist is purely a
+filter on what gets surfaced to the state panel.
+
+### 13d. ERRQ subpath resolution (no new type, just a lookup)
+
+`errq_bridge` (Python port of Wilhelm's) gains a second resolver
+path inside the same `ree-reecu` clone. The wire shape of the
+errq panel is unchanged: an array of decoded error rows. The
+subpath lookup is a configuration concern, not a data model
+concern — see `contracts/ve-errq.md` for the resolver contract.

@@ -11,6 +11,7 @@ import { ErrorBoundary } from "@/lib/ErrorBoundary";
 import { HostDetailPage } from "@/pages/HostDetailPage";
 import { LiveDiagnosticPage } from "@/pages/LiveDiagnostic/LiveDiagnosticPage";
 import { PickerPage } from "@/pages/PickerPage";
+import { RepairGuidesPage } from "@/pages/RepairGuidesPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,6 +38,7 @@ export default function App() {
                 <Route path="/" element={<PickerPage />} />
                 <Route path="/host/:hostId" element={<HostDetailPage />} />
                 <Route path="/live" element={<LiveDiagnosticPage />} />
+                <Route path="/repair-guides" element={<RepairGuidesPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>

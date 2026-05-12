@@ -24,7 +24,7 @@ def test_telestation_catalog_contains_expected_items() -> None:
     assert "display_surface_reachable" in ids
     assert "expected_input_devices_connected" in ids
     assert "telestation_config_valid" in ids
-    assert "main_can_bus_reachable" not in ids
+    assert "main_can_bus_reachable" in ids
 
 
 def test_catalog_ids_stable_across_calls() -> None:

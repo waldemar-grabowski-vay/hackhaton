@@ -2,7 +2,8 @@
 
 **Owner**: `backend/src/vayobd/api/host_versions.py` (new thin wrapper);
 underpinned by `backend/src/vayobd/live/session.py` (existing).
-**Phase**: 008 — implements Clarification Q1 + Q4.
+**Phase**: 008 — implements 2026-05-11 Clarification Q1 + Q4; extended
+2026-05-12 for VE-host capture (Q1 of the 2026-05-12 round).
 
 This file specifies the contract between the host-detail collector
 and the Live Diagnostic code path that supplies REECU values.
@@ -199,6 +200,33 @@ Same FR-015 stricture as 007: never log raw SSH stderr, never log
 agent socket paths or key material.
 
 ---
+
+## 8a. Host-type behaviour (2026-05-12)
+
+The capture function takes `host_type: HostType` (or reads it from
+the `Host` object passed in). The `host_type` parameter has two
+effects, both confined to the post-decode field-extraction step;
+the SSH + candump + DBC-decode pipeline is **unchanged**:
+
+1. **Signal allowlist passed to the decoder**: TS hosts get the
+   pre-008 allowlist (`TS_FW_VERSION_*`, `TS_GW_VERSION_*`,
+   `TS_SEC_STATE`, plus the existing TS state-panel allowlist).
+   VE hosts get the TS allowlist **plus** the VE signals Wilhelm's
+   desktop tool surfaces (`VE_ChA_SSMAN_State`, `VE_ChB_SSMAN_State`,
+   `VE_PRND_STATE`, and any further `VE_*` in
+   `TS_diagnostic_tool/config.py::TS_STATE_SIGNALS`). See
+   `contracts/ve-signals.md` for the source-list grep at task time.
+2. **errq CSV resolver**: TS hosts read from the existing TS subpath
+   inside the local `ree-reecu` clone; VE hosts read from the VE
+   subpath (preliminary
+   `{ree_reecu_root}/ve/6_tools/VE_Generators/Errq/ve_errq_cfg_generator/csv/`).
+   Concrete path is a `/speckit-tasks` lookup against the actual
+   clone. See `contracts/ve-errq.md`.
+
+Both effects are pass-throughs on the *existing* one-shot capture
+flow. No new transport, no new code path, no new contract surface.
+The capture window (4 s) and signal extraction strategy stay the
+same.
 
 ## 9. What this contract intentionally omits
 

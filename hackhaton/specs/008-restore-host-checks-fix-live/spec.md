@@ -15,6 +15,22 @@
 - Q: How does the host-detail page consume the REECU pipeline (one-shot session, piggyback, long-lived background, or embedded streaming)? → A: One-shot capture per page mount. The host-detail backend opens a Live-Diagnostic-equivalent SSH + candump session for the requested host, captures roughly 3–5 seconds of frames (enough to catch the periodic ERRQ_Byte01..64 cycle and the version-bearing signals), decodes via the TS DBC, extracts the REECU fields, then closes the session. The 60-second TTL cache from 007 amortises repeated visits — a re-mount within the TTL serves the cached REECU + non-REECU response without re-spawning either pipeline. The capture is invisible to the operator; the page renders a loading state (em-dash + spinner, 007's pattern) while it's in flight. If the operator already has a `/live` session open against the same host in another tab, the host-detail capture is an independent SSH spawn — same coexistence pattern 004 already supports.
 - Q: Scope of the restored check battery — every pre-007 check, a defined core subset, or scope-at-plan-time? → A: Restore every non-REECU check from the pre-007 catalog: vDrive package drift, Peplink cellular + VPN, network reachability, camera / USB enumeration, WAKE line, vehicle / telestation configuration validity, harness / telestation diagrams, repair guides registered for each failing check. Same coverage the deleted `catalog.py` provided. Pruning to a smaller set, if any check turns out to be dead weight in practice, is a follow-up — not part of 008.
 
+### Session 2026-05-12
+
+- Q: Where do the VE-side errq CSVs come from at runtime? → A: The **same `ree-reecu` clone** the .deb already uses for TS errq, under a VE-specific subpath. The .deb packaging from 006 is unchanged — no new bundle, no second repo. `errq_bridge` (Wilhelm's) gains an additional resolver for the VE subpath (concrete path is a `/speckit-plan` lookup inside the existing clone). If the clone is incomplete or the VE subpath is missing, the panel falls back to the 004 FR-012 degraded-mode message ("errq data unavailable for this host") — same fallback as for missing TS CSVs. This decision keeps spec 008 strictly inside the SPA + backend; it does NOT touch 006's `.deb` packaging surface.
+- Q: Should the `/live` inventory / host-picker dialog visually distinguish TS vs VE hosts? → A: Yes — show a small **TS / VE pill** next to each host id. Each row in the inventory list / host-picker dialog renders the host id PLUS a small typed pill (`TS` for telestation, `VE` for vehicle). The pill source is `host.type` (already populated by the inventory loader via the `ve-*` / `ts-*` id prefix). Render-only change; no backend work. Same visual vocabulary the SPA already uses for typed badges elsewhere — slate background for TS, distinct accent for VE (palette pick deferred to `/speckit-plan`, but it MUST follow the 002 sun-theme tokens, not a new colour). Sets operator expectations for what state signals they'll see before they click Connect.
+- Q: Should the 008 quickstart acceptance walkthrough explicitly test against BOTH a TS host AND a VE host? → A: Yes — add a VE-host walkthrough step. The quickstart in `specs/008-restore-host-checks-fix-live/quickstart.md` MUST gain a paired step (or sub-step) that runs the same Live Diagnostic + host-detail flow against a reachable VE host. The VE step verifies: (a) the inventory list includes the VE host as selectable; (b) Connect against the VE host streams decoded CAN signals within ten seconds, with the VE-channel state signals (`VE_ChA_SSMAN_State`, `VE_ChB_SSMAN_State`, `VE_PRND_STATE`) visible in the state panel; (c) the errq panel either shows decoded VE-side errors (when the VE-specific errq CSV source is present) or the plain-language degraded-mode message (when it's not); (d) the host-detail page for the same VE host renders the version card with whatever fields apply for vehicles (the engine's `parse_engine_report(host_type="vehicle", …)` path already produces this) AND the categorised check battery from `catalog_for("vehicle")`. The TS step is unchanged; the VE step is additive. Without this, the developer running the quickstart only exercises TS and risks shipping VE regressions.
+- Q: How should the Live Diagnostic errq panel behave when the connected host is a VE (vehicle), given Wilhelm's errq CSVs are TS-specific? → A: Show TS-style errq panel using **VE-specific CSVs**. The Live Diagnostic backend MUST resolve a VE-specific errq CSV path (alongside the existing TS one) when the connected host is a vehicle, and feed those CSVs into the **same** `errq_bridge` / decode pipeline Wilhelm's tool already uses for TS. The errq panel renders identically regardless of host type — only the underlying CSV source switches. The concrete VE errq CSV path inside `ree-reecu` (or wherever the team stages it) is a `/speckit-plan` lookup; the spec records the rule, not the path. If the VE CSV source is missing at runtime, the panel falls back to the 004 FR-012 degraded-mode message ("errq data unavailable for this host") — never a silent empty panel and never fabricated data.
+- Q: What scope of Wilhelm's `TS_DIAG_TOOL_V1.9` desktop work should 008 port into the hackhaton web app? → A: Port the VE state signals onto `/live`. The desktop tool's `TS_STATE_SIGNALS` list (despite the name) already includes VE-channel signals — `VE_ChA_SSMAN_State`, `VE_ChB_SSMAN_State`, `VE_PRND_STATE`, plus any other `VE_*` entries Wilhelm's `TS_diagnostic_tool/config.py` carries. The web app's Live Diagnostic state panel MUST surface those VE-channel signals alongside the TS-channel ones it already shows, using the same DBC-decode code path, same plain-language degraded-mode wording, same loading affordance. The REECU pipeline that the host-detail page consumes (FR-002 / FR-010) MUST ALSO pick up VE signals when the connected host is a vehicle (VE), not just a telestation (TS). Minimal new code: it's a signal-list and host-type pass-through, not a new transport. Out of scope for this Q (deferred): per-channel `errq_aggregator.py`, multi-bus auto-detect across every UP `can*` interface, severity grouping into `IMMEDIATE_PULLOVER / SAFETY / TS_BRAKES / TS_STEERING / ERROR_GROUP / TS_THROTTLE`. Those become follow-up spec material.
+- Q: What happens to Ezequiel's `specs/005-ve-harness-repair-guide/` directory (spec.md + `checklists/requirements.md`) during the integration into 008? → A: Pull it into the repo, but rename to the next free slot: **`specs/009-ve-harness-repair-guide/`**. The directory `specs/005-ve-harness-repair-guide/` on Ezequiel's branch is copied verbatim — `spec.md` + `checklists/requirements.md` — into `specs/009-ve-harness-repair-guide/`. The rename avoids colliding with the local `specs/005-ui-readability-pass/`. Inside the renamed `spec.md`, the `**Feature Branch**: ` field is updated to `009-ve-harness-repair-guide` for self-consistency; any inline references to "005" that mean "this feature" are repointed to "009". The 009 spec stays as the rationale doc for why the harness/guide frontend looks the way it does — but the CODE lands as part of 008's implementation, not under a separate 009 branch. The expected reading order for future contributors is: "008 spec describes the integration mechanics; 009 spec describes the design intent of the harness/guide UI 008 absorbed."
+- Q: For the OTHER pre-007 deletions (the result / states components, `RunResultPage`, `api/runs.ts`, `api/runs.py`, `backend/src/vayobd/checks/*`, `engine/ree-debug-engine/src/checks/*`), where do they restore from? → A: Split by tier. Ezequiel's branch is primarily a **frontend** contribution; its backend and engine code is **stale** (from before recent pushes) and would silently regress 006/007 work. Restoration rule:
+  - **Frontend pre-007 deletions** (`frontend/src/components/result/CategoryBadge.tsx`, `ResultGroup.tsx`, `ResultHero.tsx`, `DiagnosticItemRow.tsx`, `RunResultPage`, the `frontend/src/components/states/{Running,Partial,Unreachable,EmptyInventory}State.tsx`, `frontend/src/api/runs.ts`) → restore from `origin/005-ve-harness-repair-guide`, one consistent frontend source alongside the harness/guide cherry-pick.
+  - **Backend pre-007 deletions** (`backend/src/vayobd/checks/{__init__,catalog,executor,peplink,ree_cli,runner}.py`, `backend/src/vayobd/api/runs.py`) → restore from the local pre-007 commit `01d3979`. Do NOT pull from Ezequiel's branch; his snapshot precedes recent backend pushes.
+  - **Engine pre-007 deletions** (`engine/ree-debug-engine/src/checks/{cameras,connectivity,decode,mod,reecu,usb}.rs`) → restore from `01d3979` for the same reason; the Rust engine has moved forward since Ezequiel's fork.
+- Q: How should the new top-level Repair Guides library surface (Ezequiel's `RepairGuidesPage` + `RepairGuideLibraryDialog` + `guideLibrary.ts` + `App.tsx` route) be scoped in 008? → A: Add as **User Story 5** (P3, discoverable library). The cherry-pick pulls the three new files in; the `App.tsx` route delta from Ezequiel's branch lands; a chrome entry point (header link OR a secondary main-page affordance — `/speckit-plan` picks which) makes the library reachable without going through a failing host check first. The same `RepairGuideSheet` component renders guides whether opened from the library or from the host-detail check battery — one component, two entry points, no divergent code path. The library is NOT Developer-mode-gated; harness and repair knowledge is operator-facing, not developer-facing.
+- Q: When cherry-picking from Ezequiel's branch touches a file that 007 also modified (notably `strings.ts`, `connectorLocations.ts`, possibly `guides.ts`), what's the merge precedence? → A: 007 wins, Ezequiel's additions layer on top. The post-007 HEAD file is the merge base. Ezequiel's NEW keys / entries / blocks are layered on top (his +107 strings, +863 `connectorSpecs.ts` entries, +763 `guides.ts` entries, his `connectorLocations.ts` additions). Where the same key / id exists in both, 007's value wins — this preserves the FR-008 / FR-009 commitments. Implementation note: the `strings.ts` hand-merge that `research.md` already calls out for the 2-way (pre-007 HEAD ↔ post-007 HEAD) case now becomes a 3-way hand-merge with Ezequiel's branch as the third input, same precedence rule applied (007 wins on collision; otherwise the union of all three sources). Drives implementation choice toward `git checkout origin/005-ve-harness-repair-guide -- <path>` followed by a hand-reconciliation pass that re-introduces the 007 keys, rather than a clean `git cherry-pick`.
+- Q: Where should the integration of Ezequiel's `origin/005-ve-harness-repair-guide` work live relative to spec 008? → A: Cherry-pick UI deltas into 008. 008 still owns "restore checks + fix Live Diagnostic". From `origin/005-ve-harness-repair-guide` we cherry-pick ONLY the frontend deltas: the improved `HarnessDiagram.tsx`, `RepairGuideSheet.tsx`, `TelestationDiagram.tsx`; the new `RepairGuideLibraryDialog.tsx`, `RepairGuidesPage.tsx`, `guideLibrary.ts`; the four new harness assets (`ve-pigtail-f61-harness.jpg`, `ve-reebox-power-cable-harness.jpg`, `ve-vs040815-harness-p1.png`, `ve-vs040815-harness.pdf`); and the additive blocks in `connectorSpecs.ts` (+863), `guides.ts` (+763), `connectorLocations.ts`, and `strings.ts` (+107). This SUPERSEDES the 2026-05-11 "restore from `git checkout HEAD --`" answer for the harness / repair-guide UI surface specifically — those files are now sourced from Ezequiel's branch, not HEAD. The other deleted files split by tier (per the same-session clarification below): frontend pre-007 deletions (the remaining result components like `CategoryBadge`, `ResultGroup`, `ResultHero`, `DiagnosticItemRow`, the `states/*` components, `RunResultPage`, `api/runs.ts`) also come from Ezequiel's branch for source consistency; backend pre-007 deletions (`backend/src/vayobd/checks/*`, `backend/src/vayobd/api/runs.py`) and engine Rust deletions (`engine/ree-debug-engine/src/checks/*`) restore from the local pre-007 commit `01d3979` because his branch's backend/engine snapshot is stale. Ezequiel's BACKEND deletions (`api/host_versions.py`, `_internal/version_cache.py`, `api/refresh.py`, `install/*`) are explicitly NOT honoured — those files stay because FR-008 / FR-009 / FR-015 commit to keeping 007's version-pull surface intact. Wilhelm's `TS_DIAG_TOOL_V1.9` is already an ancestor of the current branch (PR #1, commit `b3e79ff`) — no integration action required.
+
 ## User Scenarios & Testing *(mandatory)*
 
 007 (the version-pull tweak round) over-removed. In US3 of 007 the
@@ -125,11 +141,15 @@ US1 because the two surfaces are independent.
 **Independent Test**: With Developer mode on (UI switch toggled,
 backend `developer_mode` left at default if needed), click the
 "Live diagnostic" entry point. Within ten seconds of clicking
-Connect against a reachable TS host, decoded CAN signals appear in
-the state panel. The errq panel either shows active errors OR
-shows a clear degraded-mode message (per 004 FR-012) — never a
-silent blank surface, never an unhandled exception in the dev
-console, never a 404 / 5xx in the network tab.
+Connect against a reachable host — **TS or VE** — decoded CAN
+signals appear in the state panel. For a VE host the panel
+includes `VE_ChA_SSMAN_State`, `VE_ChB_SSMAN_State`,
+`VE_PRND_STATE`, and any other `VE_*` signal Wilhelm's
+`TS_diagnostic_tool/config.py` already lists. The errq panel
+either shows active errors OR shows a clear degraded-mode
+message (per 004 FR-012) — never a silent blank surface, never
+an unhandled exception in the dev console, never a 404 / 5xx
+in the network tab.
 
 **Acceptance Scenarios**:
 
@@ -138,21 +158,28 @@ console, never a 404 / 5xx in the network tab.
    page renders its connection dialog and the inventory list
    populates within five seconds — no blank page, no console
    error, no 4xx/5xx on any request.
-2. **Given** the operator picks a host and clicks Connect, **When**
-   the backend invokes ssh, **Then** decoded CAN signals begin
-   updating in the state panel within ten seconds OR a
-   plain-language connection error is surfaced with a Retry action
-   (matches 004 FR-006 / 005 FR-001).
-3. **Given** the local `ree-reecu` clone is incomplete (the
+2. **Given** the operator picks a host (TS or VE) and clicks
+   Connect, **When** the backend invokes ssh, **Then** decoded
+   CAN signals begin updating in the state panel within ten
+   seconds OR a plain-language connection error is surfaced
+   with a Retry action (matches 004 FR-006 / 005 FR-001).
+3. **Given** the connected host is a VE, **When** the state
+   panel populates, **Then** the VE-channel state signals
+   (`VE_ChA_SSMAN_State`, `VE_ChB_SSMAN_State`, `VE_PRND_STATE`,
+   and any other `VE_*` entry in Wilhelm's `TS_STATE_SIGNALS`)
+   appear alongside the TS-channel ones, decoded through the
+   same DBC and rendered through the same state-panel
+   component — no separate VE-only surface.
+4. **Given** the local `ree-reecu` clone is incomplete (the
    `live_errq_degraded` warning the user is currently seeing),
    **When** the page mounts, **Then** the errq panel shows the
    degraded-mode message from 004 FR-012 — the rest of the
    surface remains functional (decoded signals + raw frames).
-4. **Given** Developer mode is off, **When** the operator navigates
+5. **Given** Developer mode is off, **When** the operator navigates
    directly to `/live`, **Then** the gate from 004 FR-002 still
    redirects them to the main page (007's UI-toggle change
    preserves this — verify it survived).
-5. **Given** any string the Live Diagnostic surface tries to
+6. **Given** any string the Live Diagnostic surface tries to
    render through `strings.ts`, **When** the page renders,
    **Then** no string lookup returns the literal path key
    (a string regression from 007's scrub would surface as
@@ -257,6 +284,58 @@ plain-language error states, no "Run check" wording.
 
 ---
 
+### User Story 5 - Browse the repair guide library independent of host (Priority: P3)
+
+The repair guide catalogue (harness diagrams, connector chips,
+step-by-step procedures) today is only reachable from a failing
+check on a host-detail page via `RepairGuideSheet`. An operator
+preparing for a field visit, or a new engineer trying to learn
+the harness layout, has no surface to browse the catalogue
+ahead of time. This story adds a top-level "Repair guides"
+surface — the `RepairGuidesPage` and `RepairGuideLibraryDialog`
+cherry-picked from Ezequiel's branch — so operators can open
+the catalogue from the app chrome without needing a failing
+host check first.
+
+**Why this priority**: P3 because US1–US4 already deliver the
+regression-recovery the user explicitly requested. The library
+is additive value. Without it Ezequiel's catalogue improvements
+(+863 `connectorSpecs.ts`, +763 `guides.ts`, four new harness
+assets) are reachable only via the host-detail sheet — usable,
+but suboptimal.
+
+**Independent Test**: From any page, click the "Repair guides"
+chrome entry point. The library opens, lists every registered
+guide, and each entry opens the same `RepairGuideSheet` the
+host-detail surface uses — identical component, identical
+data, no divergent code path.
+
+**Acceptance Scenarios**:
+
+1. **Given** an operator is on any page in the SPA,
+   **When** they click the "Repair guides" chrome entry point,
+   **Then** `RepairGuidesPage` mounts and lists every guide
+   registered in `guideLibrary.ts`, grouped sensibly
+   (harness / host type — `/speckit-plan` picks the grouping
+   key).
+2. **Given** the library page is open, **When** the operator
+   clicks a guide entry, **Then** the `RepairGuideSheet`
+   opens with the harness diagram + step list — same component
+   instance and same props shape as when opened from a failing
+   host-detail check.
+3. **Given** the operator opens the same guide both from the
+   library AND from a failing host-detail check, **When** they
+   compare the two sheets, **Then** the rendering is identical
+   (same connector chips, same step copy, same harness tab
+   default) — no divergent code path, no duplicated guide
+   definition.
+4. **Given** Developer mode is **off**, **When** the operator
+   looks at the chrome, **Then** the "Repair guides" entry
+   point is visible. The library is operator-facing knowledge,
+   not a developer surface — no gating.
+
+---
+
 ### Edge Cases
 
 - **Engine binary present but no inventory**: 007's deletion of the
@@ -303,6 +382,24 @@ plain-language error states, no "Run check" wording.
   the .deb — meaning the runtime resolver is finding the
   source-tree binary first (probably via PATH). The launcher
   must prefer the .deb-installed binary when both are present.
+- **Ezequiel's branch is forked from a pre-007 base**:
+  `origin/005-ve-harness-repair-guide` deletes
+  `backend/src/vayobd/api/host_versions.py`,
+  `backend/src/vayobd/_internal/version_cache.py`,
+  `backend/src/vayobd/api/refresh.py`, and the entire
+  `backend/src/vayobd/install/` workflow, and modifies
+  `backend/src/vayobd/{app,models,config,settings_file}.py`
+  + `live/*` + `models.py` + `tests/conftest.py` against a
+  pre-007 base. The integration is a **frontend-only**
+  cherry-pick — those backend deletions and modifications
+  are NOT carried over. The cherry-pick scripts / git
+  commands used during implementation MUST limit their path
+  scope to `frontend/**` (plus the assets under
+  `frontend/public/`) so 007's backend surface cannot
+  regress through this integration path. Backend and engine
+  pre-007 restorations come from local commit `01d3979`,
+  NOT from Ezequiel's branch, because his backend/engine
+  snapshot predates the recent pushes the project depends on.
 
 ## Requirements *(mandatory)*
 
@@ -329,11 +426,17 @@ plain-language error states, no "Run check" wording.
      from CAN signals in the Live Diagnostic surface. The host-
      detail backend consults the same code path Live Diagnostic
      uses (candump over SSH → cantools decode against the TS
-     DBC → field extraction) rather than re-deriving these
+     APP DBC → field extraction) rather than re-deriving these
      values via `ree-debug-cli`. Implementation may reuse the
      existing Live Diagnostic session if one is open, or open
      a one-shot decode for a few seconds, whichever the
-     `/speckit-plan` step finds simplest.
+     `/speckit-plan` step finds simplest. Per the 2026-05-12
+     clarification, the pipeline MUST also extract VE-channel
+     state signals (`VE_ChA_SSMAN_State`, `VE_ChB_SSMAN_State`,
+     `VE_PRND_STATE`, and any other `VE_*` signal in Wilhelm's
+     `TS_diagnostic_tool/config.py` `TS_STATE_SIGNALS` list)
+     when the connected host is a vehicle — same DBC, same
+     decode path, no separate VE transport.
   2. **Non-REECU pipeline** — vDrive package version
      (dpkg-query), Peplink cellular + VPN (HTTP probes against
      the Peplink router), network reachability (ping / TCP
@@ -355,19 +458,53 @@ plain-language error states, no "Run check" wording.
   `UnreachableState`, `StaggeredList`, `RunResultPage` (or the
   subset of them that the new host-detail page actually
   composes — whichever is the smallest viable set that delivers
-  US1's acceptance scenarios).
+  US1's acceptance scenarios). Per the 2026-05-12 clarifications,
+  restoration source is tiered:
+  - **Frontend** (harness / repair-guide UI AND the remaining
+    result / states components): cherry-pick from
+    `origin/005-ve-harness-repair-guide` — improved
+    `HarnessDiagram`, `RepairGuideSheet`, `TelestationDiagram`
+    plus the new `RepairGuideLibraryDialog`, `RepairGuidesPage`,
+    `guideLibrary.ts`, AND the pre-007 `CategoryBadge`,
+    `ResultGroup`, `ResultHero`, `DiagnosticItemRow`,
+    `RunningState`, `PartialRunState`, `UnreachableState`,
+    `EmptyInventoryState`, `RunResultPage`, `frontend/src/api/runs.ts`.
+  - **Backend** pre-007 deletions (`backend/src/vayobd/checks/*`,
+    `backend/src/vayobd/api/runs.py`) and **engine** Rust
+    deletions (`engine/ree-debug-engine/src/checks/*`):
+    restore from local pre-007 commit `01d3979` — NOT from
+    Ezequiel's branch (his backend / engine snapshot is stale
+    relative to recent pushes and would regress 006 / 007 work).
 - **FR-004**: The Live Diagnostic page MUST mount, render its
   connection dialog, and populate the inventory list within five
   seconds of navigation, with no console errors, no failed
   requests in the network tab, and no literal `strings.ts` path
   keys visible on the page.
-- **FR-005**: A reachable TS host connected through Live
-  Diagnostic MUST stream decoded CAN signals to the state panel
-  within ten seconds of clicking Connect (matches 004 SC-001).
+- **FR-005**: A reachable host (TS **or** VE) connected through
+  Live Diagnostic MUST stream decoded CAN signals to the state
+  panel within ten seconds of clicking Connect (matches 004
+  SC-001). For VE hosts, the state panel MUST surface
+  `VE_ChA_SSMAN_State`, `VE_ChB_SSMAN_State`, `VE_PRND_STATE`,
+  and any other `VE_*` signal carried by Wilhelm's
+  `TS_diagnostic_tool/config.py` `TS_STATE_SIGNALS` list,
+  alongside the TS-channel signals — same decoded-frame
+  pipeline, same loading affordance, same plain-language
+  degraded-mode wording. No separate VE transport / DBC /
+  decode path: it is a signal-list pass-through.
 - **FR-006**: The Live Diagnostic surface MUST tolerate the
   same degraded states 004 defined — missing errq CSVs, missing
   or stale DBC, ssh failures — with the same plain-language
-  recovery copy 005 specified.
+  recovery copy 005 specified. Tolerance applies identically to
+  TS-host and VE-host sessions. For VE hosts, the errq panel
+  MUST resolve a **VE-specific errq CSV subpath** inside the
+  **same** local `ree-reecu` clone the runtime already uses for
+  TS errq (concrete subpath determined at `/speckit-plan` time)
+  and feed it into the same `errq_bridge` decode pipeline used
+  for TS hosts. The .deb packaging from 006 is NOT modified by
+  008 — no new bundle, no second repo. If the VE subpath is
+  missing or the clone is incomplete, the panel falls back to
+  the 004 FR-012 degraded-mode message ("errq data unavailable
+  for this host") — never silent, never fabricated data.
 - **FR-007**: The `strings.ts` scrub from 007 MUST be reconciled
   with the restored check battery: every category label, every
   per-item description / action, every repair-guide copy line,
@@ -375,6 +512,14 @@ plain-language error states, no "Run check" wording.
   MUST be present in `strings.ts` and rendered through the same
   `t(path)` lookup the rest of the SPA uses. No literal
   `strings.xxx.yyy` path may surface in operator-visible copy.
+  Per the 2026-05-12 clarification, the `strings.ts`
+  reconciliation is a 3-way hand-merge: post-007 HEAD is the
+  base, Ezequiel's +107 lines from `origin/005-ve-harness-repair-guide`
+  layer on top, the pre-007 `runs / outcomes / result /
+  category / guide / item` blocks restore from `HEAD~N`. On any
+  key collision, the post-007 HEAD value wins. The same
+  precedence rule applies to `connectorLocations.ts`,
+  `connectorSpecs.ts`, and `guides.ts` if 007 also modified them.
 - **FR-008**: 007's version card MUST remain functional on the
   host-detail page in its post-007 form: per-field verdict
   pills (`match` / `drift` / `no-manifest` / `unavailable`),
@@ -424,6 +569,27 @@ plain-language error states, no "Run check" wording.
   005 found friction with). Use action-oriented copy
   ("Check this host", "Show details", etc.) consistent with
   what's already in `strings.ts`.
+- **FR-017**: The top-level repair guide library surface
+  (`RepairGuidesPage` + `RepairGuideLibraryDialog` +
+  `guideLibrary.ts`, cherry-picked from
+  `origin/005-ve-harness-repair-guide`) MUST be reachable
+  from a chrome entry point (header link or main-page
+  secondary action — `/speckit-plan` picks which) on every
+  page in the SPA. The entry point MUST NOT be gated by
+  Developer mode.
+- **FR-018**: A guide opened from the library MUST render
+  through the same `RepairGuideSheet` component instance and
+  data path as a guide opened from a failing check on the
+  host-detail page. There MUST NOT be two parallel guide
+  definitions — `guides.ts` is the single source of truth,
+  `guideLibrary.ts` is an index over it.
+- **FR-019**: The `/live` inventory list / host-picker dialog
+  MUST render a typed pill (`TS` / `VE`) next to each host id,
+  sourced from `host.type` (already populated by the inventory
+  loader). Pill styling follows the 002 sun-theme palette
+  tokens; the specific colour mapping for the VE pill is a
+  `/speckit-plan` decision but MUST NOT introduce a new
+  palette colour.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -485,6 +651,22 @@ plain-language error states, no "Run check" wording.
   binary at `engine/target/release/ree-debug-cli` is no longer
   silently preferred. Verifiable by inspecting the
   `engine_ready binary=…` log line at startup.
+- **SC-008**: After 008 lands, **100%** of guides registered in
+  `guideLibrary.ts` are reachable from the new chrome entry
+  point in **two clicks or fewer** (entry point → guide). The
+  same guides, when opened from a failing host-detail check,
+  render through the identical `RepairGuideSheet` component
+  with byte-identical output for the harness diagram, step
+  list, and connector chips.
+- **SC-009**: After 008 lands, a Live Diagnostic session
+  against a reachable VE host renders **every** `VE_*` state
+  signal listed in Wilhelm's
+  `TS_diagnostic_tool/config.py` `TS_STATE_SIGNALS` (at minimum
+  `VE_ChA_SSMAN_State`, `VE_ChB_SSMAN_State`, `VE_PRND_STATE`)
+  in the state panel within ten seconds of clicking Connect.
+  The same session against a TS host renders the TS-channel
+  signals unchanged — no regression of US2's TS path while
+  adding VE support.
 
 ## Assumptions
 

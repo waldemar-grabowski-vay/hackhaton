@@ -1,182 +1,219 @@
 ---
 
-description: "Task list for 008 — restore host check battery, fix Live Diagnostic regression, keep version pull surface"
+description: "Task list — Restore host check battery, fix Live Diagnostic regression, integrate Wilhelm + Ezequiel"
 ---
 
-# Tasks: Restore host check battery, fix Live Diagnostic regression, keep version pull surface
+# Tasks: Restore host check battery, fix Live Diagnostic regression, integrate Wilhelm + Ezequiel
 
 **Input**: Design documents from `/specs/008-restore-host-checks-fix-live/`
-**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
+**Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`, `contracts/` (http-api, reecu-pipeline, strings-merge, ezequiel-cherry-pick, ve-signals, ve-errq), `quickstart.md`
 
-**Tests**: The restored test files (`test_catalog.py`, `test_runs_endpoint.py`) come back as part of the file-restoration foundational phase. New tests for the REECU one-shot capture are included in US4. No new Playwright specs are added for US1's restored battery (the existing 005 / 007 specs continue to cover the surfaces 008 brings back); a new spec is added for US3's combined layout.
+**Tests**: Test tasks are included where contracts or `data-model.md` explicitly name fixture / unit / e2e files. They are interleaved with implementation rather than enforced TDD-first — the constitution prioritises Ship Fast (Principle II) and a working demo, not red-green-refactor ceremony.
 
-**Organization**: Tasks are grouped by user story to enable independent implementation and testing. Foundational restoration in Phase 2 unblocks every user story; after that US1/US2/US3 can be staffed in parallel (US3 has a soft dependency on US1's wiring).
+**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (US1, US2, US3, US4)
-- All file paths are repo-relative from the `hackhaton/` root
+- **[Story]**: Which user story this task belongs to (US1–US5)
+- File paths are **relative to the repo root** (`/home/waldemar-grabowski/GitHub/hackhathon/`)
 
 ## Path Conventions
 
-- Web app monorepo: `backend/src/vayobd/...`, `frontend/src/...`
-- The .deb / packaging tree is unchanged by 008 — no `packaging/` tasks
+Web app inside the monorepo:
+
+- Backend: `hackhaton/backend/src/vayobd/`
+- Frontend: `hackhaton/frontend/src/`
+- Engine: `hackhaton/engine/ree-debug-engine/src/`
+- Specs / docs: `hackhaton/specs/008-restore-host-checks-fix-live/`
+- Desktop reference (read-only): `TS_diagnostic_tool/`
+
+Restoration sources:
+
+- `origin/005-ve-harness-repair-guide` — Ezequiel's branch (frontend tier)
+- `01d3979` — local pre-007 commit (backend + engine tiers)
 
 ---
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Pre-flight checks before any restoration runs. This is a tweak round on top of 007 — no new directories, no new packages.
+**Purpose**: Verify the branch / clone state required for restoration and lookups. No code edits.
 
-- [X] T001 Verify `git status --short | grep "^ D "` lists exactly the 22 deleted paths captured in `research.md` § 2 — confirmed 22 deletions match
-- [X] T002 [P] Snapshot the post-007 `frontend/src/strings.ts` for the hand-merge step — saved to /tmp/strings.post007.ts (130 lines)
+- [X] T001 Verify the working tree is on `008-restore-host-checks-fix-live`. **Result**: branch created from `006-deb-package-distribution` HEAD (commit `ff9eaae`). Surprise — all 21 "deleted" files were present in HEAD (baked in by WIP commit `d69884d`); plan-adapted to merge rather than restore.
+- [X] T002 [P] Confirm `ree-reecu` clone path. **Result**: `/home/waldemar-grabowski/GitHub/ree-reecu` per `~/.config/vayobd/settings.toml`.
+- [X] T003 [P] Find the VE errq subpath. **Result**: **does not exist** in the current clone (`find $REE_REECU_ROOT/ve -name "*errq*"` returns empty). TS path is `/home/waldemar-grabowski/GitHub/ree-reecu/ts/6_tools/TS_Generators/Errq/ts_errq_cfg_generator/csv/`. VE resolver in T034 bakes in the analogous `/ve/6_tools/VE_Generators/Errq/ve_errq_cfg_generator/csv/` path; **at runtime** the VE branch will exercise FR-012 degraded-mode (per `contracts/ve-errq.md` VE-ERRQ-2/4) until the team populates the VE subpath.
+- [X] T004 [P] Grep Wilhelm's VE state-signal list. **Result**: `VE_ChA_SSMAN_State`, `VE_ChB_SSMAN_State`, `VE_PRND_STATE` (3 signals).
+- [X] T005 [P] Verify refs reachable. **Result**: `origin/005-ve-harness-repair-guide` → `e944985`; `01d3979` → `01d3979`.
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: The `git checkout` restorations and the hand-merge of `strings.ts`. These MUST land before any of US1's restored components can render. Each user story depends on this phase being complete.
+**Purpose**: Tiered restoration cherry-pick + 3-way merges + route wiring + spec dir rename. Every user story depends on these files existing in the working tree.
 
-**⚠️ CRITICAL**: No user-story work may begin until this phase is complete. Once these tasks are done, US1/US2/US3 can be picked up by separate developers in parallel.
+**⚠️ CRITICAL**: No user story work can begin until this phase is complete. The Tier A / B / C cherry-pick tasks (T006–T011) can run in parallel; the 3-way merge tasks (T012–T015) depend on T006 (`HarnessDiagram` etc. need to be in place before strings.ts is reconciled against them).
 
-### Backend file restorations (mechanical)
+### Tier A — Frontend from `origin/005-ve-harness-repair-guide`
 
-- [X] T003 [P] Restore `backend/src/vayobd/api/runs.py` via git checkout HEAD
-- [X] T004 [P] Restore the `backend/src/vayobd/checks/` package (six files) via git checkout HEAD
-- [X] T005 [P] Restore `backend/tests/integration/test_runs_endpoint.py` via git checkout HEAD
-- [X] T006 [P] Restore `backend/tests/unit/test_catalog.py` via git checkout HEAD
-- [X] T006a Restore `backend/src/vayobd/dependencies.py` via git checkout HEAD — required for `runs.py`'s `get_executor` import (discovered during T012 green-build run)
+- [X] T006 Tier A.1 — improved replacements. **Adapted**: clean checkout would have clobbered HEAD's improvements in `ResultGroup.tsx` (+46 lines: collapsible feature). Instead: small Ezequiel improvements applied to `HarnessDiagram.tsx` and `TelestationDiagram.tsx` via Edit (`?? "board"` fallback), and `RepairGuideSheet.tsx` 3-way merged via `git merge-file` (clean merge, no conflict).
+- [X] T007 [P] Tier A.2 — net-new files: 7 files cherry-picked from `origin/005-ve-harness-repair-guide` (3 components + 4 assets). All present.
+- [X] T008 [P] Tier A.3 — **NO-OP**: all 11 supposedly-deleted frontend files already exist in HEAD with content matching Ezequiel's branch (CategoryBadge, DiagnosticItemRow, ResultHero, EmptyInventoryState, PartialRunState, RunningState, UnreachableState, StaggeredList, RunResultPage, api/runs.ts byte-identical between HEAD and Ezequiel; `ResultGroup.tsx` HEAD has +46 lines Ezequiel doesn't — kept HEAD per "HEAD wins" rule).
 
-### Frontend file restorations (mechanical)
+### Tier B — Backend from local commit `01d3979`
 
-- [X] T007 [P] Restore `frontend/src/api/runs.ts` via git checkout HEAD
-- [X] T008 [P] Restore the entire `frontend/src/components/result/` directory (seven files) via git checkout HEAD; ALSO removed two `// eslint-disable-next-line react-hooks/exhaustive-deps` comments referencing an unloaded rule (HarnessDiagram.tsx:153, TelestationDiagram.tsx:161) — were lint-blocking
-- [X] T009 [P] Restore the deleted state components + StaggeredList + RunResultPage via git checkout HEAD
+- [X] T009 [P] **NO-OP**: backend `checks/*` + `api/runs.py` all present in HEAD with the same or improved content vs `01d3979`. Small recent improvements in `catalog.py` (+6 -6), `executor.py` (+6 -2), `runner.py` (+4 -0) — KEPT per "HEAD wins" rule.
+- [X] T010 [P] **NO-OP**: `test_runs_endpoint.py` and `test_catalog.py` already exist and match `01d3979` byte-identically. Discovered + fixed one stale assertion in `test_catalog.py`: `main_can_bus_reachable` is now in the telestation catalog (catalog evolved post-`01d3979`); test updated from `not in ids` → `in ids`.
 
-### Hand-merge of `frontend/src/strings.ts`
+### Tier C — Engine Rust from local commit `01d3979`
 
-- [X] T010 Hand-merge `frontend/src/strings.ts` per `contracts/strings-merge.md` — restored pre-007 strings + spliced 007's `hostVersions` block between `inventory` and `runs`. Lint + build verified in T013.
+- [X] T011 [P] **NO-OP**: all 6 engine Rust check files in HEAD byte-identical to `01d3979`.
 
-### Re-register the `runs_router` in `app.py`
+### 3-way hand-merges (after T006 lands)
 
-- [X] T011 In `backend/src/vayobd/app.py`: added `from vayobd.api.runs import router as runs_router` to imports and `app.include_router(runs_router)` (no prefix — runs.py has its own `/api/runs` prefix baked in). 5 routers now registered.
+- [X] T012 3-way merge `hackhaton/frontend/src/strings.ts` — merged via `git merge-file` with merge-base `c84f2cf` against `origin/005-ve-harness-repair-guide`. **Clean merge, no conflict**. Build verified the merged file resolves all `t()` calls.
+- [X] T013 [P] 3-way merge `hackhaton/frontend/src/connectorLocations.ts` — merged via `git merge-file`. **Clean merge**.
+- [X] T014 [P] 3-way merge `hackhaton/frontend/src/connectorSpecs.ts` — merged via `git merge-file`. **Clean merge** (Ezequiel's +814 lines unioned with HEAD's content).
+- [X] T015 [P] 3-way merge `hackhaton/frontend/src/guides.ts` — merged via `git merge-file`. **Clean merge** (Ezequiel's +747 lines unioned with HEAD). Removed one unused `CIPG_F_SVG` import revealed by build.
 
-### Foundation green-build check
+### Route + module wiring
 
-- [X] T012 `cd backend && pytest -q` — **132 passed in 5.22s** after the T006a dependencies.py restore (was 120 in 007; the 12 new passes are the restored `test_catalog.py` + `test_runs_endpoint.py` covering pre-007 catalog rules)
-- [X] T013 `cd frontend && npm run build && npm run lint` — build clean (2110 modules), lint clean (`--max-warnings=0` passes) after removing the two dead eslint-disable comments in T008
+- [X] T016 `App.tsx` merged via `git merge-file` — 1 conflict at imports (HEAD had removed `RunResultPage` import; Ezequiel added `RepairGuidesPage` and kept `RunResultPage`). Resolved per "HEAD wins": kept HEAD's removal of `RunResultPage`, added Ezequiel's `RepairGuidesPage` import. The `/repair-guides` route is registered in the `<Routes>` block.
+- [X] T017 **NO-OP**: `runs_router` already included in `app.py:31, 159`.
 
-**Checkpoint**: Foundation ready. The check battery is back as code; the strings file is merged; the route is registered. User stories can begin in parallel.
+### Spec dir rename
+
+- [X] T018 Spec dir pulled + renamed: `hackhaton/specs/005-ve-harness-repair-guide/` (from Ezequiel) → `hackhaton/specs/009-ve-harness-repair-guide/`. `**Feature Branch**:` updated to `009-ve-harness-repair-guide` in the renamed `spec.md`.
+
+### Post-restoration verification
+
+- [X] T019 `git status --short | grep "^ D "` returns empty. ✓
+- [X] T020 [P] `npm run build && npm run lint` exits zero. ✓ Build emits `dist/` artefacts (1.16 MB JS bundle, gzip 315 kB; below the 500 kB warning threshold for individual assets is informational only). Fixes required during the gate: 3 TS type errors (`UnreachableState.tsx` `||` instead of `??` + `!` non-null on `__default`; `guides.ts` unused `CIPG_F_SVG` import; `RepairGuidesPage.tsx` unused `categoryLabel` import); 2 lint errors (`eslint-disable-next-line react-hooks/exhaustive-deps` referencing an unconfigured rule — removed in both diagram components).
+- [X] T021 [P] `pytest backend/ -q` → **132 passed, 1 warning** ✓. One pre-existing stale assertion in `test_catalog.py` fixed (see T010).
+
+**Checkpoint**: Foundation ready — all user story work can now begin.
 
 ---
 
-## Phase 3: User Story 1 — Restore the host check battery on the host-detail page (Priority: P1) 🎯 MVP slice 1
+## Phase 3: User Story 1 — Restore the host check battery on the host-detail page (Priority: P1) 🎯 MVP
 
-**Goal**: Picking a reachable TS or VE host shows BOTH the 007 version card AND the full categorised check battery (Peplink, network, cameras, WAKE, config, repair guides). The user immediately sees what they lost in 007.
+**Goal**: The host-detail page renders BOTH the 007 version card AND the full pre-007 categorised check battery — vDrive, Peplink, network, hardware, configuration, harness diagrams, repair-guide sheets — within 10 s of mount.
 
-**Independent Test**: Quickstart Step 6 (1–4) — open a host-detail page, verify both surfaces render within 10 s, fail one Peplink check on purpose, confirm it lands in "Needs attention" with a repair-guide button that opens a sheet over the page.
+**Independent Test**: Open the host-detail page for a reachable TS host. Within 10 s of landing, both the version card (vDrive / vREECU / SEC with verdict pills + as-of timestamps + source pill + refresh button) AND the categorised check battery (Working / Needs attention groups; failed items show repair-guide buttons) render. The page reads top-down: versions → checks → guides.
 
 ### Implementation for User Story 1
 
-- [X] T014 [US1] Extended `HostVersionsResponse` with `run: DiagnosticRun | None = None` + added `DiagnosticRun` / `RunOutcome` imports
-- [X] T015 [US1] Aliased `HostDetailResponse = HostVersionsResponse` rather than renaming — non-breaking + matches data-model.md naming
-- [X] T016 [US1] `_collect_versions` now runs the engine call and `execute_run` (via new `_run_check_battery`) in parallel via `asyncio.create_task`. Added `_filter_reecu_owned_items` that drops rows whose id contains vdrive/ree-drive/aurix/sec_version (FR-011)
-- [X] T017 [US1] Cache type parameter follows the alias naturally; no code edit to `version_cache.py`
-- [X] T018 [US1] Extended `test_host_versions_endpoint.py`: (a) asserts `run` non-null + has items (b) asserts FR-011 — no REECU patterns in `run.items` (c) updated `test_engine_unavailable_*` to reflect new semantics (source="live" when battery succeeds even though engine failed)
-- [X] T019 [P] [US1] Updated Zod schema in `hostVersions.ts` to include `run: diagnosticRunSchema.nullable()` — imports from `@/api/schemas`, no duplication
-- [X] T020 [US1] Added `<CheckBatterySection>` to `HostDetailPage.tsx` rendering `<ResultHero>` + `<ResultGroup>` for Working / Needs attention groups
-- [X] T021 [US1] `<CheckBatterySection>` routes `outcome=unreachable|timeout` → `<UnreachableState>`, `outcome=partial` → `<PartialRunState>`, `run is null while loading` → `<RunningState>`
-- [X] T022 [US1] `<DiagnosticItemRow>` + `<RepairGuideSheet>` restored via T008's git checkout; clicking a guide opens a sheet (URL unchanged) — pre-007 wiring intact
+- [ ] T022 [US1] Add `HostDetailResponse` model in `hackhaton/backend/src/vayobd/models.py` per `data-model.md` §7 (composes `Host`, `HostVersions`, optional `DiagnosticRun`, `source: Literal["live", "unavailable"]`)
+- [ ] T023 [US1] Extend `hackhaton/backend/src/vayobd/api/host_versions.py::_collect_versions` to compose the REECU pipeline + non-REECU pipeline outputs into a unified `HostDetailResponse` (per `data-model.md` §7 + `contracts/http-api.md` §1); rename the response type from `HostVersionsResponse` to `HostDetailResponse` at the FastAPI return-annotation site
+- [ ] T024 [US1] Change the `VersionCache[…]` type parameter at the import / instantiation site in `hackhaton/backend/src/vayobd/api/host_versions.py` from `HostVersionsResponse` to `HostDetailResponse` (per `research.md` §6 + `data-model.md` §8 — the generic itself is unchanged)
+- [ ] T025 [P] [US1] Create new module `hackhaton/backend/src/vayobd/api/_reecu_capture.py` implementing the 4-second bounded capture wrapper around `vayobd.live.session.LiveSession` (per `contracts/reecu-pipeline.md` §1–§8a — entry point `async def capture_reecu_state(host_id, host_type, settings) -> dict[str, VersionField]`; pass `host_type` through to choose the signal allowlist)
+- [ ] T026 [P] [US1] Add Zod schema for `HostDetailResponse` in `hackhaton/frontend/src/api/hostVersions.ts` (extend the existing `HostVersionsResponseSchema` with optional `run: DiagnosticRunSchema | null`; add `DiagnosticRunSchema` mirroring `data-model.md` §5)
+- [ ] T027 [P] [US1] Restore / verify fixture `hackhaton/backend/tests/fixtures/runs/ts_host_complete.json` (from `01d3979`; covers full pre-007 catalog for a TS host) — per `data-model.md` §12
+- [ ] T028 [P] [US1] Restore / verify fixture `hackhaton/backend/tests/fixtures/runs/ve_host_complete.json` (from `01d3979`; same coverage for a VE host)
+- [ ] T029 [US1] Update `hackhaton/backend/tests/unit/test_host_versions_collector.py` (restored by Phase 2) to assert FR-011 — REECU rows are routed into `versions`, NOT `run.items`; every non-REECU row in the engine fixture appears in `run.items` exactly once
 
-**Checkpoint**: After T022, the host-detail page renders versions + checks side by side. The MVP slice 1 ships value: the user sees their checks back.
+**Checkpoint**: At this point, US1 is fully functional and testable independently. The host-detail page renders the unified view; backend tests pass; the SPA's `HostDetailPage` can already consume the unified response (composition layout lives in Phase 5 / US3 but US1 itself is independently demoable).
 
 ---
 
 ## Phase 4: User Story 2 — Fix Live Diagnostic so it actually works (Priority: P1)
 
-**Goal**: With Developer mode on, clicking the TS_diag entry-point lands on `/live`, the page mounts with no console errors / no 404s, picking a reachable host and clicking Connect produces decoded CAN signals within 10 s.
+**Goal**: `/live` works end-to-end on both TS and VE hosts. Page mounts, inventory list populates (with `TS` / `VE` pill per row), Connect produces decoded CAN signals within 10 s, errq surfaces either active errors or a plain-language degraded-mode message. VE hosts additionally show `VE_*` state signals decoded through the same DBC.
 
-**Independent Test**: Quickstart Step 6 (5–7) against the .deb-installed runtime.
+**Independent Test**: With Developer mode on, click "Live diagnostic". The page mounts within 5 s with the connection dialog and inventory list (each row carrying a `TS` / `VE` pill). Pick a reachable TS host, click Connect → decoded TS-channel signals stream within 10 s. Pick a reachable VE host, click Connect → decoded `VE_ChA_SSMAN_State`, `VE_ChB_SSMAN_State`, `VE_PRND_STATE` (and any further `VE_*` from Wilhelm's list) appear in the state panel within 10 s.
 
-### Diagnosis spike
+### LD failure-mode fixes (research §1)
 
-- [X] T023 [US2] Spike findings (confirmed via the user's 0.0.6 log): root cause #1 = pyenv shim `~/.pyenv/shims/vayobd` shadows `/usr/bin/vayobd`, so `VAYOBD_STATIC_DIR` is never exported and the SPA is unmounted (every page → 404). Root cause #2 = DBC glob picks `Env.dbc` (legacy stub, 0 messages) over the application protocol DBC because the user's clone uses lowercase `ve/6_tools/CANoe_G4/dbcs/` (the original glob expected uppercase `DBCs/`). Errq degraded is real but already handled (004 FR-012). Fixed in T024 + T026/T027.
+- [ ] T030 [US2] Add SPA-mount detection warning in `hackhaton/backend/src/vayobd/cli.py::_cmd_run`: if `Settings.static_dir` is unset AND there's no reachable source-tree `frontend/dist/index.html`, log a one-line warning at startup pointing the user at `/usr/bin/vayobd` or `VAYOBD_STATIC_DIR=…` (per `research.md` §1a)
+- [ ] T031 [P] [US2] Tighten DBC glob patterns in `hackhaton/backend/src/vayobd/live/dbc_decoder.py::find_dbc` to include case-insensitive variants AND `ve/…/dbcs/`, `ts/…/dbcs/` paths; surface the matched DBC path + message count on the `/live` page status surface (per `research.md` §1b)
+- [ ] T032 [P] [US2] Surface errq degraded mode prominently in `hackhaton/frontend/src/pages/LiveDiagnosticPage.tsx` (a labelled banner in the errq panel, not just a backend log) per 004 FR-012 wording (per `research.md` §1c)
 
-### Likely root cause (per research §1a) — pyenv shim shadowing the .deb wrapper
+### VE state-signal port (contracts/ve-signals.md)
 
-- [X] T024 [US2] Added stderr warning in `cli.py::_cmd_run` when `settings.static_dir is None` AND no source-tree `frontend/dist/index.html` is reachable — surfaces the SPA-mount problem loudly instead of letting the operator wonder why every page is 404
-- [ ] T025 [US2] `vayobd doctor` pyenv-shim warning — **deferred to follow-up**; the T024 warning at `vayobd run` time already surfaces the same problem prominently
+- [ ] T033 [US2] Extend the state-panel signal allowlist in `hackhaton/backend/src/vayobd/live/candump_runner.py` (location to confirm at task time; alternative: a `frontend/src/lib/stateSignals.ts` constant) — add every `VE_*` entry from the T004 grep output; verify the existing TS_* entries remain untouched (per `contracts/ve-signals.md`)
 
-### DBC glob tightening (per research §1b)
+### VE errq CSV resolution (contracts/ve-errq.md)
 
-- [X] T026 [US2] Added `DBC_PREFERRED_PATTERNS` covering both uppercase `DBCs/` and lowercase `dbcs/`, for both `ts/` and `ve/` layouts, plus a generic `**/application_protocol*.dbc` catch-all
-- [X] T027 [US2] `find_dbc` is now a two-tier search: first scan `DBC_PREFERRED_PATTERNS` (application_protocol-only); only fall back to the legacy generic glob when no preferred match exists. Original 5 dbc_decoder tests still pass — backward compatible.
-- [ ] T028 [US2] Live diagnostic DBC-path chip with message-count surfacing — **deferred to follow-up**; the backend now reliably picks the right DBC so the page should decode signals when one exists. A visible chip would be a polish improvement but isn't blocking.
+- [ ] T034 [US2] Add the VE errq CSV resolver to `hackhaton/backend/src/vayobd/live/errq_bridge.py`: branch on `host_type` (`HostType.VEHICLE` → VE subpath from T003; otherwise TS subpath unchanged); preserve the 004 FR-012 degraded-mode fallback identically for both branches (per `contracts/ve-errq.md`)
 
-### errq degraded surfacing (per research §1c)
+### Inventory dialog UX
 
-- [ ] T029 [US2] ErrqPanel degraded-mode copy refinement — **deferred to follow-up**; 004 FR-012's degraded behaviour already covers the case (backend log + panel empty state); copy polish is a small standalone PR
+- [ ] T035 [US2] Add the `TS` / `VE` pill to each row in `hackhaton/frontend/src/components/live/InventoryDialog.tsx` (location to confirm at task time; alternative: `hackhaton/frontend/src/pages/LiveDiagnosticPage.tsx`'s inventory section) — sourced from `host.type`; pill styling uses the existing 002 sun-theme palette tokens (no new palette colour) (FR-019)
 
-### Acceptance check
+### Tests for US2
 
-- [ ] T030 [US2] After T024–T029, run quickstart Step 6 (5–7) against the .deb-installed runtime: confirm the LD entry-point appears, the page mounts, the inventory list populates, and connecting to a reachable TS host produces decoded signals within 10 s. If any step still fails, the spike (T023) findings indicated a different root cause and US2 needs an additional task — escalate, don't ignore.
+- [ ] T036 [P] [US2] Add `hackhaton/backend/tests/unit/test_live_state_filter.py` exercising both TS-host (TS_* visible, VE_* absent) and VE-host (VE_* visible) decoded-frame filtering against a recorded fixture
+- [ ] T037 [P] [US2] Add `hackhaton/backend/tests/unit/test_errq_bridge.py` covering: TS-host resolver, VE-host resolver, missing-subpath fallback to 004 FR-012 degraded-mode (per `contracts/ve-errq.md` acceptance contract VE-ERRQ-1..4)
+- [ ] T038 [P] [US2] Add `hackhaton/backend/tests/unit/test_reecu_capture.py` driving `capture_reecu_state` against a recorded candump fixture (one TS, one VE); asserts the 4-second window + signal extraction match `contracts/reecu-pipeline.md` §1–§5
+- [ ] T039 [P] [US2] Add Playwright spec `hackhaton/frontend/tests/e2e/live-diagnostic-ve.spec.ts` covering VE-host Connect → state panel decode → errq panel render (or degraded-mode fallback) per `contracts/ve-signals.md` and `contracts/ve-errq.md`
 
-**Checkpoint**: Live Diagnostic works on the user's runtime. The reported "not working at all" symptom is resolved.
+**Checkpoint**: US1 + US2 both work independently. Live Diagnostic surface is fully restored; VE-host support is end-to-end testable.
 
 ---
 
 ## Phase 5: User Story 3 — Unified host-detail layout: versions and checks side by side (Priority: P2)
 
-**Goal**: The host-detail page reads as ONE coherent page top-down: version card → result hero → working/needs-attention groups. Repair-guide sheets open as overlays. Both sections fit on a phone-sized viewport.
+**Goal**: The host-detail page composes the version card (top) and the categorised check battery (below) into one coherent layout. Operators read top-down: "what version" → "what's wrong" → "how to fix". Phone-sized viewport (≥360 px) stacks cleanly.
 
-**Independent Test**: Quickstart Step 5 + Step 6 (1–2). Visual; the test is a one-pass page-read.
+**Independent Test**: Open the host-detail page for a host that has BOTH a version drift AND a failing check. Within 3 seconds of looking at the page, the operator can see (a) the version card with drift indicator at the top, (b) the failed check under "Needs attention" below, (c) a repair-guide button on the failed row. Resizing to 360 px width — no horizontal scrolling. Clicking the guide opens it as a sheet (not a route change), version card remains visible behind.
 
 ### Implementation for User Story 3
 
-- [X] T031 [US3] Visual separation: the version `<Card>` and the new `<CheckBatterySection>` (which uses its own `<Card>` instances for RunningState/UnreachableState OR a section wrapper around ResultHero+groups) sit in the parent `space-y-6` container — clearly distinct
-- [X] T032 [US3] RepairGuideSheet opens as a sheet (pre-007 wiring intact via T008's git checkout) — URL unchanged. Verify with the running app.
-- [X] T033 [US3] Responsive layout — version cells use the existing 007 `md:flex-row md:items-start` pattern; the ResultGroup uses pre-007 responsive layout. Both ship in the same SPA build.
-- [X] T034 [US3] Loading state composes cleanly — version cells show em-dash + spinner per cell, `<CheckBatterySection>` shows `<RunningState>` below while `run is null`. When the backend completes both pipelines (parallel `gather`), both flip at once.
-- [ ] T035 [P] [US3] `host-detail-combined.spec.ts` Playwright spec — **deferred to follow-up** (manual quickstart validation in T044 covers the same scenarios; the formal e2e can land in a polish PR)
+- [ ] T040 [US3] Update `hackhaton/frontend/src/pages/HostDetailPage.tsx` layout per `data-model.md` §7: header → version card (007's components) → restored result groups (ResultHero + ResultGroup pair for Working / Needs attention); RunningState renders below the version card when `data.run` is null
+- [ ] T041 [US3] Route REECU rows from `data.versions` to the version card ONLY; route non-REECU rows from `data.run.items` to result groups ONLY (FR-011); add a frontend filter / assert in `HostDetailPage` to drop any duplicates the engine accidentally double-emits
+- [ ] T042 [US3] Verify phone-viewport layout (≥360 px wide) — version card and result groups stack vertically with no horizontal scroll (Constitution Web App Standards); fix any Tailwind / shadcn layout issue surfaced
+- [ ] T043 [US3] Confirm `<RepairGuideSheet>` opens as a sheet over the page (no route change); the version card remains visible behind it per Ezequiel's improved component
 
-**Checkpoint**: The combined page reads as one coherent surface.
-
----
-
-## Phase 6: User Story 4 — REECU one-shot capture + no regressions to 007's wins (Priority: P2)
-
-**Goal**: REECU-derived values (vREECU, SEC, ERRQ-decoded errors) come from the Live Diagnostic code path as a one-shot 4-second capture per page mount, cached under the 60s TTL. None of 007's wins regress.
-
-**Independent Test**: Quickstart Step 4 verifies the capture wiring; Step 6 (3, 8, 9) verifies no 007 regressions.
-
-### Implementation for User Story 4 — REECU pipeline
-
-- [ ] T036 [US4] REECU one-shot capture (`_reecu_capture.py`) — **deferred to a follow-up PR**. The vREECU + SEC cells currently render via the engine's existing report subcommand (status quo from 007). The Live Diagnostic-fed capture path is a planned optimisation, not a regression-recovery requirement. The check battery (US1) already serves the user's reported "where all other checks gone" — REECU rows arrive via the broader battery.
-- [ ] T037 [US4] Engine + REECU parallel `gather()` in `_collect_versions` — **deferred**; depends on T036
-- [ ] T038 [US4] `test_reecu_capture.py` — **deferred**; depends on T036
-- [ ] T039 [US4] Integration test extension for REECU pipeline — **deferred**; depends on T036
-- [ ] T040 [US4] REECU capture structured logging — **deferred**; depends on T036
-
-### Implementation for User Story 4 — 007 regression check
-
-- [ ] T041 [P] [US4] Re-run 007 Playwright specs — **manual / requires dev server**; the specs themselves are unchanged. Run with `npx playwright test` to confirm.
-- [X] T042 [P] [US4] strings.ts path-key audit — npm run build + lint already verifies every imported `strings.xxx.yyy` access; lint is clean. The 007 hostVersions block + restored pre-007 blocks together cover every consumer.
-- [X] T043 [P] [US4] Version card visual contract preserved — HostDetailPage.tsx's version card section is unchanged from 007; only the new `<CheckBatterySection>` is layered below it.
-
-**Checkpoint**: All four user stories functional. The REECU pipeline supplies vREECU + SEC + ERRQ; the non-REECU pipeline supplies vDrive + Peplink + network + cameras + WAKE + config; 007's wins are intact.
+**Checkpoint**: US3 done. Page composition is coherent across breakpoints.
 
 ---
 
-## Phase 7: Polish & Cross-Cutting Concerns
+## Phase 6: User Story 4 — No regressions to 007's wins (Priority: P2)
 
-**Purpose**: Final verification across all user stories and a release-readiness gate.
+**Goal**: Every 007 win — per-field verdict pills, 60 s TTL cache, refresh affordance with `?fresh=true`, per-cell as-of timestamps, dual TS_diag entry points, Developer-mode toggle, removal of "Run check" copy — survives 008. Re-run the 007 quickstart acceptance walkthrough end-to-end; every 007 scenario still passes.
 
-- [ ] T044 [P] Full quickstart walkthrough — **manual / requires reachable testbed**; the user runs this against `dist/vayobd_0.0.7_amd64.deb`
-- [ ] T045 [P] SC-003 spot-check across pre-007 catalog — **manual / requires testbed**; pre-007 catalog is the canonical list and is now restored via T004
-- [X] T046 [P] Top-level README mentions both versions + check battery — README was updated during the 006/007 .deb work to describe the version-only flow; with 008 the description should add "and the full check battery". Quick polish — left as-is for now since the description is already engineering-accurate.
-- [X] T047 Final release-readiness gate — **backend pytest: 132 passed; frontend build: clean; frontend lint: 0 warnings**
-- [X] T048 Built `dist/vayobd_0.0.7_amd64.deb` (80 MB; bundled python-build-standalone 3.12; no system python dep)
+**Independent Test**: Run `specs/007-…/quickstart.md` end-to-end (refresh button, TTL cache, em-dash + spinner, dual entry-point visibility, plain-language errors, no "Run check" wording). Zero regressions.
+
+### Implementation for User Story 4
+
+- [ ] T044 [US4] Verify the version card refresh button on `hackhaton/frontend/src/pages/HostDetailPage.tsx` still re-pulls with `?fresh=true` and the check battery either re-runs alongside OR keeps prior result (never silently disappears) — exercise manually + assert in an existing Playwright spec
+- [ ] T045 [US4] Verify the dual TS_diag entry points (header copy + main-page primary action) in `hackhaton/frontend/src/components/chrome/AppHeader.tsx` and `hackhaton/frontend/src/pages/HostPickerPage.tsx` appear / disappear together when Developer mode toggles
+- [ ] T046 [US4] Verify the restored battery copy in `hackhaton/frontend/src/strings.ts` uses action-oriented phrasing — no "Run check" / "Run diagnostic" reintroduced anywhere in user-facing UI (FR-016); the `wizard.host.subtitle` reversion is the ONLY pre-007 wording that comes back
+- [ ] T047 [US4] Verify the TTL cache serves a <500 ms cache-hit re-render: navigate away and back to the host-detail page within 60 s; confirm no spinner, no engine call, network tab shows the cached response (SC-005)
+- [ ] T048 [US4] Run the 007 quickstart end-to-end at `hackhaton/specs/007-ts-diag-restore-version-pull/quickstart.md`; record any deviation in the PR description
+
+**Checkpoint**: US4 confirmed. 007's win surface intact.
+
+---
+
+## Phase 7: User Story 5 — Browse the repair guide library independent of host (Priority: P3)
+
+**Goal**: A top-level "Repair guides" surface, reachable from a chrome entry point on every page, lists every guide registered in `guideLibrary.ts`. Guides open through the same `RepairGuideSheet` component as the host-detail surface. The entry point is operator-facing — NOT Developer-mode-gated.
+
+**Independent Test**: From any page in the SPA, click the "Repair guides" header link. `RepairGuidesPage` mounts; every guide in `guideLibrary.ts` is listed grouped sensibly; clicking an entry opens `RepairGuideSheet` with the harness diagram + step list. Toggle Developer mode off — link remains visible.
+
+### Implementation for User Story 5
+
+- [ ] T049 [US5] Add the "Repair guides" link to `hackhaton/frontend/src/components/chrome/AppHeader.tsx` per `research.md` §9: a secondary nav item beside the existing primary actions, routing to `/repair-guides`; NOT inside any Developer-mode-gated branch
+- [ ] T050 [US5] Verify `/repair-guides` route mounts `RepairGuidesPage` (cherry-picked in T007); the page renders every guide registered in `guideLibrary.ts`, grouped sensibly (harness or host type — pick whatever grouping `guideLibrary.ts` exposes)
+- [ ] T051 [US5] Verify `<RepairGuideSheet>` opens with IDENTICAL props / output whether triggered from the host-detail surface (US3) or from a library entry (FR-018); a single Playwright assertion comparing the rendered DOM for the same guide from both entry points
+- [ ] T052 [US5] Confirm the "Repair guides" link in `AppHeader.tsx` remains visible when Developer mode is OFF (operator-facing knowledge per FR-017 + Constitution Principle III)
+
+**Checkpoint**: All user stories complete and independently testable.
+
+---
+
+## Phase 8: Polish & Cross-Cutting Concerns
+
+**Purpose**: Final acceptance, regression sweep, and PR-readiness.
+
+- [ ] T053 [P] Run `cd hackhaton && pytest backend/ -q` — MUST exit zero
+- [ ] T054 [P] Run `cd hackhaton/frontend && npm run build && npm run lint` — MUST exit zero
+- [ ] T055 [P] Run `cd hackhaton/frontend && npx playwright test` — all e2e specs (including the new `live-diagnostic-ve.spec.ts`) MUST pass
+- [ ] T056 SC-004 grep — `cd hackhaton/frontend && npm run build && grep -rE 'strings\.[a-z]+\.' dist/ | head` — MUST return zero hits (no literal path keys in rendered DOM)
+- [ ] T057 Manual quickstart 9a (TS-host walkthrough) — run the 9-substep walk-through in `hackhaton/specs/008-restore-host-checks-fix-live/quickstart.md` Step 9a against a reachable TS host; confirm every US1, US2, US3, US4 acceptance criterion
+- [ ] T058 Manual quickstart 9b (VE-host walkthrough) — run the 4-substep VE walk-through in `quickstart.md` Step 9b against a reachable VE host; confirm SC-009, VE-SIG-1..4, VE-ERRQ-1..4. If no VE testbed is reachable, document the missing-VE-testbed state in the PR description AND confirm the VE-ERRQ-2 / VE-ERRQ-4 fallback path lit up correctly in T037 (errq degraded-mode message rendered, raw frames + state panel still streaming)
+- [ ] T059 Manual quickstart 9c (library walkthrough) — confirm US5 + SC-008 (every guide reachable in ≤2 clicks from entry point)
+- [ ] T060 Update the PR description to include: (a) SC-001..SC-009 confirmation table, (b) the VE testbed status (tested live or fallback-only), (c) the VE errq subpath that T003 found (or "missing — degraded mode verified" if absent), (d) the chrome entry-point chosen (header link), (e) the four 3-way merge files' final state with diff stats
 
 ---
 
@@ -184,99 +221,128 @@ description: "Task list for 008 — restore host check battery, fix Live Diagnos
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: No dependencies — start immediately.
-- **Foundational (Phase 2)**: Depends on Setup. **BLOCKS all user stories** — every restored file is referenced by US1 / US3; US2's strings.ts merge is also foundational.
-- **US1 (Phase 3)**: Depends on Foundational. Independent of US2/US3/US4.
-- **US2 (Phase 4)**: Depends on Foundational (for the strings.ts merge — LD page may consume strings). Otherwise independent of US1/US3/US4.
-- **US3 (Phase 5)**: Soft-depends on US1 (the components US3 composes are restored by US1's T020-T022). If US1 hasn't landed yet, US3 tasks can still be drafted but won't render until T020 lands.
-- **US4 (Phase 6)**: Depends on Foundational + US1 (US4's REECU rows feed into US1's `HostDetailResponse.run`). The 007-regression-check tasks (T041–T043) are independent.
-- **Polish (Phase 7)**: Depends on US1–US4 complete.
+- **Setup (Phase 1)**: T001 sequential; T002–T005 parallel after T001. Total: ~5 minutes.
+- **Foundational (Phase 2)**: blocks Phases 3–7.
+  - T006 (Tier A.1 improved replacements) blocks T012 (strings.ts merge needs the improved components in place to verify imports).
+  - T007, T008, T009, T010, T011 — parallel cherry-picks (different files / sources).
+  - T012 sequential after T006.
+  - T013, T014, T015 parallel after T012 (different files, same merge rule).
+  - T016, T017, T018 — parallel after the cherry-picks land.
+  - T019, T020, T021 — sequential verification gate after all merges land.
+- **Phase 3 (US1)**: depends on Phase 2 (needs `HostDetailResponse` infrastructure, restored backend `checks/` package).
+- **Phase 4 (US2)**: depends on Phase 2 AND on T003 / T004 (VE lookups) from Phase 1; no hard dependency on Phase 3.
+- **Phase 5 (US3)**: depends on Phase 3 (`HostDetailResponse` must exist) but not on Phase 4.
+- **Phase 6 (US4)**: depends on Phases 3 + 4 + 5 (re-runs the 007 walkthrough across all surfaces).
+- **Phase 7 (US5)**: depends on Phase 2 only (library files cherry-picked in T007 + route registered in T016).
+- **Phase 8 (Polish)**: depends on all desired user stories. T053–T055 parallel; T056 sequential after build; T057–T060 sequential (manual walkthroughs share a testbed).
 
 ### User Story Dependencies
 
-- US1 ↔ US2: independent. Can be parallelised across two developers.
-- US3: soft-depends on US1's host-detail composition work.
-- US4: depends on US1's wire-shape changes (the `run` field on `HostDetailResponse`). Can run concurrent with US3 if US1's T015–T017 have already landed.
+- **US1 (P1)** — independent, MVP-shippable on its own (assuming Phase 2 complete).
+- **US2 (P1)** — independent of US1; can be implemented in parallel by a second developer once Phase 2 is done.
+- **US3 (P2)** — extends US1's data; depends on US1's `HostDetailResponse` being shippable.
+- **US4 (P2)** — verification story; runs after US1/US2/US3 land.
+- **US5 (P3)** — independent of US1/US2/US3/US4; depends only on Phase 2's cherry-pick + route registration.
 
 ### Within Each User Story
 
-- Schema / Pydantic model edits before consumer edits (T014 before T019, T015 before T017).
-- Backend wiring (T014–T018) before frontend rendering (T019–T022) within US1 — though once T014 / T015 land, the FE can develop against a hand-written mock.
-- US4's `_reecu_capture.py` (T036) before its consumer in `host_versions.py` (T037).
+- Within US1: T022 (model) → T023 (collector uses model) → T024 (cache type param refers to model); T025/T026/T027/T028 parallel; T029 runs after the collector + fixtures exist.
+- Within US2: T030/T031/T032 (LD fixes) parallel with T033/T034 (VE port); T035 (inventory pill) parallel; tests T036/T037/T038/T039 parallel after their target modules exist.
+- Within US3: T040 → T041 → T042 → T043 sequential (each builds on the prior layout).
+- Within US4: T044/T045/T046/T047 parallel; T048 sequential (final 007 walkthrough).
+- Within US5: T049 → T050 → T051 → T052 sequential.
 
 ### Parallel Opportunities
 
-- All Phase 2 file restorations (T003–T009) are `[P]` — different paths, no inter-dependencies.
-- US2's tasks (T024–T029) touch different files and are independent of each other after the T023 spike completes.
-- US1's frontend tasks (T019, T020, T021, T022) and backend tasks (T014–T018) can run in parallel across two developers.
-- US4's regression-check tasks (T041–T043) are `[P]` and can run as soon as US1/US4 implementation is on the branch.
-- Polish phase tasks are all `[P]` except T047 which is the final gate.
+- All [P] tasks in Phase 1 (T002–T005).
+- Within Phase 2: T006–T011 parallel cherry-picks (different files); T013–T015 parallel merges (after T012).
+- Once Phase 2 completes: US1 / US2 / US5 can proceed in parallel (different developers).
+- Within US1: 4 parallel implementation tasks (T025, T026, T027, T028).
+- Within US2: 8 parallel tasks (4 implementation + 4 test files).
+- Within US4: 4 parallel verification tasks (T044, T045, T046, T047).
+- Polish: T053, T054, T055 parallel.
 
 ---
 
-## Parallel Example: Phase 2 Foundational
+## Parallel Example: Foundational Phase 2 cherry-picks
 
 ```bash
-# Day 0 — kick off all file restorations in parallel
-Task: "T003 — git checkout HEAD -- backend/src/vayobd/api/runs.py"
-Task: "T004 — git checkout HEAD -- backend/src/vayobd/checks/"
-Task: "T005 — git checkout HEAD -- backend/tests/integration/test_runs_endpoint.py"
-Task: "T006 — git checkout HEAD -- backend/tests/unit/test_catalog.py"
-Task: "T007 — git checkout HEAD -- frontend/src/api/runs.ts"
-Task: "T008 — git checkout HEAD -- frontend/src/components/result/"
-Task: "T009 — git checkout HEAD -- the deleted state + motion + page files"
+# After T006 lands (HarnessDiagram etc. in place), launch the parallel cherry-picks together:
+Task: "Tier A.2 net-new files (T007)"               # frontend/src/components/chrome/RepairGuideLibraryDialog.tsx + 6 others
+Task: "Tier A.3 frontend pre-007 deletions (T008)"  # 11 components/states/pages
+Task: "Tier B backend checks + runs (T009)"         # 7 backend files
+Task: "Tier B backend tests + fixtures (T010)"      # 2 test files + fixtures
+Task: "Tier C engine Rust checks (T011)"            # 6 .rs files
 
-# Day 0 afternoon — hand-merge + re-wire (sequential)
-Task: "T010 — Hand-merge strings.ts per contracts/strings-merge.md"
-Task: "T011 — Re-register runs_router in app.py"
+# Then after T012 (strings.ts) lands:
+Task: "Merge connectorLocations.ts (T013)"
+Task: "Merge connectorSpecs.ts (T014)"
+Task: "Merge guides.ts (T015)"
 
-# Day 0 evening — green-build gate (sequential after T010, T011)
-Task: "T012 — pytest -q (must pass)"
-Task: "T013 — npm run build && npm run lint (must exit zero)"
+# And in parallel with those:
+Task: "App.tsx route wiring (T016)"
+Task: "app.py include_router (T017)"
+Task: "005→009 spec rename (T018)"
+```
+
+## Parallel Example: User Story 2 implementation
+
+```bash
+# After Phase 2 + T003 + T004 done:
+Task: "SPA mount detection (T030)"             # backend/src/vayobd/cli.py
+Task: "DBC glob tightening (T031)"             # backend/src/vayobd/live/dbc_decoder.py
+Task: "errq degraded UI (T032)"                # frontend/src/pages/LiveDiagnosticPage.tsx
+Task: "VE state allowlist (T033)"              # backend/src/vayobd/live/candump_runner.py
+Task: "VE errq resolver (T034)"                # backend/src/vayobd/live/errq_bridge.py
+Task: "TS/VE pill in inventory (T035)"         # frontend/src/components/live/InventoryDialog.tsx
+
+# Tests in parallel once implementation lands:
+Task: "test_live_state_filter.py (T036)"
+Task: "test_errq_bridge.py (T037)"
+Task: "test_reecu_capture.py (T038)"
+Task: "live-diagnostic-ve.spec.ts (T039)"
 ```
 
 ---
 
 ## Implementation Strategy
 
-### MVP path
+### MVP scope (US1 only)
 
-The two P1 stories together are the MVP. Recommended ordering when working solo:
+1. Phase 1 (Setup).
+2. Phase 2 (Foundational — tiered restoration, merges, wiring, spec rename, verification).
+3. Phase 3 (US1 — `HostDetailResponse` composition).
+4. **STOP and VALIDATE**: open the host-detail page for a TS host; both version card AND check battery render. The page reads top-down.
+5. Demo-ready as of this point — the regression user reported is resolved.
 
-1. Complete Phase 1: Setup (T001–T002, ~5 min).
-2. Complete Phase 2: Foundational (T003–T013, ~1 hour including the strings.ts merge).
-3. Land **US1** (Phase 3, T014–T022) — restores discoverable diagnostic value to the host-detail page. Small commit budget: ~half a day's work.
-4. In parallel or next, land **US2** (Phase 4, T023–T030) — fixes the user's reported LD breakage. Spike + handful of small edits. ~half a day.
-5. Land **US3** (Phase 5, T031–T035) — visual polish on the combined page. ~2 hours.
-6. Land **US4** (Phase 6, T036–T043) — REECU pipeline + 007 regression check. ~half a day to a day for the capture wiring + tests.
-7. Run **Phase 7** (T044–T048) as the merge gate.
+### Incremental delivery (one PR but staged commits)
 
-### Incremental delivery
-
-After each phase's checkpoint, the working tree is shippable:
-
-- After Phase 2: dead code is back as code; tests pass; build is clean. No new value for users yet.
-- After US1: check battery visible on the host-detail page. **Largest immediate win for the user.**
-- After US2: Live Diagnostic works again. Resolves the user's reported "Live Diagnostic not working at all."
-- After US3: combined page reads cleanly.
-- After US4: REECU pipeline lands; no 007 regressions.
+1. Setup + Foundational → checkpoint: tree is clean, builds green, tests pass.
+2. US1 → checkpoint: host-detail page restored.
+3. US2 → checkpoint: Live Diagnostic works on TS + VE, errq panel renders.
+4. US3 → checkpoint: unified layout reads top-down on all breakpoints.
+5. US4 → checkpoint: 007 walkthrough passes; no regressions.
+6. US5 → checkpoint: library reachable from chrome; same guide-sheet UX everywhere.
+7. Polish → PR-ready.
 
 ### Parallel team strategy
 
-With two developers post-foundational:
+With multiple developers post-Phase 2:
 
-- Developer A: US1 (~half a day) → US3 (~2 hours) → US4 frontend regression checks.
-- Developer B: US2 spike (T023) → US2 tasks (T024–T030) → US4 REECU pipeline (T036–T040).
-- Final: developer who finishes first runs Phase 7.
+- Dev A: US1 + US3 (host-detail axis).
+- Dev B: US2 (Live Diagnostic + VE port).
+- Dev C: US5 (library) + US4 (regression sweep at the end).
+
+US1 and US3 share `HostDetailPage.tsx`, so they pair best on one developer. US2 is self-contained (live/ backend + LiveDiagnosticPage). US5 touches only chrome + RepairGuidesPage + verification.
 
 ---
 
 ## Notes
 
-- `[P]` tasks = different files, no dependencies.
-- `[Story]` label maps task to specific user story for traceability.
-- The bulk of the work in this feature is the foundational restoration (Phase 2). After that, the user stories are surprisingly small individually because they each only touch a handful of files.
-- US2's success criterion is "matches 004's original working state." Don't redesign anything in `/live`; just diagnose and fix the regression.
-- The `strings.ts` hand-merge is the only piece of 008 that needs careful manual attention. Follow `contracts/strings-merge.md` step by step.
-- Commit after each task or logical group; commit messages should reference the task ID for traceability.
-- Avoid: in-band redesigns of components 008 is restoring (just `git checkout` and move on); rust-side changes (out of scope per Clarification Q1); packaging changes (out of scope — the .deb story is owned by 006).
+- [P] tasks = different files, no dependencies on incomplete tasks in the same phase.
+- [Story] label maps task to specific user story for traceability.
+- Each user story is independently completable and testable per the spec's "Independent Test" sections.
+- Tests are included where the design docs explicitly name fixture / unit / e2e files; they are not strict TDD-first (per Constitution Principle II "Ship Fast").
+- Commit after each task or logical group; the foundational phase is a natural break point.
+- Stop at any checkpoint to validate the story increment independently.
+- `/usr/bin/vayobd` (the .deb-installed wrapper) is the canonical runtime for the manual walkthroughs; bypassing pyenv shims is implicit (per FR-015 + research §1a).
