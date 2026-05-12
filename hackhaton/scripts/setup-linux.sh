@@ -147,7 +147,7 @@ if [[ -d "$INVENTORY_PATH/.git" ]]; then
     git -C "$INVENTORY_PATH" pull --ff-only || warn "Could not pull (continuing with cached version)"
 else
     echo "  Cloning ree-vehicle-configs..."
-    if git clone git@github.com:vay/ree-vehicle-configs.git "$INVENTORY_PATH"; then
+    if git clone git@github.com:Reemote/ree-vehicle-configs.git "$INVENTORY_PATH"; then
         ok "Inventory cloned"
     else
         warn "Could not clone ree-vehicle-configs (no GitHub access yet?)."
@@ -254,6 +254,18 @@ exec uvicorn vayobd.app:app --host 0.0.0.0 --port 8000
 PRODSCRIPT
 chmod +x run-prod.sh
 ok "Created run-prod.sh"
+
+# ─── Optional: nfpm for building the .deb (spec 006) ────────────────────────
+# nfpm is used by ./packaging/build.sh to produce vayobd_*.deb. Not needed for
+# day-to-day development; install it once if you are the platform engineer who
+# cuts releases. Manual one-liner so the existing setup flow stays fast.
+#
+#   curl -sSfL -o /tmp/nfpm.deb \
+#     https://github.com/goreleaser/nfpm/releases/latest/download/nfpm_amd64.deb \
+#   && sudo dpkg -i /tmp/nfpm.deb && rm /tmp/nfpm.deb
+#
+# (Alternative without root: download the *.tar.gz from the same release and
+# drop `nfpm` into ~/.local/bin/.)
 
 # ─── Done ───────────────────────────────────────────────────────────────────
 echo ""

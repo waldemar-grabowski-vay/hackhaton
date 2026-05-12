@@ -130,8 +130,7 @@ export function TelestationDiagram({ focusTarget }: TelestationDiagramProps) {
       containerRef.current?.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       return;
     }
-    const targetHarness = CONNECTOR_HARNESS[focusTarget.connectorId];
-    if (!targetHarness) return;
+    const targetHarness = CONNECTOR_HARNESS[focusTarget.connectorId] ?? "board";
 
     if (targetHarness !== activeHarness) {
       setActiveHarness(targetHarness);
@@ -158,7 +157,6 @@ export function TelestationDiagram({ focusTarget }: TelestationDiagramProps) {
       pendingConnectorScroll.current = true;
       setZoom(CONNECTOR_ZOOM);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusTarget]);
 
   useLayoutEffect(() => {

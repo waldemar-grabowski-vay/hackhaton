@@ -18,13 +18,29 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
-# Globs are matched relative to the repo root in priority order.
+# Glob patterns matched relative to the repo root. `find_dbc` returns
+# the most-recently-modified file among all matches.
 DBC_GLOB_PATTERNS: tuple[str, ...] = (
     "dbc/application_protocol.dbc",
     "platform/dbc/*.dbc",
     "ts/6_tools/CANoe_G4/DBCs/*.dbc",
     "platform/tools/sec_bindings_generator/ts_*.dbc",
     "**/*.dbc",
+)
+
+# 008: tightened search — when picking from a noisy ree-reecu clone
+# (multiple .dbc files, possibly including the legacy Env.dbc stub
+# with zero TS-application signals), prefer `application_protocol*.dbc`
+# over anything else. Only fall back to the generic glob if no
+# application_protocol DBC exists.
+DBC_PREFERRED_PATTERNS: tuple[str, ...] = (
+    "dbc/application_protocol.dbc",
+    "platform/dbc/application_protocol*.dbc",
+    "ts/6_tools/CANoe_G4/DBCs/application_protocol*.dbc",
+    "ts/6_tools/CANoe_G4/dbcs/application_protocol*.dbc",
+    "ve/6_tools/CANoe_G4/DBCs/application_protocol*.dbc",
+    "ve/6_tools/CANoe_G4/dbcs/application_protocol*.dbc",
+    "**/application_protocol*.dbc",
 )
 
 
@@ -34,10 +50,28 @@ def find_dbc(
 ) -> Path | None:
     """Return the most-recently-modified DBC under `repo_root` that
     matches any of `patterns`, or None when nothing matches.
+
+    008: prefers `application_protocol*.dbc` (via DBC_PREFERRED_PATTERNS)
+    when any match. Only falls back to the generic patterns when no
+    application_protocol DBC is present. Prevents the legacy `Env.dbc`
+    stub from being picked when the application DBC exists in the same
+    clone.
     """
     if not repo_root.exists():
         log.warning("dbc: ree-reecu root does not exist: %s", repo_root)
         return None
+
+    # First pass: prefer application_protocol.dbc — these carry the TS
+    # signals the live page actually needs.
+    preferred: list[Path] = []
+    for pat in DBC_PREFERRED_PATTERNS:
+        preferred.extend(repo_root.glob(pat))
+    if preferred:
+        preferred.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        return preferred[0]
+
+    # Fall back to the legacy catch-all when no application_protocol DBC
+    # is present (covers older clone layouts and the existing tests).
     candidates: list[Path] = []
     for pat in patterns:
         candidates.extend(repo_root.glob(pat))
@@ -98,18 +132,22 @@ class DbcDecoder:
         self._msg_by_id.clear()
         self.load_error = None
 
-    def autoload(self, ree_reecu_path: Path, explicit: Path | None = None) -> bool:
-        """Try `explicit` first; fall back to `find_dbc(ree_reecu_path)`.
+    def autoload(self, dbc_search_root: Path, explicit: Path | None = None) -> bool:
+        """Try `explicit` first; fall back to `find_dbc(dbc_search_root)`.
 
-        Returns True on success. On failure, leaves the decoder in
-        degraded mode (`loaded` is False, `load_error` populated).
+        008: `dbc_search_root` should point at the `ree-reecu-dbc` clone
+        (the DBC lives in its own repo, separate from `ree-reecu`).
+        Falls through to degraded mode if neither resolves.
         """
         target = explicit
         if target is None:
-            target = find_dbc(ree_reecu_path)
+            target = find_dbc(dbc_search_root)
         if target is None or not target.is_file():
             self.load_error = (
-                f"DBC not found — checked explicit={explicit!r} and globs under {ree_reecu_path}"
+                f"DBC not found — checked explicit={explicit!r} and globs under "
+                f"{dbc_search_root} (expected {dbc_search_root}/application_protocol.dbc). "
+                f"Run `vayobd refresh` to clone ree-reecu-dbc, or set "
+                f"VAYOBD_DBC_PATH=/full/path/to/your.dbc to override."
             )
             log.warning(self.load_error)
             return False

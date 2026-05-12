@@ -1,8 +1,9 @@
-import { Activity } from "lucide-react";
+import { Activity, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { EngineModeBadge } from "@/components/chrome/EngineModeBadge";
 import { LiveDiagnosticButton } from "@/components/chrome/LiveDiagnosticButton";
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
@@ -41,6 +42,14 @@ export function AppHeader() {
         </Link>
 
         <div className="flex items-center gap-3">
+          {/* 008 / US5 / FR-017: top-level repair-guide library entry point.
+              Operator-facing knowledge — NOT Developer-mode-gated. */}
+          <Button asChild variant="outline" size="sm">
+            <Link to="/repair-guides" className="gap-2">
+              <BookOpen className="h-4 w-4" />
+              Repair guides
+            </Link>
+          </Button>
           <LiveDiagnosticButton />
           <EngineModeBadge />
           <TooltipProvider delayDuration={200}>

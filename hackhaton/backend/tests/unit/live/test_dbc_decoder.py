@@ -55,7 +55,7 @@ def test_decoder_returns_empty_signals_without_dbc() -> None:
 
 def test_autoload_with_missing_paths(tmp_path: Path) -> None:
     dec = DbcDecoder()
-    ok = dec.autoload(ree_reecu_path=tmp_path, explicit=tmp_path / "nope.dbc")
+    ok = dec.autoload(dbc_search_root=tmp_path, explicit=tmp_path / "nope.dbc")
     assert ok is False
     assert dec.loaded is False
     assert dec.load_error is not None

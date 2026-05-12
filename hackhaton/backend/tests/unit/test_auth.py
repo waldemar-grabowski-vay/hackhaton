@@ -64,27 +64,36 @@ def client(tmp_path) -> TestClient:
     return TestClient(app)
 
 
-def test_missing_header_returns_401(client: TestClient) -> None:
-    resp = client.post("/api/runs", json={"host_id": "ve-de-apollo"})
+def test_missing_header_returns_401(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The 006 .deb mode falls back to VAYOBD_OPERATOR_USER; clear it so this
+    # test exercises the pre-006 "header required" contract.
+    monkeypatch.delenv("VAYOBD_OPERATOR_USER", raising=False)
+    resp = client.get("/api/host/ve-de-apollo/versions")
     assert resp.status_code == 401
     assert resp.json()["error"] == "missing_operator_identity"
 
 
-def test_empty_header_returns_401(client: TestClient) -> None:
-    resp = client.post(
-        "/api/runs",
-        json={"host_id": "ve-de-apollo"},
+def test_empty_header_returns_401(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("VAYOBD_OPERATOR_USER", raising=False)
+    resp = client.get(
+        "/api/host/ve-de-apollo/versions",
         headers={"X-Vay-User": "   "},
     )
     assert resp.status_code == 401
     assert resp.json()["error"] == "missing_operator_identity"
 
 
-def test_unsanitisable_header_returns_401(client: TestClient) -> None:
+def test_unsanitisable_header_returns_401(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A header that produces an empty slug after sanitisation is rejected."""
-    resp = client.post(
-        "/api/runs",
-        json={"host_id": "ve-de-apollo"},
+    monkeypatch.delenv("VAYOBD_OPERATOR_USER", raising=False)
+    resp = client.get(
+        "/api/host/ve-de-apollo/versions",
         headers={"X-Vay-User": "!!!"},
     )
     assert resp.status_code == 401

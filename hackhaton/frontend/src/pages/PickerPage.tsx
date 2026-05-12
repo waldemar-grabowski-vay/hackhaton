@@ -14,12 +14,14 @@ import { ApiError } from "@/api/client";
 import { useInventory } from "@/api/inventory";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { LiveDiagnosticButton } from "@/components/chrome/LiveDiagnosticButton";
 import { CityStep } from "@/components/wizard/CityStep";
 import { CountryStep } from "@/components/wizard/CountryStep";
 import { HostStep } from "@/components/wizard/HostStep";
 import { TypeStep } from "@/components/wizard/TypeStep";
 import { EmptyInventoryState } from "@/components/states/EmptyInventoryState";
 import { InventoryFreshness } from "@/components/chrome/InventoryFreshness";
+import { StalenessBanner } from "@/components/StalenessBanner";
 import { PageTransition } from "@/components/motion/PageTransition";
 import { strings } from "@/strings";
 import type { Country, HostType } from "@/api/schemas";
@@ -131,8 +133,6 @@ export function PickerPage() {
 
   function handleContinue() {
     if (!hostId) return;
-    // FR-028: do NOT auto-trigger a run. The result page opens blank;
-    // the operator clicks "Run check" there to start the diagnostic.
     navigate(`/host/${hostId}`);
   }
 
@@ -180,6 +180,7 @@ export function PickerPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <StalenessBanner />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-xs uppercase tracking-wider text-muted-foreground">
           {strings.wizard.progressLabel} {Math.min(stepIndex, totalSteps)} of{" "}
@@ -248,15 +249,18 @@ export function PickerPage() {
           {strings.wizard.backButton}
         </Button>
         {step === "host" && (
-          <Button
-            onClick={handleContinue}
-            disabled={!hostId}
-            size="lg"
-            className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-[0_8px_24px_-12px_hsl(var(--primary)/0.7)] hover:opacity-95"
-          >
-            {strings.wizard.continueButton}
-            <ArrowRight className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-3">
+            <LiveDiagnosticButton variant="main" />
+            <Button
+              onClick={handleContinue}
+              disabled={!hostId}
+              size="lg"
+              className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-[0_8px_24px_-12px_hsl(var(--primary)/0.7)] hover:opacity-95"
+            >
+              {strings.wizard.continueButton}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
         )}
       </div>
     </div>

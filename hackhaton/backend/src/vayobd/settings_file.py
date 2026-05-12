@@ -71,7 +71,13 @@ def load_settings(path: Path | None = None) -> AppSettings:
                     errors=[str(e.get("msg", "")) for e in exc.errors()],
                 )
 
+    # The live settings are conventionally written under a `[live]` table,
+    # but operators routinely drop the section header and put `developer_mode`,
+    # `ree_reecu_path`, etc. at the top level. Accept both shapes — fall back
+    # to the top level when no `[live]` block exists.
     live_block = raw_dict.get("live")
+    if not isinstance(live_block, dict):
+        live_block = raw_dict
     live_settings = LiveSettings()
     if isinstance(live_block, dict):
         live_settings = LiveSettings(
@@ -82,6 +88,18 @@ def load_settings(path: Path | None = None) -> AppSettings:
             dbc_path=Path(live_block["dbc_path"])
             if isinstance(live_block.get("dbc_path"), str) and live_block["dbc_path"].strip()
             else None,
+            channel_a_pattern=(
+                live_block["channel_a_pattern"]
+                if isinstance(live_block.get("channel_a_pattern"), str)
+                and live_block["channel_a_pattern"].strip()
+                else None
+            ),
+            channel_b_pattern=(
+                live_block["channel_b_pattern"]
+                if isinstance(live_block.get("channel_b_pattern"), str)
+                and live_block["channel_b_pattern"].strip()
+                else None
+            ),
         )
 
     return AppSettings(inventory=inventory_settings, live=live_settings)
@@ -112,11 +130,22 @@ def _render_toml(settings: AppSettings) -> str:
     if settings.inventory is not None:
         parts.append(f'[inventory]\npath = "{_quote(str(settings.inventory.path))}"\n')
     live = settings.live
-    if live.developer_mode or live.ree_reecu_path is not None or live.dbc_path is not None:
+    has_live_data = (
+        live.developer_mode
+        or live.ree_reecu_path is not None
+        or live.dbc_path is not None
+        or live.channel_a_pattern is not None
+        or live.channel_b_pattern is not None
+    )
+    if has_live_data:
         block = ["[live]", f"developer_mode = {'true' if live.developer_mode else 'false'}"]
         if live.ree_reecu_path is not None:
             block.append(f'ree_reecu_path = "{_quote(str(live.ree_reecu_path))}"')
         if live.dbc_path is not None:
             block.append(f'dbc_path = "{_quote(str(live.dbc_path))}"')
+        if live.channel_a_pattern is not None:
+            block.append(f'channel_a_pattern = "{_quote(live.channel_a_pattern)}"')
+        if live.channel_b_pattern is not None:
+            block.append(f'channel_b_pattern = "{_quote(live.channel_b_pattern)}"')
         parts.append("\n".join(block) + "\n")
     return "\n".join(parts)

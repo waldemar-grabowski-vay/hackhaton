@@ -291,6 +291,10 @@ class LiveSettings(BaseModel):
     developer_mode: bool = False
     ree_reecu_path: Path | None = None
     dbc_path: Path | None = None
+    # FR-026 — None means "use the runtime defaults"; explicit strings
+    # override the substring-match convention from the desktop tool.
+    channel_a_pattern: str | None = None
+    channel_b_pattern: str | None = None
 
 
 class AppSettings(BaseModel):

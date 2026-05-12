@@ -14,6 +14,11 @@ should be available under additional button."
 - Q: Live-stream transport — WebSockets, SSE, or short-poll? → A: WebSockets (one full-duplex connection per live session for stream + control)
 - Q: How does SSH authentication work? → A: Backend shells out to the operator's system `ssh` binary on the local machine. No credential dialog — `~/.ssh/config`, keys, agent, ProxyJump are reused as-is. The web app surface is therefore local-only (backend on `localhost`).
 - Q: Where does the errq error model come from? → A: Read from the operator's local `ree-reecu` clone at a configured path (default `~/GitHub/ree-reecu`, overridable via a backend setting). Mirrors the desktop tool; live revision; no bundling at build time.
+- Q: How does the operator point at the right DBC? → A: Operator picks the DBC file path through the SPA Settings UI. The DBC lives in a *separate* repo (`ree-reecu-dbc`, e.g. `~/GitHub/ree-reecu-dbc/application_protocol.dbc`), distinct from the `ree-reecu` clone that supplies the errq model — the two paths are independent settings with different release cadences. The chosen path round-trips through `~/.config/vayobd/settings.toml` and is reloaded at backend startup.
+- Q: SSH host-key trust model? → A: TOFU — `StrictHostKeyChecking=accept-new`. The backend's spawned `ssh` auto-adds an unknown host key to the operator's `~/.ssh/known_hosts` on first contact and fails on a *changed* key (the real MITM signal). This matches how operators already use `ssh` from a terminal and avoids forcing them to pre-seed `known_hosts` for every testbed before clicking Connect.
+- Q: How is a host's ssh target resolved when the inventory has no `ansible_host`? → A: The backend falls back to the inventory `host_id` itself as the ssh target. Telestations in `org/vay/inventory.yaml` typically don't carry an explicit address — operators reach them via `~/.ssh/config` aliases (`Host ts-de-ber-*`), and that config is the canonical source of truth (matching the desktop tool and `ree-debug-cli`). FR-004 / FR-005 scope filtering still applies at inventory load.
+- Q: CAN interface name configurability? → A: Stay hard-coded at `can0` for v1. Every in-scope TS testbed currently uses `can0`; deferring per-host or per-session overrides until a counterexample shows up keeps the connection dialog single-purpose. If a future host needs a different iface, revisit as a per-session UI override.
+- Q: How is a signal classified into Channel A / B? → A: Operator-configurable patterns in Settings — two regexes (channel A pattern, channel B pattern) that the backend matches against the signal name, with the first match winning and signals matching neither falling into `unknown`. Defaults pre-fill the current convention (`_CHA_` / `TS_CHA` → A, `_CHB_` / `TS_CHB` → B) so the surface works out of the box. Configurable so a DBC rename or a different naming style can be accommodated without a code change.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -224,7 +229,12 @@ connection stays live); click Resume and verify they update again.
 - **FR-005**: System MUST validate the host selection before attempting
   the SSH session — a missing host or a host outside the in-scope
   inventory MUST produce a field-level error before any subprocess is
-  spawned.
+  spawned. When the inventory entry exists but has no `ansible_host`
+  attribute (typical for telestations reached via `~/.ssh/config`
+  aliases), the backend MUST fall back to the `host_id` itself as the
+  ssh target rather than rejecting the host. The operator's
+  `~/.ssh/config` is the canonical source of truth for testbed
+  connectivity.
 - **FR-006**: System MUST surface failures of the spawned `ssh`
   subprocess with a plain-language error that includes the exit code
   and the first line of stderr (so operators can self-diagnose
@@ -295,6 +305,34 @@ connection stays live); click Resume and verify they update again.
   signals, errq updates, raw frames, status events) and client-push
   (pause / resume / clear / channel toggle / filter changes) — control
   messages MUST NOT be split out onto a separate REST endpoint.
+- **FR-026**: System MUST classify each decoded signal into channel
+  `A`, `B`, or `unknown` using two operator-configurable regular
+  expressions (one per channel) exposed through the Settings UI. The
+  first regex to match the signal name wins; signals matching neither
+  are `unknown`. Defaults pre-fill the current convention
+  (`_CHA_` / `TS_CHA` → A, `_CHB_` / `TS_CHB` → B) so the surface works
+  out of the box. Invalid regex on save MUST be rejected with a
+  field-level error; invalid regex loaded from disk MUST fall back to
+  the defaults with a backend log warning rather than failing
+  startup. The same patterns are used by FR-013's channel toggle and
+  by the errq panel's channel column.
+- **FR-025**: System MUST invoke `ssh` with TOFU host-key policy
+  (`StrictHostKeyChecking=accept-new`). First contact with a host
+  auto-adds its key to the operator's `~/.ssh/known_hosts`; a *changed*
+  key MUST fail the connection and surface the verification error
+  through FR-006's plain-language path. The backend MUST NOT use
+  `StrictHostKeyChecking=no` or `UserKnownHostsFile=/dev/null` — both
+  bypass MITM detection. The backend MUST NOT modify the operator's
+  ssh configuration beyond the per-invocation `-o` flags.
+- **FR-024**: System MUST let the operator choose the DBC file path
+  through the SPA Settings UI. The DBC lives in `ree-reecu-dbc`
+  (separate repo from the errq clone), default suggestion
+  `~/GitHub/ree-reecu-dbc/application_protocol.dbc`. The chosen path
+  round-trips through `~/.config/vayobd/settings.toml` and is reloaded
+  at backend startup; runtime swap without restart is out of scope for
+  v1. A missing or unreadable file MUST degrade the decoded state panel
+  (raw frames still visible per FR-014) without breaking the rest of
+  the surface.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -370,9 +408,14 @@ connection stays live); click Resume and verify they update again.
   existing settings flow being introduced in 002 US2 (T052+); this
   feature contributes the toggle definition but does not redesign
   the settings surface.
-- The team's DBC files for the TS application bus are accessible to
-  the backend at a known path; sourcing or updating those DBCs is
-  out of scope here (treated as deployment input).
+- The team's DBC for the TS application bus lives in the operator's
+  local clone of `ree-reecu-dbc` (separate repo from `ree-reecu`).
+  The operator selects the file path through the Settings UI per
+  FR-024; sourcing or updating the DBC itself is out of scope here.
+- Every in-scope TS testbed exposes its application bus as `can0`;
+  the backend invokes `candump` against `can0` unconditionally.
+  Per-host or per-session iface overrides are deferred until a
+  testbed proves the assumption wrong.
 - The desktop tool's `errq` decoding behaviour (severity heuristic,
   active/passive lifecycle, channel A/B aggregation rules) is the
   reference behaviour — divergences MUST be intentional and called

@@ -25,7 +25,9 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from vayobd.api.errors import install_exception_handlers
+from vayobd.api.host_versions import router as host_versions_router
 from vayobd.api.inventory import router as inventory_router
+from vayobd.api.refresh import router as refresh_router
 from vayobd.api.runs import router as runs_router
 from vayobd.config import ExecutorMode, Settings, get_settings
 from vayobd.dependencies import _resolve_ree_cli_bin
@@ -105,7 +107,7 @@ def _live_self_check(settings: Settings) -> tuple[ErrqModel, DbcDecoder]:
         log.warning("live_errq_degraded", reason=errq.load_error)
 
     decoder = DbcDecoder()
-    if decoder.autoload(settings.ree_reecu_path, settings.dbc_path):
+    if decoder.autoload(settings.dbc_search_root, settings.dbc_path):
         log.info(
             "live_dbc_ready",
             source=str(decoder.dbc_path),
@@ -151,8 +153,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_exception_handlers(app)
 
     app.include_router(inventory_router)
-    app.include_router(runs_router)
     app.include_router(live_router)
+    app.include_router(refresh_router, prefix="/api")
+    app.include_router(host_versions_router, prefix="/api")
+    app.include_router(runs_router)  # runs.py has its own /api/runs prefix
 
     @app.get("/api/health", tags=["meta"])
     def _health() -> dict[str, object]:

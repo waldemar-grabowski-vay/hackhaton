@@ -1,0 +1,46 @@
+{
+  "schema": "ree-debug-engine",
+  "version": "0.7.3+abcdef1",
+  "host_id": "ts-de-ber-00005",
+  "host_type": "telestation",
+  "started_at": "2026-05-11T14:02:08Z",
+  "completed_at": "2026-05-11T14:02:11Z",
+  "outcome": "complete",
+  "checks": [
+    {
+      "id": "ssh_reachable",
+      "name": "SSH reachable",
+      "status": "Pass",
+      "raw_detail": null,
+      "duration_ms": 240
+    },
+    {
+      "id": "vdrive_package_vs_manifest",
+      "name": "vDrive package vs manifest",
+      "status": "Warn",
+      "raw_detail": "R12.3.0 (manifest expects R12.4.0)",
+      "duration_ms": 410
+    },
+    {
+      "id": "aurix_mcu_firmware",
+      "name": "Aurix MCU firmware",
+      "status": "Pass",
+      "raw_detail": "R 8.5.3 (matches manifest)",
+      "duration_ms": 620
+    },
+    {
+      "id": "sec_fpga_gateware",
+      "name": "SEC FPGA gateware",
+      "status": "Fail",
+      "raw_detail": "candump failed (exit Some(255))",
+      "duration_ms": 380
+    },
+    {
+      "id": "reecu_hardware_rev",
+      "name": "REECU hardware rev",
+      "status": "Pass",
+      "raw_detail": "4.0",
+      "duration_ms": 60
+    }
+  ]
+}

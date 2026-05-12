@@ -62,6 +62,29 @@ export const strings = {
     },
     lastRefreshedPrefix: "Updated",
   },
+  // 007 host-detail surface — version pulls cross-checked against the manifest.
+  hostVersions: {
+    cardTitle: "Versions on this host",
+    refreshButton: "Refresh",
+    refreshing: "Refreshing…",
+    sourceLive: "Live from {host}",
+    sourceUnavailable: "Couldn't reach {host}",
+    asOfPrefix: "as of",
+    loadingHint: "Reading from {host}…",
+    verdict: {
+      match: "matches manifest",
+      drift: "drift vs manifest",
+      noManifest: "no manifest to compare",
+      unavailable: "couldn't read",
+    },
+    expectedPrefix: "manifest expects",
+    noManifestHint: "check ~/GitHub/system-release-deployment",
+    field: {
+      vdriveManifest: "vDrive manifest",
+      vreecuVersion: "vREECU",
+      secVersion: "SEC",
+    },
+  },
   runs: {
     runButton: "Run check",
     runAgainButton: "Run check again",
@@ -152,7 +175,7 @@ export const strings = {
   // Keys mirror catalog.py / data-model.md item ids.
   item: {
     main_can_bus_reachable: {
-      name: "Main CAN bus reachable",
+      name: "APP CAN",
       description: {
         working: "APP CAN bus is up and receiving frames.",
         error: "No frames detected on the APP CAN bus.",
@@ -279,6 +302,111 @@ export const strings = {
       },
       action:
         "Check the Peplink router WAN connection and VPN configuration, then re-run.",
+    },
+    // Signal guides — not tied to live checks, used in Repair Guide Library
+    can_bus_overview: {
+      name: "CAN Bus System Map",
+      description: {
+        working: "All CAN buses are healthy and routing correctly.",
+        error: "One or more CAN buses are not routing correctly.",
+      },
+      action: "Use this system map to trace which harness carries the failing signal.",
+    },
+    xcp_can_bus: {
+      name: "XCP CAN",
+      description: {
+        working: "XCP CAN bus is up and receiving frames.",
+        error: "No frames detected on the XCP CAN bus.",
+      },
+      action: "Re-seat Reebox_Main connector pins 3 & 4 and re-run the check.",
+    },
+    sci_can_bus: {
+      name: "SCI CAN",
+      description: {
+        working: "SCI CAN bus is up and receiving frames.",
+        error: "No frames detected on the SCI CAN bus.",
+      },
+      action: "Re-seat Reebox_Main connector pins 5 & 6 and re-run the check.",
+    },
+    body_can_bus: {
+      name: "BODY CAN",
+      description: {
+        working: "BODY CAN bus is up and receiving frames from body modules.",
+        error: "No frames detected on the BODY CAN bus.",
+      },
+      action: "Re-seat the KIAFUSEBOX CIPG connector and re-run the check.",
+    },
+    chassis_can_bus: {
+      name: "CHASSIS CAN",
+      description: {
+        working: "CHASSIS CAN bus is up and receiving frames from chassis modules.",
+        error: "No frames detected on the CHASSIS CAN bus.",
+      },
+      action: "Re-seat the KIAFUSEBOX CIPG connector pins 5 & 6 and re-run.",
+    },
+    powertrain_can_bus: {
+      name: "Powertrain CAN",
+      description: {
+        working: "Powertrain / SBW CAN bus is up and receiving frames.",
+        error: "No frames detected on the Powertrain CAN bus.",
+      },
+      action: "Inspect the Center Console harness and VIH connectors, then re-run.",
+    },
+    diag_can_bus: {
+      name: "Diagnostic CAN",
+      description: {
+        working: "Diagnostic CAN bus is up and accessible.",
+        error: "No response on the Diagnostic CAN bus.",
+      },
+      action: "Re-seat the KIAFUSEBOX IPF connector pins 26 & 27 and re-run.",
+    },
+    depb_can_bus: {
+      name: "DEPB CAN",
+      description: {
+        working: "DEPB CAN bus is up and the EPB actuator is responding.",
+        error: "No response on the DEPB CAN bus.",
+      },
+      action: "Re-seat the Reebox_DEPB connector on the IPDU harness and re-run.",
+    },
+    ts_estop_circuit: {
+      name: "E-Stop Circuit",
+      description: {
+        working: "E-Stop safety loops are closed and circuit is healthy.",
+        error: "E-Stop safety loop is open or broken.",
+      },
+      action: "Inspect E-Stop connector and loopback harness, then reset the E-Stop.",
+    },
+    ts_integration_harness: {
+      name: "Integration Harness",
+      description: {
+        working: "Telestation integration harness is connected and signals are passing.",
+        error: "Integration harness signal path has an open circuit or mismate.",
+      },
+      action: "Re-seat TIH connectors at both the TS and vehicle docking ends.",
+    },
+    ts_power_supply: {
+      name: "TS Power Supply",
+      description: {
+        working: "AC/DC power supply is delivering correct voltages.",
+        error: "Power supply output is missing or out of range.",
+      },
+      action: "Check AC input cable and AC/DC supply output connector, then re-run.",
+    },
+    ts_xcp_can: {
+      name: "XCP CAN (TS)",
+      description: {
+        working: "XCP CAN bus on the telestation is up and receiving frames.",
+        error: "No frames detected on the XCP CAN bus at the telestation.",
+      },
+      action: "Re-seat integration harness XCP CAN pins and re-run.",
+    },
+    ts_sci_can: {
+      name: "SCI CAN (TS)",
+      description: {
+        working: "SCI CAN bus on the telestation is up and receiving frames.",
+        error: "No frames detected on the SCI CAN bus at the telestation.",
+      },
+      action: "Re-seat integration harness SCI CAN pins and re-run.",
     },
   },
 } as const;

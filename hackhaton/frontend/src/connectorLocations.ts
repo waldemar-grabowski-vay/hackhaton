@@ -8,6 +8,7 @@ export type VehicleHarnessKey =
   | "ipdu"
   | "center_console"
   | "pigtail_m40"
+  | "pigtail_f61"
   | "hood_pdu"
   | "pdu_system"
   | "pdu"
@@ -15,42 +16,50 @@ export type VehicleHarnessKey =
   | "kiafusebox"
   | "estop_loopback"
   | "depb_extension"
-  | "wl_gnd";
+  | "wl_gnd"
+  | "reebox_power_cable"
+  | "vaypcb_adapt";
 
 export const HARNESS_IMAGES: Record<VehicleHarnessKey, string> = {
-  board:           "/harness-diagram.png",
-  vih:             "/ve-vih-harness.png",
-  apcb:            "/ve-apcb-harness.png",
-  accessory:       "/ve-accessory-harness.png",
-  ipdu:            "/ve-ipdu-harness.png",
-  center_console:  "/ve-center-console-harness.png",
-  pigtail_m40:     "/ve-pigtail-m40-harness.png",
-  hood_pdu:        "/ve-hood-pdu-harness.png",
-  pdu_system:      "/ve-pdu-system-harness.png",
-  pdu:             "/ve-pdu-harness.png",
-  steering:        "/ve-steering-harness.png",
-  kiafusebox:      "/ve-kiafusebox-harness.png",
-  estop_loopback:  "/ve-estop-loopback-harness.png",
-  depb_extension:  "/ve-depb-extension-harness.png",
-  wl_gnd:          "/ve-wl-gnd-harness.png",
+  board:                "/harness-diagram.png",
+  vih:                  "/ve-vih-harness.png",
+  apcb:                 "/ve-apcb-harness.png",
+  accessory:            "/ve-accessory-harness.png",
+  ipdu:                 "/ve-ipdu-harness.png",
+  center_console:       "/ve-center-console-harness.png",
+  pigtail_m40:          "/ve-pigtail-m40-harness.png",
+  pigtail_f61:          "/ve-pigtail-f61-harness.jpg",
+  hood_pdu:             "/ve-hood-pdu-harness.png",
+  pdu_system:           "/ve-pdu-system-harness.png",
+  pdu:                  "/ve-pdu-harness.png",
+  steering:             "/ve-steering-harness.png",
+  kiafusebox:           "/ve-kiafusebox-harness.png",
+  estop_loopback:       "/ve-estop-loopback-harness.png",
+  depb_extension:       "/ve-depb-extension-harness.png",
+  wl_gnd:               "/ve-wl-gnd-harness.png",
+  reebox_power_cable:   "/ve-reebox-power-cable-harness.jpg",
+  vaypcb_adapt:         "/ve-vs040815-harness-p1.png",
 };
 
 export const HARNESS_LABELS: Record<VehicleHarnessKey, string> = {
-  board:           "Board",
-  vih:             "VIH",
-  apcb:            "APCB",
-  accessory:       "Accessory",
-  ipdu:            "IPDU",
-  center_console:  "Center Console",
-  pigtail_m40:     "Pigtail M40",
-  hood_pdu:        "Hood→PDU",
-  pdu_system:      "PDU→System",
-  pdu:             "PDU",
-  steering:        "Steering",
-  kiafusebox:      "KIA Fusebox",
-  estop_loopback:  "E-Stop Loop",
-  depb_extension:  "DEPB Ext",
-  wl_gnd:          "WL-GND",
+  board:                "Board",
+  vih:                  "VIH",
+  apcb:                 "APCB",
+  accessory:            "Accessory",
+  ipdu:                 "IPDU",
+  center_console:       "Center Console",
+  pigtail_m40:          "Pigtail M40",
+  pigtail_f61:          "Pigtail F61",
+  hood_pdu:             "Hood→PDU",
+  pdu_system:           "PDU→System",
+  pdu:                  "PDU",
+  steering:             "Steering",
+  kiafusebox:           "KIA Fusebox",
+  estop_loopback:       "E-Stop Loop",
+  depb_extension:       "DEPB Ext",
+  wl_gnd:               "WL-GND",
+  reebox_power_cable:   "Reebox Cable",
+  vaypcb_adapt:         "VayPCB Adapt",
 };
 
 export const HARNESS_ORDER: VehicleHarnessKey[] = [
@@ -61,6 +70,7 @@ export const HARNESS_ORDER: VehicleHarnessKey[] = [
   "ipdu",
   "center_console",
   "pigtail_m40",
+  "pigtail_f61",
   "hood_pdu",
   "pdu",
   "pdu_system",
@@ -69,6 +79,8 @@ export const HARNESS_ORDER: VehicleHarnessKey[] = [
   "estop_loopback",
   "depb_extension",
   "wl_gnd",
+  "reebox_power_cable",
+  "vaypcb_adapt",
 ];
 
 /** Connector ID → which harness image it lives on (always board for chip-click focus) */
@@ -83,6 +95,10 @@ export const CONNECTOR_HARNESS: Record<string, VehicleHarnessKey> = {
   Reebox_Main_M:  "board",
   Reebox_Main_F:  "board",
   APCB_2_VIH:     "board",
+  REECU_CANs:     "vaypcb_adapt",
+  Wye_F:          "vaypcb_adapt",
+  PCB_F:          "vaypcb_adapt",
+  CAN_TAP_M:      "vaypcb_adapt",
 };
 
 // Fractional (0–1) positions within each harness PNG.
@@ -106,6 +122,7 @@ export const vehicleConnectorLocations: Record<VehicleHarnessKey, Record<string,
   ipdu:           {},
   center_console: {},
   pigtail_m40:    {},
+  pigtail_f61:    {},
   hood_pdu:       {},
   pdu_system:     {},
   pdu:            {},
@@ -114,6 +131,13 @@ export const vehicleConnectorLocations: Record<VehicleHarnessKey, Record<string,
   estop_loopback: {},
   depb_extension: {},
   wl_gnd:         {},
+  reebox_power_cable: {},
+  vaypcb_adapt:   {
+    REECU_CANs: { fx: 0.70, fy: 0.72 },
+    Wye_F:      { fx: 0.52, fy: 0.66 },
+    PCB_F:      { fx: 0.44, fy: 0.60 },
+    CAN_TAP_M:  { fx: 0.49, fy: 0.48 },
+  },
 };
 
 /** Flat map kept for any legacy callers */

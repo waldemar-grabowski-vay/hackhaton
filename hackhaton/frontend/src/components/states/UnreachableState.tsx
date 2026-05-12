@@ -30,7 +30,7 @@ export function UnreachableState({ outcome, hostLabel, offlineReason }: Unreacha
   const [openDebug, setOpenDebug] = useState<number | null>(null);
 
   const guide =
-    (offlineReason && offlineGuides[offlineReason]) ?? offlineGuides.__default;
+    (offlineReason && offlineGuides[offlineReason]) || offlineGuides.__default!;
 
   const reasonLabel =
     offlineReason &&

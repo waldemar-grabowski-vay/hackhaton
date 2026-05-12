@@ -56,6 +56,10 @@ def synthetic_inventory(tmp_path: Path) -> Path:
                   hosts:
                     ts-de-ber-zeus:
                       ansible_host: 192.168.60.2
+                    ts-de-ber-noaddr:
+                      # Intentionally no ansible_host — exercises the
+                      # FR-005 fallback to host_id (telestations are
+                      # typically reached via ~/.ssh/config aliases).
                     ts-be-bxl-foo:
                       ansible_host: 10.10.0.1
                     ts-us-las-00001:

@@ -16,6 +16,28 @@ import {
   REEBOX_MAIN_F_SVG,
   WAKE_PATH_SVG,
   APCB_2_VIH_SVG,
+  XCP_CAN_PATH_SVG,
+  SCI_CAN_PATH_SVG,
+  BODY_CAN_PATH_SVG,
+  CHASSIS_CAN_PATH_SVG,
+  POWERTRAIN_CAN_PATH_SVG,
+  DIAG_CAN_PATH_SVG,
+  DEPB_CAN_PATH_SVG,
+  ESTOP_PATH_SVG,
+  TIH_PATH_SVG,
+  TS_POWER_PATH_SVG,
+  TS_XCP_CAN_PATH_SVG,
+  TS_SCI_CAN_PATH_SVG,
+  IPF_F_SVG,
+  EPB_M_SVG,
+  E_STOP_F_SVG,
+  TIH_MAIN_M_SVG,
+  // new focused connector variants
+  REEBOX_MAIN_F_XCP_SVG,
+  REEBOX_MAIN_F_SCI_SVG,
+  CIPG_F_BODY_SVG,
+  CIPG_F_CHASSIS_SVG,
+  CAN_BUS_OVERVIEW_SVG,
 } from "@/connectorSpecs";
 import { photosForPNs } from "@/connectorPhotos";
 
@@ -84,7 +106,7 @@ export const guides: Record<string, RepairGuide> = {
         diagram: APP_CAN_PATH_SVG,
         body:
           "APP CAN (canonical: APP_CAN_H / APP_CAN_L)\n" +
-          "REECU PCB X8 (alias CREECU_1) — nets REF_AUX_CAN_H / REF_AUX_CAN_L\n" +
+          "REECU PCB X8 (alias CREECU_1) — REECU logical port: CAN 0 — nets REF_AUX_CAN_H / REF_AUX_CAN_L\n" +
           "→ VIH splices APP_HIGH_CAN_S / APP_LOW_CAN_S\n" +
           "→ VIH_2_REEBOX_F pin 1 (Yellow, H) & pin 2 (Gray, L)\n" +
           "→ Accessory harness Reebox_Main_F pins 1 & 2  →  IPDU Reebox_Main_M\n" +
@@ -906,6 +928,744 @@ export const tsGuides: Record<string, RepairGuide> = {
 };
 
 // ---------------------------------------------------------------------------
+// Signal guides — VE-side CAN buses and discrete signals.
+// These are reference guides not tied to a live diagnostic check.
+// ---------------------------------------------------------------------------
+
+export const signalGuides: Record<string, RepairGuide> = {
+
+  // ---- CAN Bus Overview (Vehicle) -----------------------------------------
+  can_bus_overview: {
+    vehicleOnly: true,
+    steps: [
+      {
+        title: "Use the system map to locate the failing signal",
+        body: "Find the CAN bus that is failing in the map on the right. Each colored line shows which harness and connector carries that bus.",
+      },
+      {
+        title: "Open the dedicated repair guide for that signal",
+        body: "Return to the guide list on the left and open the specific repair guide for the failing signal — it includes step-by-step connector re-seating instructions.",
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "CAN bus topology",
+        diagram: CAN_BUS_OVERVIEW_SVG,
+        body:
+          "VE CAN buses — source to destination:\n" +
+          "  APP CAN (CAN 0)  → Reebox_Main_F  pins 1/2  (Yellow/Gray)\n" +
+          "  XCP CAN (CAN 1)  → Reebox_Main_F  pins 3/4  (Green/Gray)\n" +
+          "  SCI CAN (CAN 2)  → Reebox_Main_F  pins 5/6  (Gray/Blue)\n" +
+          "  BODY CAN         → CIPG_F          pin 4/3  (Red/Blue)\n" +
+          "  CHASSIS CAN      → CIPG_F          pin 5/6  (White/Brown)\n" +
+          "  DIAG CAN         → IPF_F           pin 26/27 (Yellow/Green)\n" +
+          "  POWERTRAIN CAN   → Center Console  harness (VS050900)\n" +
+          "  DEPB CAN         → Reebox_DEPB_M   → EPB_M pins 3/4\n" +
+          "All buses route through the Vehicle Integration Harness (VIH · VS050100).",
+      },
+    ],
+  },
+
+  // ---- XCP CAN (Vehicle) --------------------------------------------------
+  xcp_can_bus: {
+    vehicleOnly: true,
+    steps: [
+      {
+        title: "Confirm REEBox is powered on",
+        body: "Check that the REEBox LED indicators are illuminated before proceeding.",
+        physical: true,
+      },
+      {
+        title: "Re-seat Reebox_Main connector — XCP CAN pins 3 & 4",
+        body: "Disconnect and firmly re-seat the 8-pin Reebox_Main connector at the REEBox. XCP CAN H (Green, W19) rides on pin 3 and XCP CAN L (Gray, W8) on pin 4. Confirm the locking tab clicks.",
+        physical: true,
+        connectors: [{ id: "Reebox_Main_F", label: "Reebox Main" }],
+      },
+      {
+        title: "Re-seat VIH_2_REEBOX_F on the VIH",
+        body: "Re-seat the 16-pin Molex connector. XCP CAN is routed through this junction from the REECU X8 board connector.",
+        physical: true,
+        connectors: [{ id: "VIH_2_REEBOX_F", label: "VIH→REEBox" }],
+      },
+      {
+        title: "Inspect harness for damage",
+        body: "Trace the Accessory harness from the VIH to the REEBox. Look for pinching, abrasion, or bent pins on the Green (W19) and Gray (W8) twisted pair.",
+        physical: true,
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Signal path",
+        diagram: XCP_CAN_PATH_SVG,
+        body:
+          "XCP CAN (XCP_CAN_H / XCP_CAN_L)\n" +
+          "REECU PCB X8 (CREECU_1) — REECU logical port: CAN 1 — nets XCP_H / XCP_L\n" +
+          "→ VIH internal splice\n" +
+          "→ VIH_2_REEBOX_F  pin 3 (Green W19, H)  &  pin 4 (Gray W8, L)\n" +
+          "→ Accessory harness  Reebox_Main_F  pin 3 / pin 4\n" +
+          "→ IPDU harness  Reebox_Main_M  pin 3 / pin 4\n" +
+          "Twisted pair — Green (H) + Gray (L).",
+      },
+      {
+        label: "Connector: Reebox_Main_F / M",
+        diagram: REEBOX_MAIN_F_XCP_SVG,
+        body:
+          "8-pin female (Accessory VS101500) mates with Reebox_Main_M (IPDU VS101400).\n" +
+          "Pin 3 = XCP_CAN_H (Green W19)  |  Pin 4 = XCP_CAN_L (Gray W8)\n" +
+          "Re-seat mating pair; confirm no pin backs out when locking tab released.",
+        connectors: [{ id: "Reebox_Main_F", label: "Reebox Main" }],
+      },
+      {
+        label: "CAN bus health check",
+        body:
+          "ip -details link show canX\n" +
+          "candump canX\n" +
+          "Expected: XCP frames from actuator / sensor nodes.\n" +
+          "Bus-off / heavy TX errors → check 120 Ω termination at each end.\n" +
+          "Silent bus → suspect open circuit at Reebox_Main_F pin 3 or 4.",
+      },
+      {
+        label: "Continuity test",
+        body:
+          "Measure Reebox_Main_F.3 → REECU X8 XCP_H net (across VIH splice).\n" +
+          "Measure Reebox_Main_F.4 → REECU X8 XCP_L net.\n" +
+          "Open circuit → broken wire or damaged splice inside VIH (VS050100).",
+      },
+    ],
+  },
+
+  // ---- SCI CAN (Vehicle) --------------------------------------------------
+  sci_can_bus: {
+    vehicleOnly: true,
+    steps: [
+      {
+        title: "Confirm REEBox is powered on",
+        body: "Check REEBox LED indicators before proceeding.",
+        physical: true,
+      },
+      {
+        title: "Re-seat Reebox_Main connector — SCI CAN pins 5 & 6",
+        body: "Disconnect and firmly re-seat the 8-pin Reebox_Main connector. SCI CAN H (Gray, W21) is on pin 5 and SCI CAN L (Blue, W20) on pin 6. Confirm the locking tab clicks.",
+        physical: true,
+        connectors: [{ id: "Reebox_Main_F", label: "Reebox Main" }],
+      },
+      {
+        title: "Re-seat VIH_2_REEBOX_F on the VIH",
+        body: "Re-seat the 16-pin Molex connector that bridges the Vehicle Integration Harness to the REEBox.",
+        physical: true,
+        connectors: [{ id: "VIH_2_REEBOX_F", label: "VIH→REEBox" }],
+      },
+      {
+        title: "Inspect harness for damage",
+        body: "Trace the Accessory harness. Look for damage on the Gray (W21) and Blue (W20) twisted pair.",
+        physical: true,
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Signal path",
+        diagram: SCI_CAN_PATH_SVG,
+        body:
+          "SCI CAN (SCI_CAN_H / SCI_CAN_L)\n" +
+          "REECU PCB X8 (CREECU_1) nets SCI_H / SCI_L\n" +
+          "→ VIH internal splice\n" +
+          "→ VIH_2_REEBOX_F  pin 5 (Gray W21, H)  &  pin 6 (Blue W20, L)\n" +
+          "→ Accessory harness  Reebox_Main_F  pin 5 / pin 6\n" +
+          "→ IPDU harness  Reebox_Main_M  pin 5 / pin 6\n" +
+          "Twisted pair — Gray (H) + Blue (L).",
+      },
+      {
+        label: "Connector: Reebox_Main_F / M",
+        diagram: REEBOX_MAIN_F_SCI_SVG,
+        body:
+          "8-pin female (Accessory VS101500) mates with Reebox_Main_M (IPDU VS101400).\n" +
+          "Pin 5 = SCI_CAN_H (Gray W21)  |  Pin 6 = SCI_CAN_L (Blue W20)\n" +
+          "Re-seat mating pair; confirm no pin backs out.",
+        connectors: [{ id: "Reebox_Main_F", label: "Reebox Main" }],
+      },
+      {
+        label: "CAN bus health check",
+        body:
+          "candump canX\n" +
+          "Expected: SCI instrument / sensor frames.\n" +
+          "Silent bus → open at Reebox_Main_F pin 5 or 6, or damaged W20/W21 inside Accessory harness.",
+      },
+      {
+        label: "Continuity test",
+        body:
+          "Measure Reebox_Main_F.5 → REECU X8 SCI_H net.\n" +
+          "Measure Reebox_Main_F.6 → REECU X8 SCI_L net.\n" +
+          "Open circuit → broken splice or wire inside VIH (VS050100).",
+      },
+    ],
+  },
+
+  // ---- BODY CAN (Vehicle) -------------------------------------------------
+  body_can_bus: {
+    vehicleOnly: true,
+    steps: [
+      {
+        title: "Re-seat CIPG connector at the KIAFUSEBOX harness",
+        body: "Disconnect and re-seat the CIPG_F / CIPG_M 16-pin connector pair. BODY CAN H (Red, W54) is on pin 4 and BODY CAN L (Blue, W51) on pin 3.",
+        physical: true,
+      },
+      {
+        title: "Re-seat VIH_2_KIAFUSEBOX connector on the VIH",
+        body: "Re-seat the connector that bridges the Vehicle Integration Harness to the KIAFUSEBOX harness.",
+        physical: true,
+      },
+      {
+        title: "Inspect harness for damage",
+        body: "Trace the KIAFUSEBOX harness (VS051800). Look for damage on the Red (W54) and Blue (W51) twisted pair around CIPG_F.",
+        physical: true,
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Signal path",
+        diagram: BODY_CAN_PATH_SVG,
+        body:
+          "BODY CAN (S_BODY_CAN_H / S_BODY_CAN_L)\n" +
+          "REECU PCB X8 (CREECU_1) nets CAN_BODY_H / CAN_BODY_L\n" +
+          "→ VIH → VIH_2_KIAFUSEBOX\n" +
+          "→ KIAFUSEBOX harness VS051800\n" +
+          "→ CIPG_F  pin 4 (Red W54, H)  &  pin 3 (Blue W51, L)\n" +
+          "→ CIPG_M  pin 4 (Red W53, H)  &  pin 3 (Blue W52, L)\n" +
+          "→ KIA fusebox body control modules\n" +
+          "Twisted pairs: W54+W51 (CIPG_F), W53+W52 (CIPG_M).",
+      },
+      {
+        label: "Connector: CIPG_F / CIPG_M",
+        diagram: CIPG_F_BODY_SVG,
+        body:
+          "TE 2005076-1 (F) / 2005079-1 (M) — 16-pin.\n" +
+          "Pin 4 = BODY_CAN_H (Red)  |  Pin 3 = BODY_CAN_L (Blue)\n" +
+          "Check for bent pins and moisture ingress at both mating faces.",
+      },
+      {
+        label: "CAN bus health check",
+        body:
+          "candump canX\n" +
+          "Expected: body module frames (doors, HVAC, lighting).\n" +
+          "Bus-off → check 120 Ω termination at each end.\n" +
+          "Silent bus → open circuit at CIPG_F pin 4 or 3.",
+      },
+      {
+        label: "Continuity test",
+        body:
+          "Measure CIPG_F.4 → REECU X8 CAN_BODY_H net.\n" +
+          "Measure CIPG_F.3 → REECU X8 CAN_BODY_L net.\n" +
+          "Open → damaged wire in KIAFUSEBOX harness or broken VIH splice.",
+      },
+    ],
+  },
+
+  // ---- CHASSIS CAN (Vehicle) ----------------------------------------------
+  chassis_can_bus: {
+    vehicleOnly: true,
+    steps: [
+      {
+        title: "Re-seat CIPG connector at the KIAFUSEBOX harness",
+        body: "Disconnect and re-seat the CIPG_F / CIPG_M 16-pin connector pair. CHASSIS CAN H (White, W55) is on pin 5 and CHASSIS CAN L (Brown, W58) on pin 6.",
+        physical: true,
+      },
+      {
+        title: "Re-seat VIH_2_KIAFUSEBOX on the VIH",
+        body: "Re-seat the connector that bridges the VIH to the KIAFUSEBOX harness.",
+        physical: true,
+      },
+      {
+        title: "Inspect harness for damage",
+        body: "Trace the KIAFUSEBOX harness (VS051800). Look for damage on the White (W55) and Brown (W58) twisted pair.",
+        physical: true,
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Signal path",
+        diagram: CHASSIS_CAN_PATH_SVG,
+        body:
+          "CHASSIS CAN (S_CHASSIS_CAN_H / S_CHASSIS_CAN_L)\n" +
+          "REECU PCB X8 (CREECU_1) nets CAN_CHASSIS_H / CAN_CHASSIS_L\n" +
+          "→ VIH → VIH_2_KIAFUSEBOX\n" +
+          "→ KIAFUSEBOX harness VS051800\n" +
+          "→ CIPG_F  pin 5 (White W55, H)  &  pin 6 (Brown W58, L)\n" +
+          "→ CIPG_M  pin 5 (White W56, H)  &  pin 6 (Brown W57, L)\n" +
+          "→ KIA chassis control modules (ABS, ESC, MDPS)\n" +
+          "Twisted pairs: W55+W58 (CIPG_F), W56+W57 (CIPG_M).",
+      },
+      {
+        label: "Connector: CIPG_F / CIPG_M",
+        diagram: CIPG_F_CHASSIS_SVG,
+        body:
+          "TE 2005076-1 (F) / 2005079-1 (M) — 16-pin.\n" +
+          "Pin 5 = CHASSIS_CAN_H (White)  |  Pin 6 = CHASSIS_CAN_L (Brown)\n" +
+          "Check for bent pins, corrosion, and moisture ingress.",
+      },
+      {
+        label: "CAN bus health check",
+        body:
+          "candump canX\n" +
+          "Expected: ABS, ESC, steering frames.\n" +
+          "Bus-off → check 120 Ω termination.\n" +
+          "Silent bus → open circuit at CIPG_F pin 5 or 6.",
+      },
+      {
+        label: "Continuity test",
+        body:
+          "Measure CIPG_F.5 → REECU X8 CAN_CHASSIS_H net.\n" +
+          "Measure CIPG_F.6 → REECU X8 CAN_CHASSIS_L net.\n" +
+          "Open → damaged wire inside VS051800 or broken VIH splice.",
+      },
+    ],
+  },
+
+  // ---- POWERTRAIN / SBW CAN (Vehicle) -------------------------------------
+  powertrain_can_bus: {
+    vehicleOnly: true,
+    steps: [
+      {
+        title: "Re-seat VIH_2_CENTER_CONSOLE connector",
+        body: "Disconnect and firmly re-seat the connector between the Vehicle Integration Harness and the Center Console harness. Powertrain / SBW CAN routes exclusively through this connector — it does NOT pass through the Accessory (REEBox) harness.",
+        physical: true,
+      },
+      {
+        title: "Re-seat the Center Console harness at both ends",
+        body: "Re-seat both ends of the Center Console harness (VS050900). Confirm all tabs click and no pins are backed out.",
+        physical: true,
+      },
+      {
+        title: "Inspect harness for damage",
+        body: "Trace the Center Console harness from the VIH to the SBW ECU. Look for pinching or cuts in the Powertrain CAN twisted pair.",
+        physical: true,
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Signal path",
+        diagram: POWERTRAIN_CAN_PATH_SVG,
+        body:
+          "POWERTRAIN CAN / SBW CAN (S_PT_H / S_PT_L)\n" +
+          "REECU PCB X8 (CREECU_0)  nets CAN_SBW_H / CAN_SBW_L\n" +
+          "REECU PCB X8 (CREECU_1)  nets CAN_POWERTRAIN_H / CAN_POWERTRAIN_L\n" +
+          "→ VIH splice S_CAN_SBW_H / S_CAN_SBW_L (CREECU_0)\n" +
+          "→ VIH splice S_CAN_POWERTRAIN_H / L (CREECU_1)\n" +
+          "→ VIH_2_CENTER_CONSOLE connector\n" +
+          "→ Center Console harness (VS050900)\n" +
+          "→ SBW ECU\n" +
+          "Note: APP CAN, BODY CAN, and DIAG CAN do NOT route through Center Console.",
+      },
+      {
+        label: "Connector: VIH_2_CENTER_CONSOLE",
+        body:
+          "Bridge connector between VIH (VS050100) and Center Console harness (VS050900).\n" +
+          "Carries: Powertrain CAN H/L, SBW CAN H/L, WAKE splice.\n" +
+          "Does NOT carry: APP CAN, BODY CAN, CHASSIS CAN, DIAG CAN.\n" +
+          "Check for bent pins and proper lock engagement.",
+      },
+      {
+        label: "CAN bus health check",
+        body:
+          "candump canX\n" +
+          "Expected: SBW ECU heartbeat frames and powertrain status.\n" +
+          "Silent bus → open circuit between VIH and Center Console harness.\n" +
+          "Check CREECU_0 and CREECU_1 splices on the VIH for continuity.",
+      },
+      {
+        label: "Splice continuity",
+        body:
+          "Measure from SBW ECU CAN_H pin → REECU X8 CAN_SBW_H net (across S_CAN_SBW_H splice in VIH).\n" +
+          "Measure from SBW ECU CAN_L pin → REECU X8 CAN_SBW_L net.\n" +
+          "Open → broken splice or damaged Center Console harness wire.",
+      },
+    ],
+  },
+
+  // ---- DIAGNOSTIC CAN (Vehicle) -------------------------------------------
+  diag_can_bus: {
+    vehicleOnly: true,
+    steps: [
+      {
+        title: "Re-seat IPF connector at the KIAFUSEBOX harness",
+        body: "Disconnect and re-seat the IPF_F / IPF_M 40-pin connector pair. DIAG CAN H (Yellow, W63) is on pin 26 and DIAG CAN L (Green, W64) on pin 27.",
+        physical: true,
+      },
+      {
+        title: "Re-seat VIH_2_KIAFUSEBOX on the VIH",
+        body: "Re-seat the VIH-to-KIAFUSEBOX bridge connector and confirm the lock engages.",
+        physical: true,
+      },
+      {
+        title: "Inspect harness for damage",
+        body: "Trace the KIAFUSEBOX harness (VS051800) around IPF_F. Look for damage on the Yellow (W63) and Green (W64) twisted pair.",
+        physical: true,
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Signal path",
+        diagram: DIAG_CAN_PATH_SVG,
+        body:
+          "DIAGNOSTIC CAN (S_DIAG_CAN_H / S_DIAG_CAN_L)\n" +
+          "REECU PCB X8 nets DIAG_CAN_H / DIAG_CAN_L\n" +
+          "→ VIH → VIH_2_KIAFUSEBOX\n" +
+          "→ KIAFUSEBOX harness VS051800\n" +
+          "→ IPF_F  pin 26 (Yellow W63, H)  &  pin 27 (Green W64, L)\n" +
+          "→ IPF_M  pin 26 (Yellow W64, H)  &  pin 27 (Green W65, L)\n" +
+          "→ OBD-II / diagnostic gateway\n" +
+          "Twisted pair: W63+W64 (IPF_F).",
+      },
+      {
+        label: "Connector: IPF_F / IPF_M",
+        diagram: IPF_F_SVG,
+        body:
+          "Youye YY8401064 (F) / YY940107K (M) — 40-pin.\n" +
+          "Pin 26 = DIAG_CAN_H (Yellow W63)  |  Pin 27 = DIAG_CAN_L (Green W64)\n" +
+          "Check for bent pins; these connectors are large — ensure full seating.",
+      },
+      {
+        label: "CAN bus health check",
+        body:
+          "candump canX  (or via OBD-II adapter)\n" +
+          "Expected: diagnostic gateway frames, UDS responses.\n" +
+          "Silent bus → open at IPF_F pin 26 or 27.",
+      },
+      {
+        label: "Continuity test",
+        body:
+          "Measure IPF_F.26 → REECU X8 DIAG_CAN_H net.\n" +
+          "Measure IPF_F.27 → REECU X8 DIAG_CAN_L net.\n" +
+          "Open → damaged wire inside VS051800.",
+      },
+    ],
+  },
+
+  // ---- DEPB CAN (Vehicle) -------------------------------------------------
+  depb_can_bus: {
+    vehicleOnly: true,
+    steps: [
+      {
+        title: "Re-seat Reebox_DEPB connector on the IPDU harness",
+        body: "Locate and firmly re-seat the Reebox_DEPB_M connector on the IPDU harness (VS101400). This connector carries the DEPB CAN bus to the electronic parking brake actuator.",
+        physical: true,
+        connectors: [{ id: "Reebox_Main_M", label: "IPDU harness" }],
+      },
+      {
+        title: "Re-seat the DEPB Extension harness connectors",
+        body: "Re-seat both ends of the DEPB Extension harness (VS051000). Check EPB_M and EPB_F connectors — KET MG651747-5 / MG641744-5, 4-pin.",
+        physical: true,
+      },
+      {
+        title: "Inspect harness for damage",
+        body: "Trace the DEPB Extension harness. The power wires are Red 1.5 mm² (W1–W4). Look for abrasion or cuts near routing bends.",
+        physical: true,
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Signal path",
+        diagram: DEPB_CAN_PATH_SVG,
+        body:
+          "DEPB CAN (DEPB0_CAN_H / DEPB0_CAN_L)\n" +
+          "REECU PCB X8 nets DEPB_CAN_H / DEPB_CAN_L\n" +
+          "→ VIH → IPDU harness VS101400\n" +
+          "→ Reebox_DEPB_M connector\n" +
+          "→ DEPB Extension harness VS051000\n" +
+          "→ EPB_M (KET MG651747-5)  →  EPB actuator\n" +
+          "Power: Red 1.5 mm² W1–W4.",
+      },
+      {
+        label: "Connector: EPB_M / EPB_F",
+        diagram: EPB_M_SVG,
+        body:
+          "KET MG651747-5 (M) / MG641744-5 (F) — 4-pin.\n" +
+          "Pin 1 & 2 = motor power (Red 1.5 mm²)\n" +
+          "Pin 3 & 4 = CAN H/L\n" +
+          "Check for bent pins and proper lock engagement on EPB actuator body.",
+      },
+      {
+        label: "CAN bus health check",
+        body:
+          "candump canX\n" +
+          "Expected: DEPB status frames (position, force, fault code).\n" +
+          "Silent bus → open circuit between IPDU and EPB actuator.\n" +
+          "No actuator response → also check 12 V supply to EPB_M pins 1 & 2.",
+      },
+      {
+        label: "Power check",
+        body:
+          "Measure 12 V between EPB_M pin 1 (+) and pin 2 (GND).\n" +
+          "No voltage → trace back through DEPB Extension harness to IPDU fuse.\n" +
+          "Voltage OK but no CAN → open on pin 3 or 4.",
+      },
+    ],
+  },
+
+  // ---- TS E-Stop Circuit --------------------------------------------------
+  ts_estop_circuit: {
+    steps: [
+      {
+        title: "Reset the E-Stop button",
+        body: "Twist and release the red E-Stop mushroom button on the telestation. Confirm it pops out fully.",
+        physical: true,
+      },
+      {
+        title: "Re-seat E-Stop connector",
+        body: "Disconnect and firmly re-seat the E-Stop harness connector at the telestation chassis. Confirm the locking tab clicks.",
+        physical: true,
+      },
+      {
+        title: "Re-seat E-Stop loopback harness",
+        body: "Re-seat both ends of the E-Stop loopback harness (VS030812). This harness carries three safety loops — Green (W1), White (W2), Blue (W3). Any open loop trips the E-Stop.",
+        physical: true,
+      },
+      {
+        title: "Inspect loopback harness for damage",
+        body: "Trace all three loop wires (Green W1, White W2, Blue W3). A break in any wire opens the E-Stop circuit.",
+        physical: true,
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Circuit path",
+        diagram: ESTOP_PATH_SVG,
+        body:
+          "E-Stop Safety Loops (telestation)\n" +
+          "E-Stop button (NC contact) → E_Stop_F connector\n" +
+          "→ E-Stop loopback harness VS030812\n" +
+          "    Loop 1: Green wire W1\n" +
+          "    Loop 2: White wire W2\n" +
+          "    Loop 3: Blue  wire W3\n" +
+          "→ REECU safety relay input\n" +
+          "All three loops must be closed for the system to run.\n" +
+          "Open loop = E-Stop tripped.",
+      },
+      {
+        label: "Connector: E_Stop_F (TE 1473410-1)",
+        diagram: E_STOP_F_SVG,
+        body:
+          "TE 1473410-1 — 16-pin.\n" +
+          "Carries all three E-Stop loop wires.\n" +
+          "Check for pushed-back pins and moisture ingress.\n" +
+          "Resistance across each loop pin pair should be < 1 Ω when button is released.",
+      },
+      {
+        label: "Continuity test (per loop)",
+        body:
+          "With E-Stop button released:\n" +
+          "Loop 1: measure resistance across Green W1 pins → < 1 Ω expected.\n" +
+          "Loop 2: measure across White W2 pins → < 1 Ω expected.\n" +
+          "Loop 3: measure across Blue W3 pins → < 1 Ω expected.\n" +
+          "Open loop → broken wire or bent connector pin.",
+      },
+    ],
+  },
+
+  // ---- TS Integration Harness signal path ---------------------------------
+  ts_integration_harness: {
+    steps: [
+      {
+        title: "Re-seat TIH_REECU_F on the REECU side",
+        body: "Disconnect and re-seat the TIH_REECU_F connector at the REECU board. This carries APP CAN, XCP, SCI and other buses from the REECU into the integration harness.",
+        physical: true,
+      },
+      {
+        title: "Re-seat TIH_Main_M / TIH_Main_F at the docking end",
+        body: "Re-seat the docking-end connector pair (TIH_Main_M and TIH_Main_F). These mate when the telestation docks to the vehicle. Confirm both sides seat fully.",
+        physical: true,
+      },
+      {
+        title: "Inspect integration harness for damage",
+        body: "Trace the full length of the Telestation Integration Harness (TIH). Look for pinching, cuts, or loose strain reliefs.",
+        physical: true,
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Signal path overview",
+        diagram: TIH_PATH_SVG,
+        body:
+          "Telestation Integration Harness (TIH)\n" +
+          "REECU PCB X8 (CREECU_X9)\n" +
+          "→ TIH_REECU_F connector\n" +
+          "→ Integration harness routes: APP CAN H/L (Yellow/Gray twisted)\n" +
+          "   also: XCP CAN, SCI CAN, WAKE, K15, USB, GND\n" +
+          "→ TIH_Main_M  (vehicle docking interface)\n" +
+          "→ TIH_Main_F  (mates with vehicle-side stub)\n" +
+          "Termination: TIH_Main_M pin 1 → pin 2 should read ~60 Ω when vehicle connected.",
+      },
+      {
+        label: "APP CAN on TIH",
+        diagram: TS_APP_CAN_PATH_SVG,
+        body:
+          "APP CAN H/L runs on TIH in Yellow/Gray twisted pair.\n" +
+          "Measure TIH_Main_M.1 → TIH_Main_M.2 — expect ~120 Ω (TS-side terminator).\n" +
+          "With vehicle docked: ~60 Ω (two 120 Ω resistors in parallel).\n" +
+          "No vehicle: candump shows own frames → wiring to REECU is good.\n" +
+          "No frames at all → check TIH_REECU_F seating.",
+      },
+      {
+        label: "Continuity test",
+        body:
+          "Measure TIH_REECU_F APP_CAN_H pin → TIH_Main_M pin 1 (H).\n" +
+          "Measure TIH_REECU_F APP_CAN_L pin → TIH_Main_M pin 2 (L).\n" +
+          "Open circuit → broken wire inside TIH or pushed-back pin.",
+      },
+    ],
+  },
+
+  // ---- TS Power Supply ----------------------------------------------------
+  ts_power_supply: {
+    steps: [
+      {
+        title: "Confirm AC input is connected",
+        body: "Check that the IEC AC input cable is fully seated in the AC/DC supply and that the mains socket is live.",
+        physical: true,
+      },
+      {
+        title: "Check AC/DC supply output connector",
+        body: "Re-seat the DC output connector on the AC/DC supply (EU or US variant). Confirm no bent pins.",
+        physical: true,
+      },
+      {
+        title: "Check DC distribution to REECU",
+        body: "Trace from the AC/DC supply through the TS power harness to the REECU_POWER connector. Confirm secure seating.",
+        physical: true,
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Power chain overview",
+        diagram: TS_POWER_PATH_SVG,
+        body:
+          "Mains (AC) → IEC cable → AC/DC supply (EU: ts-acdc-eu / US: ts-acdc-us)\n" +
+          "→ DC output connector → TS Power harness\n" +
+          "→ REECU_POWER connector → REECU board 12 V rail\n" +
+          "Also feeds: display, Peplink router, fans.\n" +
+          "Expected: 12 V DC nominal at REECU_POWER.",
+      },
+      {
+        label: "Voltage checks",
+        body:
+          "Measure at AC/DC output connector: 12 V DC expected.\n" +
+          "Measure at REECU_POWER input: 12 V DC expected.\n" +
+          "Under-voltage (< 11 V) → overloaded supply or long cable voltage drop.\n" +
+          "No voltage → check mains fuse and IEC cable.",
+      },
+      {
+        label: "LED indicators",
+        body:
+          "Green LED on AC/DC supply = output OK.\n" +
+          "Red or off → over-current or thermal shutdown.\n" +
+          "Let supply cool for 5 minutes then re-try. If persistent, swap supply.",
+      },
+    ],
+  },
+
+  // ---- TS XCP CAN ---------------------------------------------------------
+  ts_xcp_can: {
+    steps: [
+      {
+        title: "Re-seat TIH_REECU_F connector",
+        body: "XCP CAN routes from the REECU PCB through TIH_REECU_F into the integration harness. Re-seat this connector firmly.",
+        physical: true,
+      },
+      {
+        title: "Re-seat TIH_Main_M / TIH_Main_F docking connectors",
+        body: "Re-seat the docking-end connectors that carry XCP CAN across the vehicle interface.",
+        physical: true,
+      },
+      {
+        title: "Inspect integration harness for damage",
+        body: "Trace the XCP CAN twisted pair through the TIH. Look for pinching or cuts.",
+        physical: true,
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Signal path",
+        diagram: TS_XCP_CAN_PATH_SVG,
+        body:
+          "XCP CAN (telestation side)\n" +
+          "REECU PCB X8 (CREECU_X9) XCP_H / XCP_L nets\n" +
+          "→ TIH_REECU_F connector\n" +
+          "→ Telestation Integration Harness (TIH)\n" +
+          "→ TIH_Main_M docking connector\n" +
+          "→ (docked) → vehicle XCP CAN network\n" +
+          "Twisted pair — same color code as VE side: Green (H) + Gray (L).",
+      },
+      {
+        label: "Connector: TIH_Main_M",
+        diagram: TIH_MAIN_M_SVG,
+        body:
+          "XCP CAN routes on TIH_Main_M connector.\n" +
+          "Pin 3 = XCP_CAN_H (Green W19)  |  Pin 4 = XCP_CAN_L (Gray W8)\n" +
+          "Measure continuity TIH_REECU_F XCP pins → TIH_Main_M pin 3 / pin 4.",
+      },
+      {
+        label: "CAN bus health check",
+        body:
+          "candump canX  (run on TS REECU)\n" +
+          "Expected: XCP frames from vehicle actuator nodes.\n" +
+          "Undocked: no frames expected on XCP (no source).\n" +
+          "Docked + silent: open circuit at TIH_REECU_F XCP pins.",
+      },
+    ],
+  },
+
+  // ---- TS SCI CAN ---------------------------------------------------------
+  ts_sci_can: {
+    steps: [
+      {
+        title: "Re-seat TIH_REECU_F connector",
+        body: "SCI CAN routes through TIH_REECU_F into the integration harness. Re-seat this connector firmly.",
+        physical: true,
+      },
+      {
+        title: "Re-seat TIH_Main docking connectors",
+        body: "Re-seat the docking-end connectors that carry SCI CAN.",
+        physical: true,
+      },
+      {
+        title: "Inspect integration harness for damage",
+        body: "Trace the SCI CAN twisted pair (Gray H + Blue L) through the TIH.",
+        physical: true,
+      },
+    ],
+    debugSuggestions: [
+      {
+        label: "Signal path",
+        diagram: TS_SCI_CAN_PATH_SVG,
+        body:
+          "SCI CAN (telestation side)\n" +
+          "REECU PCB X8 (CREECU_X9) SCI_H / SCI_L nets\n" +
+          "→ TIH_REECU_F connector\n" +
+          "→ Telestation Integration Harness (TIH)\n" +
+          "→ TIH_Main_M docking connector\n" +
+          "→ (docked) → vehicle SCI CAN network\n" +
+          "Twisted pair — Gray (H) + Blue (L).",
+      },
+      {
+        label: "Connector: TIH_Main_M",
+        diagram: TIH_MAIN_M_SVG,
+        body:
+          "SCI CAN routes on TIH_Main_M connector.\n" +
+          "Pin 5 = SCI_CAN_H (Gray W21)  |  Pin 6 = SCI_CAN_L (Blue W20)\n" +
+          "Measure continuity TIH_REECU_F SCI pins → TIH_Main_M pin 5 / pin 6.",
+      },
+      {
+        label: "CAN bus health check",
+        body:
+          "candump canX  (run on TS REECU)\n" +
+          "Expected: SCI instrument frames from vehicle when docked.\n" +
+          "Undocked: no frames expected on SCI.\n" +
+          "Docked + silent → open circuit at TIH_REECU_F SCI pins.",
+      },
+    ],
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Offline / unreachable guides — keyed by offline_reason value.
 // Looked up in UnreachableState via offlineGuides[reason] ?? offlineGuides.__default.
 // ---------------------------------------------------------------------------
@@ -930,7 +1690,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
       },
       {
         title: "Ping the host from the diagnostic laptop",
-        body: "Open a terminal and run: ping <host-ip>. If there is no reply, the route to the host is broken. Try pinging the Peplink router IP first to isolate whether the issue is cellular or LAN.",
+        body: "Open a terminal and run: ping <host-id>. If there is no reply, the route to the host is broken. Try pinging the Peplink router IP first to isolate whether the issue is cellular or LAN.",
       },
       {
         title: "Re-run the diagnostic",
@@ -942,9 +1702,9 @@ export const offlineGuides: Record<string, RepairGuide> = {
         label: "Route check",
         body:
           "From the diagnostic laptop:\n" +
-          "  ping <host-ip>            # basic reachability\n" +
-          "  traceroute <host-ip>      # where does routing stop?\n" +
-          "  ip route get <host-ip>    # verify the local route table\n\n" +
+          "  ping <host-id>            # basic reachability\n" +
+          "  traceroute <host-id>      # where does routing stop?\n" +
+          "  ip route get <host-id>    # verify the local route table\n\n" +
           "If ping fails at hop 1, the issue is LAN-local (cable / switch).\n" +
           "If ping fails at hop 2+, the issue is cellular / VPN routing.",
       },
@@ -972,7 +1732,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
       },
       {
         title: "Attempt a manual SSH connection",
-        body: "From the diagnostic laptop: ssh ree@<host-ip> -v. The verbose output (-v) will show exactly which key was offered and why authentication was rejected.",
+        body: "From the diagnostic laptop: ssh <host-id> -v. The verbose output (-v) will show exactly which key was offered and why authentication was rejected.",
       },
       {
         title: "Re-enrol credentials if the key was rotated",
@@ -987,7 +1747,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
       {
         label: "SSH verbose output",
         body:
-          "ssh ree@<host-ip> -vvv 2>&1 | head -60\n\n" +
+          "ssh <host-id> -vvv 2>&1 | head -60\n\n" +
           "Look for lines like:\n" +
           "  debug1: Offering public key: ...\n" +
           "  debug1: Authentications that can continue: publickey\n" +
@@ -1017,7 +1777,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
       },
       {
         title: "Attempt a manual SSH connection with verbose output",
-        body: "From the diagnostic laptop: ssh ree@<host-ip> -v -o ConnectTimeout=10. If it hangs at 'connecting', the TCP port is closed — either sshd crashed or a firewall is blocking port 22.",
+        body: "From the diagnostic laptop: ssh <host-id> -v -o ConnectTimeout=10. If it hangs at 'connecting', the TCP port is closed — either sshd crashed or a firewall is blocking port 22.",
       },
       {
         title: "Check CPU load on the REECU",
@@ -1025,7 +1785,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
       },
       {
         title: "Restart the REECU if it is stuck",
-        body: "Graceful: ssh ree@<host-ip> sudo reboot (if SSH partially works).\nHard: cycle PDU power to the REECU rail. Wait 90 seconds for full boot before re-running the diagnostic.",
+        body: "Graceful: ssh <host-id> sudo reboot (if SSH partially works).\nHard: cycle PDU power to the REECU rail. Wait 90 seconds for full boot before re-running the diagnostic.",
         physical: true,
       },
       {
@@ -1038,8 +1798,8 @@ export const offlineGuides: Record<string, RepairGuide> = {
         label: "Port check",
         body:
           "From the diagnostic laptop:\n" +
-          "  nc -zv <host-ip> 22          # is port 22 open?\n" +
-          "  ssh ree@<host-ip> -o ConnectTimeout=5 -v\n\n" +
+          "  nc -zv <host-id> 22          # is port 22 open?\n" +
+          "  ssh <host-id> -o ConnectTimeout=5 -v\n\n" +
           "If nc times out: firewall or sshd not listening.\n" +
           "If nc connects but SSH hangs: sshd is alive but slow (high load?).",
       },
@@ -1060,7 +1820,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
     steps: [
       {
         title: "SSH to the REECU and check the diagnostic service",
-        body: "ssh ree@<host-ip> and run: systemctl status ree-debug. If it shows 'failed' or 'inactive', the service is not running.",
+        body: "ssh <host-id> and run: systemctl status ree-debug. If it shows 'failed' or 'inactive', the service is not running.",
       },
       {
         title: "Review recent service logs",
@@ -1079,7 +1839,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
       {
         label: "Service status",
         body:
-          "ssh ree@<host-ip>\n" +
+          "ssh <host-id>\n" +
           "  systemctl status ree-debug\n" +
           "  journalctl -u ree-debug -n 100 --no-pager\n" +
           "  ss -tlnp | grep <port>        # confirm port is listening\n\n" +
@@ -1104,7 +1864,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
       },
       {
         title: "Verify SSH access",
-        body: "Run: ssh ree@<host-ip> -o ConnectTimeout=10. If this fails, the issue is either network (no route) or authentication (wrong key).",
+        body: "Run: ssh <host-id> -o ConnectTimeout=10. If this fails, the issue is either network (no route) or authentication (wrong key).",
       },
       {
         title: "Restart the host if it is unresponsive",
@@ -1120,9 +1880,9 @@ export const offlineGuides: Record<string, RepairGuide> = {
       {
         label: "Connectivity quick check",
         body:
-          "ping <host-ip>                  # network reachability\n" +
-          "ssh ree@<host-ip> -v            # SSH connection attempt\n" +
-          "nc -zv <host-ip> 22             # TCP port 22 open?\n\n" +
+          "ping <host-id>                  # network reachability\n" +
+          "ssh <host-id> -v            # SSH connection attempt\n" +
+          "nc -zv <host-id> 22             # TCP port 22 open?\n\n" +
           "Triage order:\n" +
           "  1. ping fails    → network / routing issue\n" +
           "  2. nc fails      → SSH not listening (sshd down or firewall)\n" +
