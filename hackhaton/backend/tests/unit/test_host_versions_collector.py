@@ -169,3 +169,100 @@ def test_verdict_invariant_unavailable_requires_reason() -> None:
 
     with pytest.raises(ValidationError):
         VersionField(value=None, verdict=VersionVerdict.UNAVAILABLE, reason=None, as_of=_now())
+
+
+# --- FR-011: REECU-owned rows belong to the version card, not run.items ----
+
+
+def _diagnostic_item(id_: str, category: str = "software") -> "DiagnosticItem":
+    from vayobd.models import CheckCategory, DiagnosticItem, ItemStatus
+
+    return DiagnosticItem(
+        id=id_,
+        name_key=f"item.{id_}.name",
+        category=CheckCategory(category),
+        status=ItemStatus.WORKING,
+        raw_detail="ok",
+    )
+
+
+def _run_with_items(item_ids: list[str]) -> "DiagnosticRun":
+    from vayobd.models import DiagnosticRun, RunOutcome
+
+    return DiagnosticRun(
+        host_id="ts-de-ber-zeus",
+        started_at=_now(),
+        completed_at=_now(),
+        outcome=RunOutcome.COMPLETE,
+        items=[_diagnostic_item(i) for i in item_ids],
+    )
+
+
+def test_filter_reecu_owned_items_drops_version_card_rows() -> None:
+    """FR-011: REECU/vDrive/SEC rows MUST NOT appear in run.items
+    (they're already on the version card)."""
+    from vayobd.api.host_versions import _filter_reecu_owned_items
+
+    run = _run_with_items(
+        [
+            # version-card-owned (engine ids — should be filtered)
+            "vdrive_package_vs_manifest",
+            "aurix_mcu_firmware",
+            "sec_fpga_gateware",
+            "ts_sec_version",
+            "reecu_firmware_check",
+            # genuine check-battery items (should remain)
+            "peplink_cellular_reachable",
+            "main_can_bus_reachable",
+            "telestation_config_valid",
+            "expected_input_devices_connected",
+        ]
+    )
+    kept = _filter_reecu_owned_items(run).items
+    kept_ids = {item.id for item in kept}
+
+    # version-card-owned rows are filtered out
+    assert "vdrive_package_vs_manifest" not in kept_ids
+    assert "aurix_mcu_firmware" not in kept_ids
+    assert "sec_fpga_gateware" not in kept_ids
+    assert "ts_sec_version" not in kept_ids
+    assert "reecu_firmware_check" not in kept_ids
+    # genuine check-battery rows survive
+    assert "peplink_cellular_reachable" in kept_ids
+    assert "main_can_bus_reachable" in kept_ids
+    assert "telestation_config_valid" in kept_ids
+    assert "expected_input_devices_connected" in kept_ids
+
+
+def test_filter_drops_cloud_reeapis_noise() -> None:
+    """Cloud-side reeapis.com probes are low-signal on isolated testbeds
+    and should not appear in run.items."""
+    from vayobd.api.host_versions import _filter_reecu_owned_items
+
+    run = _run_with_items(
+        [
+            "api_prod_reeapis_com",
+            "lobby_prod_reeapis_com",
+            "tdms_prod_reeapis_com",
+            "cloud_telemetry_prod_reeapis_com",
+            "main_can_bus_reachable",  # a real check; must survive
+        ]
+    )
+    kept_ids = {item.id for item in _filter_reecu_owned_items(run).items}
+
+    assert kept_ids == {"main_can_bus_reachable"}
+
+
+def test_filter_is_idempotent() -> None:
+    """Running the filter twice produces the same result (no oscillation)."""
+    from vayobd.api.host_versions import _filter_reecu_owned_items
+
+    run = _run_with_items(
+        [
+            "vdrive_package_vs_manifest",  # filtered
+            "peplink_cellular_reachable",  # kept
+        ]
+    )
+    once = _filter_reecu_owned_items(run)
+    twice = _filter_reecu_owned_items(once)
+    assert [i.id for i in once.items] == [i.id for i in twice.items]
