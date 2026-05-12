@@ -1732,7 +1732,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
       },
       {
         title: "Attempt a manual SSH connection",
-        body: "From the diagnostic laptop: ssh ree@<host-ip> -v. The verbose output (-v) will show exactly which key was offered and why authentication was rejected.",
+        body: "From the diagnostic laptop: ssh <host-ip> -v. The verbose output (-v) will show exactly which key was offered and why authentication was rejected.",
       },
       {
         title: "Re-enrol credentials if the key was rotated",
@@ -1747,7 +1747,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
       {
         label: "SSH verbose output",
         body:
-          "ssh ree@<host-ip> -vvv 2>&1 | head -60\n\n" +
+          "ssh <host-ip> -vvv 2>&1 | head -60\n\n" +
           "Look for lines like:\n" +
           "  debug1: Offering public key: ...\n" +
           "  debug1: Authentications that can continue: publickey\n" +
@@ -1777,7 +1777,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
       },
       {
         title: "Attempt a manual SSH connection with verbose output",
-        body: "From the diagnostic laptop: ssh ree@<host-ip> -v -o ConnectTimeout=10. If it hangs at 'connecting', the TCP port is closed — either sshd crashed or a firewall is blocking port 22.",
+        body: "From the diagnostic laptop: ssh <host-ip> -v -o ConnectTimeout=10. If it hangs at 'connecting', the TCP port is closed — either sshd crashed or a firewall is blocking port 22.",
       },
       {
         title: "Check CPU load on the REECU",
@@ -1785,7 +1785,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
       },
       {
         title: "Restart the REECU if it is stuck",
-        body: "Graceful: ssh ree@<host-ip> sudo reboot (if SSH partially works).\nHard: cycle PDU power to the REECU rail. Wait 90 seconds for full boot before re-running the diagnostic.",
+        body: "Graceful: ssh <host-ip> sudo reboot (if SSH partially works).\nHard: cycle PDU power to the REECU rail. Wait 90 seconds for full boot before re-running the diagnostic.",
         physical: true,
       },
       {
@@ -1799,7 +1799,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
         body:
           "From the diagnostic laptop:\n" +
           "  nc -zv <host-ip> 22          # is port 22 open?\n" +
-          "  ssh ree@<host-ip> -o ConnectTimeout=5 -v\n\n" +
+          "  ssh <host-ip> -o ConnectTimeout=5 -v\n\n" +
           "If nc times out: firewall or sshd not listening.\n" +
           "If nc connects but SSH hangs: sshd is alive but slow (high load?).",
       },
@@ -1820,7 +1820,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
     steps: [
       {
         title: "SSH to the REECU and check the diagnostic service",
-        body: "ssh ree@<host-ip> and run: systemctl status ree-debug. If it shows 'failed' or 'inactive', the service is not running.",
+        body: "ssh <host-ip> and run: systemctl status ree-debug. If it shows 'failed' or 'inactive', the service is not running.",
       },
       {
         title: "Review recent service logs",
@@ -1839,7 +1839,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
       {
         label: "Service status",
         body:
-          "ssh ree@<host-ip>\n" +
+          "ssh <host-ip>\n" +
           "  systemctl status ree-debug\n" +
           "  journalctl -u ree-debug -n 100 --no-pager\n" +
           "  ss -tlnp | grep <port>        # confirm port is listening\n\n" +
@@ -1864,7 +1864,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
       },
       {
         title: "Verify SSH access",
-        body: "Run: ssh ree@<host-ip> -o ConnectTimeout=10. If this fails, the issue is either network (no route) or authentication (wrong key).",
+        body: "Run: ssh <host-ip> -o ConnectTimeout=10. If this fails, the issue is either network (no route) or authentication (wrong key).",
       },
       {
         title: "Restart the host if it is unresponsive",
@@ -1881,7 +1881,7 @@ export const offlineGuides: Record<string, RepairGuide> = {
         label: "Connectivity quick check",
         body:
           "ping <host-ip>                  # network reachability\n" +
-          "ssh ree@<host-ip> -v            # SSH connection attempt\n" +
+          "ssh <host-ip> -v            # SSH connection attempt\n" +
           "nc -zv <host-ip> 22             # TCP port 22 open?\n\n" +
           "Triage order:\n" +
           "  1. ping fails    → network / routing issue\n" +
