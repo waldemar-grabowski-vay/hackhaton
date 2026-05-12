@@ -123,28 +123,28 @@ Restoration sources:
 
 ### LD failure-mode fixes (research §1)
 
-- [ ] T030 [US2] Add SPA-mount detection warning in `hackhaton/backend/src/vayobd/cli.py::_cmd_run`: if `Settings.static_dir` is unset AND there's no reachable source-tree `frontend/dist/index.html`, log a one-line warning at startup pointing the user at `/usr/bin/vayobd` or `VAYOBD_STATIC_DIR=…` (per `research.md` §1a)
-- [ ] T031 [P] [US2] Tighten DBC glob patterns in `hackhaton/backend/src/vayobd/live/dbc_decoder.py::find_dbc` to include case-insensitive variants AND `ve/…/dbcs/`, `ts/…/dbcs/` paths; surface the matched DBC path + message count on the `/live` page status surface (per `research.md` §1b)
-- [ ] T032 [P] [US2] Surface errq degraded mode prominently in `hackhaton/frontend/src/pages/LiveDiagnosticPage.tsx` (a labelled banner in the errq panel, not just a backend log) per 004 FR-012 wording (per `research.md` §1c)
+- [X] T030 [US2] **NO-OP**: SPA-mount warning already implemented at `cli.py:102` with the exact wording the research §1a prescribes (points at `/usr/bin/vayobd` or `VAYOBD_STATIC_DIR=…`).
+- [X] T031 [P] [US2] **NO-OP**: `DBC_PREFERRED_PATTERNS` at `live/dbc_decoder.py:36-44` already includes `application_protocol*.dbc` preference + lowercase `dbcs/` variants + VE paths. Research §1b fix already absorbed by the WIP commit.
+- [X] T032 [P] [US2] **NO-OP**: `ErrqPanel.tsx` already renders the FR-012 degraded-mode banner ("REECU error decoding unavailable" + `VAYOBD_REE_REECU_PATH` hint) when `errqLoaded === false`.
 
 ### VE state-signal port (contracts/ve-signals.md)
 
-- [ ] T033 [US2] Extend the state-panel signal allowlist in `hackhaton/backend/src/vayobd/live/candump_runner.py` (location to confirm at task time; alternative: a `frontend/src/lib/stateSignals.ts` constant) — add every `VE_*` entry from the T004 grep output; verify the existing TS_* entries remain untouched (per `contracts/ve-signals.md`)
+- [X] T033 [US2] **NO-OP** (architecture difference vs Wilhelm's tool): the web app's `StatePanel.tsx` renders **every** decoded signal from the WebSocket — there's no Python or TS allowlist. VE_* signals appear if the DBC carries the message definitions and the bus broadcasts them. No code change needed for VE state-signal coverage.
 
 ### VE errq CSV resolution (contracts/ve-errq.md)
 
-- [ ] T034 [US2] Add the VE errq CSV resolver to `hackhaton/backend/src/vayobd/live/errq_bridge.py`: branch on `host_type` (`HostType.VEHICLE` → VE subpath from T003; otherwise TS subpath unchanged); preserve the 004 FR-012 degraded-mode fallback identically for both branches (per `contracts/ve-errq.md`)
+- [DEFERRED] T034 [US2] **Architecture mismatch with the plan; deferred.** The web app imports the `errq` Python module from `<ree_reecu>/platform/tools/errq/` and calls `module.build_model("ts")` once at startup — there's no in-app subpath resolver to extend with a VE branch. Per-host-type errq decoding would require either (a) loading both `build_model("ts")` and `build_model("ve")` at startup and routing per session, or (b) refactoring to per-session model loading. Both are bigger than 008's scope, and T003 confirmed the VE CSVs don't exist in the local clone anyway — so the user-visible behaviour is unchanged (VE host connects, errq panel shows the existing `errqLoaded === false` fallback or empty list). Track as a follow-up spec once VE errq CSVs land in `ree-reecu`.
 
 ### Inventory dialog UX
 
-- [ ] T035 [US2] Add the `TS` / `VE` pill to each row in `hackhaton/frontend/src/components/live/InventoryDialog.tsx` (location to confirm at task time; alternative: `hackhaton/frontend/src/pages/LiveDiagnosticPage.tsx`'s inventory section) — sourced from `host.type`; pill styling uses the existing 002 sun-theme palette tokens (no new palette colour) (FR-019)
+- [X] T035 [US2] Added `[TS]` / `[VE]` prefix to each `<option>` in `hackhaton/frontend/src/pages/LiveDiagnostic/HostPicker.tsx` (the actual host-picker location — there's no separate `InventoryDialog`). Also rendered a visual pill beside the select once a host is chosen: `VE` uses `bg-accent/15 ring-accent/30`, `TS` uses `bg-primary/10 ring-primary/30` — both palette tokens from the 002 sun-theme palette; no new colour introduced. Stale "Ve hosts come through too but live diagnostic against vehicles will surface no errq signals" comment replaced with the 008 framing.
 
 ### Tests for US2
 
-- [ ] T036 [P] [US2] Add `hackhaton/backend/tests/unit/test_live_state_filter.py` exercising both TS-host (TS_* visible, VE_* absent) and VE-host (VE_* visible) decoded-frame filtering against a recorded fixture
-- [ ] T037 [P] [US2] Add `hackhaton/backend/tests/unit/test_errq_bridge.py` covering: TS-host resolver, VE-host resolver, missing-subpath fallback to 004 FR-012 degraded-mode (per `contracts/ve-errq.md` acceptance contract VE-ERRQ-1..4)
-- [ ] T038 [P] [US2] Add `hackhaton/backend/tests/unit/test_reecu_capture.py` driving `capture_reecu_state` against a recorded candump fixture (one TS, one VE); asserts the 4-second window + signal extraction match `contracts/reecu-pipeline.md` §1–§5
-- [ ] T039 [P] [US2] Add Playwright spec `hackhaton/frontend/tests/e2e/live-diagnostic-ve.spec.ts` covering VE-host Connect → state panel decode → errq panel render (or degraded-mode fallback) per `contracts/ve-signals.md` and `contracts/ve-errq.md`
+- [DEFERRED] T036 [P] [US2] **Test not needed**: there's no Python state-signal allowlist in the web app architecture (see T033). Decoded-frame coverage is via the existing `StatePanel.tsx` tests and the e2e Live Diagnostic spec.
+- [DEFERRED] T037 [P] [US2] **Deferred with T034**: testing a VE errq resolver that doesn't exist (no `errq_bridge.py`) is premature. Existing `errq_loader.py` already has degraded-mode tests covering the FR-012 fallback. Re-add when T034 architecture work happens.
+- [DEFERRED] T038 [P] [US2] **Deferred with T025**: no `_reecu_capture.py` to test until the candump-Python rewrite happens.
+- [DEFERRED] T039 [P] [US2] **Defer to manual walkthrough**: covered by quickstart Step 9b (`tasks.md` T058). No reachable VE testbed in CI; T058 captures the live-host acceptance.
 
 **Checkpoint**: US1 + US2 both work independently. Live Diagnostic surface is fully restored; VE-host support is end-to-end testable.
 

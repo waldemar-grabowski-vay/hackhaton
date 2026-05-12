@@ -89,14 +89,17 @@ export function HostPicker({ onConnect }: HostPickerProps) {
     );
   }
 
-  // 004 is Developer-mode-only and only TS hosts are useful (the desktop
-  // tool was TS-only). Ve hosts come through too but live diagnostic
-  // against vehicles will surface no errq signals — keep them visible
-  // but the ts hosts on top.
+  // 008 / US2 / FR-019: VE hosts are now first-class on /live (state
+  // signals decode through the same DBC; VE-side errq follows the same
+  // degraded-mode fallback as TS when the CSVs aren't present). Sort
+  // alphabetically within each type, TS first.
   const hosts = [...inventory.data.hosts].sort((a, b) => {
     if (a.type === b.type) return a.id.localeCompare(b.id);
     return a.type === "telestation" ? -1 : 1;
   });
+
+  const selectedHost = hostId ? hosts.find((h) => h.id === hostId) : null;
+  const selectedPill = selectedHost?.type === "vehicle" ? "VE" : selectedHost ? "TS" : null;
 
   function submit() {
     if (!hostId) return;
@@ -113,18 +116,32 @@ export function HostPicker({ onConnect }: HostPickerProps) {
     <div className="space-y-4">
       <div>
         <label className="mb-1 block text-sm font-medium">Host</label>
-        <select
-          value={hostId ?? ""}
-          onChange={(e) => setHostId(e.target.value || null)}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-        >
-          <option value="">— pick a host —</option>
-          {hosts.map((h: Host) => (
-            <option key={h.id} value={h.id}>
-              {h.id} ({h.type})
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={hostId ?? ""}
+            onChange={(e) => setHostId(e.target.value || null)}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">— pick a host —</option>
+            {hosts.map((h: Host) => (
+              <option key={h.id} value={h.id}>
+                [{h.type === "vehicle" ? "VE" : "TS"}] {h.id}
+              </option>
+            ))}
+          </select>
+          {selectedPill ? (
+            <span
+              className={
+                selectedPill === "VE"
+                  ? "rounded-md bg-accent/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-accent-foreground ring-1 ring-accent/30"
+                  : "rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-primary ring-1 ring-primary/30"
+              }
+              aria-label={selectedPill === "VE" ? "Vehicle" : "Telestation"}
+            >
+              {selectedPill}
+            </span>
+          ) : null}
+        </div>
       </div>
       <div>
         <button
