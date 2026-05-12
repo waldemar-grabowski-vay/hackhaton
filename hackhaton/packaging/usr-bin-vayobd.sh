@@ -24,5 +24,9 @@ fi
 export VAYOBD_REE_CLI_BIN="${VAYOBD_REE_CLI_BIN:-${VAYOBD_PREFIX}/bin/ree-debug-cli}"
 # Default the static SPA path — the user can still override via VAYOBD_STATIC_DIR.
 export VAYOBD_STATIC_DIR="${VAYOBD_STATIC_DIR:-/usr/share/vayobd/spa}"
+# Default to the real engine in production. The Python class default is
+# FIXTURE (so unit tests don't need a built engine binary); the .deb is
+# always production-mode unless the operator explicitly overrides.
+export VAYOBD_EXECUTOR="${VAYOBD_EXECUTOR:-ree}"
 
 exec "${VENV_PY}" -m vayobd.cli "$@"
