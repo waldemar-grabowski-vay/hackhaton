@@ -88,13 +88,23 @@ def parse_candump_line(line: str, at_ms: int) -> ParsedFrame | None:
     )
 
 
-def _redacted_command(host: str, iface: str) -> str:
+def _redacted_command(
+    host: str,
+    iface: str,
+    *,
+    user: str | None = None,
+    port: int | None = None,
+) -> str:
     """Per FR-021, log lines must not include user@/port/key arguments.
 
-    Always log the redacted form `ssh <host> candump <iface>`, never
-    the full argv.
+    The canonical redacted form is `ssh <host> candump <iface>`. When
+    the operator passed override(s) (user@ or port), we collapse them
+    into a single `+overrides` token so the *fact* of an override is
+    visible without leaking the values themselves into logs (which is
+    what `contracts/websocket.md` §"Implementation notes" calls for).
     """
-    return f"ssh {host} candump {iface}"
+    overrides = " +overrides" if (user or port is not None) else ""
+    return f"ssh {host}{overrides} candump {iface}"
 
 
 class CandumpRunner:
@@ -126,7 +136,9 @@ class CandumpRunner:
 
     @property
     def redacted_command(self) -> str:
-        return _redacted_command(self.host_address, self.iface)
+        return _redacted_command(
+            self.host_address, self.iface, user=self.user, port=self.port
+        )
 
     async def start(self) -> None:
         """Spawn the ssh subprocess. Inherits the operator's
@@ -136,8 +148,9 @@ class CandumpRunner:
         remote_cmd = f"stdbuf -oL -eL candump -tz -L {self.iface}"
         argv: list[str] = [
             "ssh",
-            "-o", "BatchMode=yes",          # no interactive password prompts
-            "-o", "ServerAliveInterval=10",  # detect stalls
+            "-o", "BatchMode=yes",                    # no interactive password prompts
+            "-o", "StrictHostKeyChecking=accept-new",  # TOFU: auto-add new host keys to known_hosts
+            "-o", "ServerAliveInterval=10",            # detect stalls
             "-o", "ServerAliveCountMax=2",
             "-o", "ConnectTimeout=10",
         ]

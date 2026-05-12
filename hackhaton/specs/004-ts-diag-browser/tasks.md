@@ -84,18 +84,18 @@ triggers the FR-006 error UI with the first line of `ssh` stderr.
 
 ### Implementation for User Story 1
 
-- [ ] T021 [P] [US1] Implement `backend/src/vayobd/live/candump_runner.py` — `CandumpRunner` class wrapping `asyncio.create_subprocess_exec("ssh", host, "candump", "-t", "a", iface)`; expose `lines() -> AsyncIterator[str]` and a `terminate()` method that does SIGTERM-grace-SIGKILL (mirror `backend/src/vayobd/checks/ree_cli.py`); parse each line into a `(at_ms, can_id, dlc, payload_bytes)` tuple via a regex; support optional `user@` and `port` overrides
-- [ ] T022 [P] [US1] Implement `backend/src/vayobd/live/session.py` — `LiveDiagnosticSession` per data-model.md §1 with the connecting/connected/lost/closed state machine; owns the candump runner, the per-session decoder reference (shared `DbcDecoder` from app.state), the per-session ErrqAggregator + ErrqStateTracker (US1 wires the aggregator stub but the errq_update envelope emission is US2's responsibility), the bounded `asyncio.Queue` (`maxsize=512`), the `LiveFilter`, and a single `run()` coroutine that orchestrates the reader / decoder / fanout tasks; emits `ready`, `status`, and `signal_update` envelopes; respects the 10-second-no-frame stall heartbeat (R6) (depends on T011, T021)
-- [ ] T023 [US1] Implement `backend/src/vayobd/live/ws_router.py` — FastAPI `APIRouter` exposing `GET /api/live/{host_id}/ws`; on upgrade, validate `X-Vay-User` header, `developer_mode_check=1` query, and that `host_id` resolves to an in-scope inventory entry (re-use `vayobd.inventory.loader.load_inventory`); reject with the close codes from `contracts/websocket.md`; on accept, instantiate and `await session.run()`; on disconnect, terminate the candump runner and drain tasks (depends on T011, T022)
-- [ ] T024 [US1] Mount the live router in `backend/src/vayobd/app.py` `create_app` after the existing routers; ensure 404 path resolution still works for the existing routes (depends on T023)
-- [ ] T025 [P] [US1] Implement `frontend/src/pages/LiveDiagnostic/useLiveSession.ts` — React hook that opens the WebSocket against `/api/live/{host_id}/ws?developer_mode_check=1`, parses incoming envelopes via T012's helper, exposes `{state, signals, errq, rawFrames, error}`, dispatches outbound messages on `setFilter`, `setChannel`, `pause`, `resume`, `clear`, `toggleRawFrames`; handles WebSocket close codes per the contract; on `ssh_failed` / `ssh_stalled` close codes, expose a Reconnect callback that re-opens with the same host (depends on T012)
-- [ ] T026 [P] [US1] Implement `frontend/src/pages/LiveDiagnostic/HostPicker.tsx` — Picker fed by the existing `/api/inventory` (re-use `frontend/src/api/inventory.ts`); host-only single-column dialog with optional `user@` and `port` override fields collapsed under a "Show advanced" disclosure; Connect button wires to `useLiveSession` (depends on T025)
-- [ ] T027 [P] [US1] Implement `frontend/src/pages/LiveDiagnostic/StatePanel.tsx` — Sortable table of decoded signals (name, value, unit, channel, last-updated relative time); virtualization not required for MVP — flat render to 500 rows is acceptable; signal-name filter input is wired here (filter behaviour ships in US3 but the input field exists from US1)
-- [ ] T028 [US1] Implement `frontend/src/pages/LiveDiagnostic/LiveDiagnosticPage.tsx` — page shell: state machine (`disconnected → connecting → connected → lost`), HostPicker for `disconnected` state, StatePanel + status header for `connected`, "Connection lost" banner with Reconnect for `lost`; minimal layout — single panel for US1; multi-panel layout introduced in US2 (depends on T025, T026, T027)
-- [ ] T029 [US1] Add the `/live` route to the React router (`frontend/src/App.tsx` or wherever routes live — confirm via `git grep "createBrowserRouter\\|Routes>"`); add a redirect guard that bounces back to `/` if `/api/health.live_diagnostic.enabled` is false (depends on T028)
-- [ ] T030 [P] [US1] Backend integration test `backend/tests/integration/test_live_websocket.py` — uses `TestClient.websocket_connect` against a stubbed candump (a fake `asyncio.subprocess.Process` whose stdout emits a known sequence of lines); verifies handshake codes (`1008` on missing X-Vay-User, `1008` on out-of-scope host, accept on happy path), `ready` envelope shape, `signal_update` after a few stub frames, and clean teardown on disconnect
-- [ ] T031 [P] [US1] Frontend test `frontend/src/pages/LiveDiagnostic/__tests__/useLiveSession.test.ts` — Vitest with a mock `WebSocket`; verifies envelope parsing, state transitions, reconnection on `ssh_stalled` close
-- [ ] T032 [US1] Manual smoke test against `ts-de-ber-00005`: start backend on port 8002, frontend on 5173 with Developer mode on; click Live diagnostic; pick host; click Connect; verify decoded signals stream within 10 s (matches the SC-001 budget); verify a deliberately wrong hostname (`ts-de-nope-12345`) surfaces the first line of `ssh` stderr per FR-006
+- [X] T021 [P] [US1] Implement `backend/src/vayobd/live/candump_runner.py` — `CandumpRunner` class wrapping `asyncio.create_subprocess_exec` against the operator's local `ssh`, with `lines()` async iterator yielding `(stream, line)` tuples (stdout + stderr surfaced separately so FR-006 can quote the first stderr line) and SIGTERM-grace-SIGKILL `terminate()`. Per Q2, uses the system `ssh` binary so credentials live in `~/.ssh/`. Parser handles both classic and CAN-FD candump line forms, with redacted command logging per FR-021
+- [X] T022 [P] [US1] Implement `backend/src/vayobd/live/session.py` — `LiveDiagnosticSession` per data-model.md §1 with `connecting/connected/lost/closed` state, the bounded outbound queue (newest-wins on overflow), 100 ms coalescing window for `signal_update`, 10 s no-frame stall detection, errq aggregator + state tracker fed inline (US2 envelope diff also wired). The orchestrator drives four tasks (drain / emit / inbound / outbound) via `asyncio.wait(FIRST_COMPLETED)` so a single failure tears the whole session down cleanly
+- [X] T023 [US1] Implement `backend/src/vayobd/live/ws_router.py` — FastAPI `APIRouter` at `/api/live/{host_id}/ws` performs the four-stage handshake (X-Vay-User header → developer_mode_check query → settings.developer_mode → inventory lookup), uses the `1008` close codes from `contracts/websocket.md`, and accepts + delegates to `session.run()` on the happy path. Operator slug is normalised before logging
+- [X] T024 [US1] `live_router` is included in `create_app` after the inventory + runs routers; `/live` HTTP routes resolve unchanged
+- [X] T025 [P] [US1] Implement `frontend/src/pages/LiveDiagnostic/useLiveSession.ts` — `useLiveSession()` opens the WebSocket with `developer_mode_check=1`, parses envelopes through `parseServerEnvelope`, accumulates signals (`Map<name::channel, DecodedSignal>`), errq diffs, and a 500-line raw-frame ring (FR-014). Exposes `connect/disconnect/send` and synthesises a `lost` state from close codes 1008/1011/4000/4001 when the server hasn't already pushed one
+- [X] T026 [P] [US1] Implement `frontend/src/pages/LiveDiagnostic/HostPicker.tsx` — host-only picker fed by `/api/inventory`, persists last selection in `localStorage` (`vayobd.live.hostSelection`), optional `user@`/`port` overrides under "Show advanced", explicit copy clarifying that no SSH credentials are collected. TS hosts sort first since the desktop tool is TS-only
+- [X] T027 [P] [US1] Implement `frontend/src/pages/LiveDiagnostic/StatePanel.tsx` — table sorted by (channel, name), capped at 500 rows. Filter input owns its own debounced state and dispatches `set_filter` upstream after 150 ms, while *also* applying client-side filtering so stale rows don't linger when the filter narrows
+- [X] T028 [US1] Implement `frontend/src/pages/LiveDiagnostic/LiveDiagnosticPage.tsx` — surface state machine (`idle → connecting → connected → lost`), HostPicker for idle, status header + StatePanel for connected, lost-banner with Reconnect button quoting the first line of ssh stderr. Multi-panel + tabs are deferred to US2
+- [X] T029 [US1] `/live` route is registered in `frontend/src/App.tsx` and the page itself redirects to `/` when `/api/health.live_diagnostic.enabled` is false
+- [X] T030 [P] [US1] Backend integration test `backend/tests/integration/test_live_websocket.py` — covers all four handshake-failure paths (missing X-Vay-User, missing developer_mode_check, settings.developer_mode=false, unknown host) and the happy path through the `ready` + `status:connecting` envelopes. The full pipeline (real ssh subprocess) is exercised via the manual quickstart since CI has no testbed access; tests were green at 23 passing
+- [~] T031 [P] [US1] Frontend test `frontend/src/pages/LiveDiagnostic/__tests__/useLiveSession.test.ts` — **deferred**: the frontend uses Playwright for e2e and has no Vitest toolchain installed. Adding Vitest + jsdom + React Testing Library was scoped out of this implementation pass. The backend integration test (T030) covers the WebSocket envelope contract end-to-end; the hook is exercised via the manual smoke (T032). Track as a follow-up if a Vitest toolchain lands
+- [ ] T032 [US1] Manual smoke test against `ts-de-ber-00005`: start backend on port 8002, frontend on 5173 with Developer mode on; click Live diagnostic; pick host; click Connect; verify decoded signals stream within 10 s (matches the SC-001 budget); verify a deliberately wrong hostname (`ts-de-nope-12345`) surfaces the first line of `ssh` stderr per FR-006 — **operator-run**: requires SSH access to a real testbed and is therefore out of scope for the implementation pass
 
 **Checkpoint**: US1 is end-to-end. Operator can watch live signals from a
 real testbed in the browser. This is the MVP — stop here and validate
@@ -117,12 +117,12 @@ shows the empty-state message rather than stale entries.
 
 ### Implementation for User Story 2
 
-- [ ] T033 [US2] Extend `backend/src/vayobd/live/session.py`'s decoder pipeline: after each decoded frame, route the `TS_Ch[AB]_ERRQ_Byte01..64` signals into the per-session `ErrqAggregator` (T007); on each cycle (i.e. after each batched signal_update window) snapshot the per-channel buffer, decode via the shared `ErrqModel` (from app.state), feed into the per-session `ErrqStateTracker` (T008), and emit `errq_update` envelopes containing the diff (`appeared` / `disappeared`); empty diffs are NOT sent (per contracts/websocket.md) (depends on Phase 3)
-- [ ] T034 [P] [US2] Implement `frontend/src/pages/LiveDiagnostic/ErrqPanel.tsx` — table of active errors with severity badge (info / warn / error / critical mapped to existing 002 status palette colours), symbolic name (with description as tooltip), channel pill, byte/bit columns; empty-state message "No active errors"; degraded-mode message "REECU error decoding unavailable — raw byte values shown instead" when `ready.errq_loaded` is false (depends on T012)
-- [ ] T035 [US2] Update `LiveDiagnosticPage.tsx` to a multi-panel layout: tabbed (`Tabs` from shadcn/ui) on viewports `< 768px` (per R7), three-panel side-by-side on `md+`; Signals tab (StatePanel from US1), REECU error queue tab (ErrqPanel), placeholder for Raw frames tab that lights up in US3 (depends on T028, T034)
-- [ ] T036 [P] [US2] Backend integration test extension in `backend/tests/integration/test_live_websocket.py` — drive the stub candump with a frame sequence that flips a known errq bit, verify an `errq_update` envelope appears with `appeared: [...]` containing the expected `{name, channel, byte, bit}`; flip it back, verify a `disappeared` envelope follows within the 2 s grace window
-- [ ] T037 [P] [US2] Frontend test `frontend/src/pages/LiveDiagnostic/__tests__/ErrqPanel.test.tsx` — render with sample entries, verify severity badge classes and the empty-state and degraded-mode messages
-- [ ] T038 [US2] Manual smoke test against a host known to have ≥ 1 active errq error: verify panel populates within ~1 s; verify the symbolic name and severity match what the desktop tool shows for the same host (cross-validate against `TS_diagnostic_tool` running side-by-side)
+- [X] T033 [US2] `backend/src/vayobd/live/session.py` already routed decoded ERRQ byte signals through the per-session `ErrqAggregator` and `ErrqStateTracker` as part of T022; this pass extracted `_emit_one_cycle()` from `_emit_loop()` so the diff cadence is unit-testable. Empty diffs are skipped (contract conformance verified by T036)
+- [X] T034 [P] [US2] Implemented `frontend/src/pages/LiveDiagnostic/ErrqPanel.tsx` — table sorted by severity then (channel, byte, bit). Severity badges map to the sun-theme palette (`info → secondary`, `warn → warning`, `error/critical → destructive`); empty state shows "No active errors" with a check-shield icon; degraded-mode hint references `VAYOBD_REE_REECU_PATH` so operators know the recovery action
+- [X] T035 [US2] `LiveDiagnosticPage.tsx` connected view now renders Tabs on `< md` (Signals + REECU errors) and a `1fr / 280–360px` two-column grid on `md+`. Active-error count surfaces as a destructive pill in the connected-status header. Raw frames stays a US3 follow-up — there is no placeholder tab yet, since the tabset would emit "Raw frames (—)" with no behaviour. Added `frontend/src/components/ui/tabs.tsx` (shadcn wrapper around `@radix-ui/react-tabs`, dep added)
+- [X] T036 [P] [US2] Extended `backend/tests/integration/test_live_websocket.py` with two `_emit_one_cycle` tests — appeared/disappeared diff round-trip against the state tracker, plus a no-change-no-envelope assertion that protects the contract's "empty diffs are NOT sent" rule. 25 tests passing
+- [~] T037 [P] [US2] Frontend test `frontend/src/pages/LiveDiagnostic/__tests__/ErrqPanel.test.tsx` — **deferred**: same Vitest toolchain gap as T031. ErrqPanel is a pure-render component with the contract pinned by T036's backend test
+- [ ] T038 [US2] Manual smoke test against a host known to have ≥ 1 active errq error — **operator-run**: requires SSH access to a real testbed
 
 **Checkpoint**: US2 layered on US1. Both are independently testable. The
 state panel still works on its own; the errq panel adds when present and
@@ -143,16 +143,16 @@ channel-B signals + errors visible; click Pause → values stop updating but
 
 ### Implementation for User Story 3
 
-- [ ] T039 [P] [US3] Extend `backend/src/vayobd/live/session.py` to handle inbound envelopes — `set_filter`, `set_channel`, `pause`, `resume`, `clear`, `toggle_raw_frames` — per `contracts/websocket.md`; mutate `LiveFilter` accordingly; for `pause` keep decoding but suppress outbound `signal_update`; for `resume` flush a single coalesced envelope of latest values; for `clear` send a `signal_update` with all values nulled and call `errq_aggregator.reset()` (depends on Phase 3)
-- [ ] T040 [P] [US3] Add raw-frame emission in `session.py` — when `LiveFilter.raw_frames_enabled` is true, every parsed CAN frame produces a `raw_frame` envelope; rate-limited to ≤ 1000/s with newest-wins drop on overflow (depends on T021, T039)
-- [ ] T041 [P] [US3] Implement `frontend/src/pages/LiveDiagnostic/ChannelToggle.tsx` — segmented control (A / B / both); dispatches `setChannel` via the hook
-- [ ] T042 [P] [US3] Implement `frontend/src/pages/LiveDiagnostic/PlaybackControls.tsx` — Pause / Resume / Clear buttons; Clear shows a confirmation dialog (per US3 acceptance scenario 4); displays the live `pause_buffer_count` from `status` envelopes
-- [ ] T043 [P] [US3] Implement `frontend/src/pages/LiveDiagnostic/RawFramesLog.tsx` — bounded ring buffer of 500 lines, monospace virtualized list (use `react-window` if already in the project; otherwise a simple `slice(-500)` + transform CSS works at this scale); toggle button wires `toggleRawFrames`
-- [ ] T044 [US3] Wire the filter input on `StatePanel.tsx` (placeholder from US1) — debounce ~150 ms; dispatch `setFilter` via the hook; show match count next to the input; on phone, sticky-bottom positioning so the on-screen keyboard does not hide it (depends on T039)
-- [ ] T045 [US3] Wire `ChannelToggle`, `PlaybackControls`, and `RawFramesLog` into `LiveDiagnosticPage.tsx`; on `< 768px` the raw-frames log is its own tab, on `md+` it lives below the StatePanel (depends on T035, T041, T042, T043)
-- [ ] T046 [P] [US3] Backend integration test extension in `backend/tests/integration/test_live_websocket.py` — round-trip each of `set_filter`, `set_channel`, `pause`, `resume`, `clear`, `toggle_raw_frames` and assert the visible behaviour (filtered signals, channel-only diff, pause buffer counter, etc.)
-- [ ] T047 [P] [US3] Frontend test `frontend/src/pages/LiveDiagnostic/__tests__/PlaybackControls.test.tsx` — Clear button shows the confirm dialog; Pause/Resume update the visible state correctly
-- [ ] T048 [US3] Manual smoke test: walk through US3 acceptance scenarios 1–5 against a real testbed (filter shrinks signal table, channel toggle isolates one side, pause buffers, clear resets, raw-frames log caps at 500 lines)
+- [X] T039 [P] [US3] `backend/src/vayobd/live/session.py` already handles every client envelope kind (`_apply_client` in T022's pipeline build). T046 below pins the contract: `set_filter` updates the substring; `set_channel` narrows the filter; `pause` suspends outbound `signal_update`; `resume` flushes a single coalesced envelope and zeroes `pause_buffer_count`; `clear` empties the coalesce buffer + resets the errq aggregator + state tracker; `toggle_raw_frames` flips the flag
+- [X] T040 [P] [US3] Raw-frame emission lives in `session._maybe_enqueue_raw`: when `filter.raw_frames_enabled` is true, every parsed frame produces a `raw_frame` envelope behind a 1-second token bucket capped at `RAW_FRAMES_RATE_LIMIT = 1000`. Overflow is silently dropped (newest-wins via the outbound queue's overflow policy)
+- [X] T041 [P] [US3] Implemented `frontend/src/pages/LiveDiagnostic/ChannelToggle.tsx` — three-position radiogroup (Both / Ch A / Ch B), exports the `Channel` type, dispatches `set_channel` via the page-level callback
+- [X] T042 [P] [US3] Implemented `frontend/src/pages/LiveDiagnostic/PlaybackControls.tsx` — Pause/Resume toggle, Clear gated behind a `Dialog` confirm (US3 acceptance scenario 4). Surfaces `pause_buffer_count` next to the buttons while paused. Added `DialogFooter` to `frontend/src/components/ui/dialog.tsx` since shadcn's footer wasn't already exported
+- [X] T043 [P] [US3] Implemented `frontend/src/pages/LiveDiagnostic/RawFramesLog.tsx` — toggle button, monospace log rendered with stick-to-bottom auto-scroll that yields when the user scrolls up. The hook already enforces the 500-frame ring (FR-014); this component renders the tail without a virtualization lib (modern browsers paint 500 rows comfortably)
+- [X] T044 [US3] Filter input was wired in T027 (StatePanel debounces 150 ms then dispatches `set_filter`). This pass added a `channel` prop so the same panel applies client-side channel filtering for instant feedback when the toggle changes
+- [X] T045 [US3] `LiveDiagnosticPage.tsx` connected view now mounts ChannelToggle + PlaybackControls in a top-row toolbar, and on phone exposes a third "Raw" tab; on md+ the raw-frames log sits below the side-by-side panels. Channel filtering is mirrored client-side on the visible errq list + the pill counter so the channel toggle has instant effect (US3 acceptance scenario 2)
+- [X] T046 [P] [US3] Extended `backend/tests/integration/test_live_websocket.py` with five focused tests covering `set_filter`, `set_channel`, `pause/resume` (verifies the resume flush), `clear` (verifies coalesce + state-tracker reset), and `toggle_raw_frames` (verifies the flag plus a real `raw_frame` envelope). 30 tests passing
+- [~] T047 [P] [US3] Frontend test `frontend/src/pages/LiveDiagnostic/__tests__/PlaybackControls.test.tsx` — **deferred**: same Vitest gap as T031/T037. Behaviour is pinned by T046 (server-side) and the component is a thin shadcn Dialog wrapper
+- [ ] T048 [US3] Manual smoke walkthrough of US3 acceptance scenarios 1–5 — **operator-run**: needs a real testbed
 
 **Checkpoint**: All three user stories independently functional. The Live
 diagnostic surface now mirrors the desktop tool's productivity toolbar.
@@ -161,12 +161,55 @@ diagnostic surface now mirrors the desktop tool's productivity toolbar.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T049 [P] Phone responsive sweep: test the Live diagnostic surface at 360 px and 414 px viewports (Chrome DevTools); confirm Tabs work, sticky filter positioning, errq table doesn't overflow horizontally (matches constitution Web App Standards)
-- [ ] T050 [P] Backend log redaction audit: confirm `ssh` command line is logged in the redacted form (`ssh <host> candump <iface>` with override summary), not the full argv with port / user / ProxyJump details; add a regression unit test in `backend/tests/live/test_log_redaction.py`
-- [ ] T051 [P] Update `hackhaton/README.md` quickstart pointers to reference `specs/004-ts-diag-browser/quickstart.md` for live-diagnostic operators
-- [ ] T052 [P] Update top-level `README.md` (the dual-surface one at the repo root) to mention the live diagnostic surface as a now-implemented bridge between the two surfaces, replacing the "scaffold; not yet implemented" note
-- [ ] T053 [P] Settings card help text — add a short paragraph below the `ree_reecu_path` and `dbc_path` inputs explaining that they default to the operator's local clone; reuse the wording from quickstart.md
-- [ ] T054 Run the full quickstart.md walkthrough end-to-end against `ts-de-ber-00005` from a freshly checked-out branch; capture any deviations as follow-up tickets; update quickstart.md if any step's instructions need correction
+- [ ] T049 [P] Phone responsive sweep at 360 px / 414 px in Chrome DevTools — **operator-run**: needs a real browser session against the running dev servers
+- [X] T050 [P] Backend log redaction audit — `_redacted_command` now collapses user/port overrides into a single `+overrides` token instead of leaking the values; the regression test at `backend/tests/unit/live/test_log_redaction.py` pins six paths (default form, user-only override, port-only override, both-override, runner-property scrub of the full ssh argv, and the no-marker-when-clean baseline). 36 tests passing
+- [X] T051 [P] `hackhaton/README.md` now points at `specs/004-ts-diag-browser/quickstart.md` next to the existing 001 quickstart link
+- [X] T052 [P] Top-level `README.md` "How they relate" section rewritten — the live diagnostic surface is described as the implemented bridge under 004; the `003-ts-diagnostic-cherry-picks` "scaffold; not yet implemented" note is gone
+- [~] T053 [P] Settings card help text — **deferred**: the SettingsPage UI for `ree_reecu_path` / `dbc_path` doesn't exist yet (T006 noted that the `/api/settings` PUT endpoint hasn't shipped from 002). Operators currently configure these by editing `~/.config/vayobd/settings.toml` directly, which the quickstart already documents. Re-open once the settings round-trip lands
+- [ ] T054 Full end-to-end quickstart walkthrough against `ts-de-ber-00005` — **operator-run**: needs SSH + VPN access to a real testbed
+
+---
+
+## Phase 7: Clarification Follow-ups (post-2026-05-07 session)
+
+**Purpose**: Absorb the four new requirements that landed in the
+2026-05-07 clarification session (FR-005 amendment, FR-024, FR-025,
+FR-026). Two of the four (FR-005 fallback, FR-025 TOFU) were patched
+into the code mid-test-session and need ratification tests; two
+(FR-024 DBC settings UI, FR-026 channel-inference regex) are new
+greenfield work.
+
+**Order**: T055–T056 are quick test-only ratifications and can land
+immediately. T057–T060 unblock the FR-024 settings-UI work but depend
+on 002's `/api/settings` PUT endpoint shipping first (currently the
+blocker called out in T053). T061–T064 implement FR-026 and depend on
+the same settings round-trip.
+
+### Ratification tests
+
+- [X] T055 [P] FR-025 regression — added two tests at the end of `backend/tests/unit/live/test_log_redaction.py` that monkeypatch `asyncio.create_subprocess_exec` and capture the argv built by `CandumpRunner.start()`. One asserts `StrictHostKeyChecking=accept-new` is present; the other asserts `StrictHostKeyChecking=no` and `UserKnownHostsFile=/dev/null` are NOT present (MITM-bypass guard)
+- [X] T056 [P] FR-005 amendment regression — added `ts-de-ber-noaddr` (no `ansible_host`) to the synthetic inventory in `backend/tests/conftest.py`. New test in `test_live_websocket.py` confirms the handshake accepts the host (emits `ready` + `status:connecting` instead of closing 1008). Existing inventory tests updated for the new host count (7→8)
+
+### FR-024 — operator-picked DBC path through Settings UI
+
+**Blocker**: 002's `PUT /api/settings` endpoint must exist before T058
+can land. T057 / T060 only need the read side and can ship sooner.
+
+- [X] T057 `get_settings()` now layers `~/.config/vayobd/settings.toml`'s `[live]` block on top of pydantic-settings defaults, with `VAYOBD_*` env vars retaining override precedence (env > TOML > defaults). Cached via `lru_cache`; malformed TOML fails soft to defaults. New unit-test file `backend/tests/unit/test_config.py` pins all four precedence paths (no-file, TOML-overrides-default, env-beats-TOML, malformed-TOML-fallback)
+- [ ] T058 Backend `PUT /api/settings` validation in `backend/src/vayobd/api/settings.py` for `dbc_path` and `ree_reecu_path`: file/directory exists, readable, and (for dbc_path) `cantools.database.load_file` parses without error; reject with field-level error on failure. Save round-trips through `settings_file.save_settings()` — **deferred**: depends on 002's `/api/settings` PUT endpoint shipping
+- [ ] T059 Backend: on settings save, reload `app.state.dbc_decoder` and `app.state.errq_model` — **deferred**: depends on T058
+- [ ] T060 Frontend Settings card with `ree_reecu_path` / `dbc_path` inputs — **deferred**: depends on T058
+
+### FR-026 — operator-configurable channel-inference regex
+
+- [X] T061 [P] Added `channel_a_pattern` / `channel_b_pattern` to `Settings` (`backend/src/vayobd/config.py`) with case-insensitive defaults `(?i)_CHA_|TS_CHA` and `(?i)_CHB_|TS_CHB`. Env-var bindings (`VAYOBD_CHANNEL_A_PATTERN`, `VAYOBD_CHANNEL_B_PATTERN`) inherit from the existing pydantic-settings prefix. TOML round-trip extended in `settings_file.py` and `LiveSettings` in `models.py`
+- [X] T062 `LiveDiagnosticSession._infer_channel` is now an instance method using per-session compiled regexes. Patterns are compiled in `__init__` via `_compile_channel_pattern()`, which logs a warning and falls back to the defaults on `re.error` so a typo on the operator side never crashes the session. `ws_router.py` passes `settings.channel_a_pattern` / `channel_b_pattern` through on session construction
+- [X] T063 [P] Three new tests in `backend/tests/integration/test_live_websocket.py`: (1) defaults classify the standard `TS_CHA_*` / `TS_CHB_*` convention case-insensitively; (2) custom `^chA_` / `^chB_` patterns take effect and the defaults stop matching; (3) invalid regex (`[unclosed`) falls back to defaults with a `channel_pattern_invalid` warning
+- [ ] T064 Frontend regex inputs in the Settings card — **deferred**: depends on T060
+
+**Checkpoint**: All four clarification FRs covered. T055/T056 unblock
+on first push. T057–T064 form a coherent settings-round-trip increment
+that pairs naturally with the 002 US2 follow-up.
 
 ---
 
@@ -186,6 +229,10 @@ diagnostic surface now mirrors the desktop tool's productivity toolbar.
   US2's multi-panel layout (T035). Without T035 there is no place for
   `RawFramesLog`.
 - **Polish (Phase 6)**: Depends on whichever stories are in scope.
+- **Clarification follow-ups (Phase 7)**: T055/T056 depend only on the
+  current code (live patches). T057–T064 form a settings-round-trip
+  increment that depends on 002's `PUT /api/settings` endpoint
+  shipping (currently the blocker on T053).
 
 ### Within US1
 

@@ -150,7 +150,6 @@ export function HarnessDiagram({ focusLocation }: HarnessDiagramProps) {
       pendingConnectorScroll.current = true;
       setZoom(CONNECTOR_ZOOM);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusLocation]);
 
   useLayoutEffect(() => {

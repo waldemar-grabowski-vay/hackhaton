@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=VayOBD
+GenericName=Vehicle Diagnostics
+Comment=Vay fleet diagnostics — runs locally in your browser
+Exec=/usr/bin/vayobd run
+Terminal=false
+Icon=utilities-system-monitor
+Categories=Development;Utility;Network;
+StartupNotify=true
+Keywords=vay;diagnostics;obd;can;

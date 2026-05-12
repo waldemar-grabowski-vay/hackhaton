@@ -29,8 +29,18 @@ pub fn manifest() -> &'static ReleaseManifest {
 }
 
 fn load_default() -> ReleaseManifest {
-    let Some(home) = std::env::var_os("HOME") else { return ReleaseManifest::default() };
-    let path = PathBuf::from(home).join("GitHub/system-release-deployment/release-configs.yaml");
+    // Caller-supplied path wins (set by vayobd's backend from
+    // `Settings.release_configs_path`, which defaults to the .deb's
+    // first-run clone location `~/.cache/vayobd/system-release-deployment/...`).
+    // Falls back to the legacy `~/GitHub/...` location for users running the
+    // engine directly without vayobd.
+    let path = match std::env::var_os("RELEASE_CONFIGS_PATH") {
+        Some(p) => PathBuf::from(p),
+        None => {
+            let Some(home) = std::env::var_os("HOME") else { return ReleaseManifest::default() };
+            PathBuf::from(home).join("GitHub/system-release-deployment/release-configs.yaml")
+        }
+    };
     let Ok(raw) = std::fs::read_to_string(&path) else { return ReleaseManifest::default() };
     let Ok(val): Result<serde_yaml::Value, _> = serde_yaml::from_str(&raw) else {
         return ReleaseManifest::default();

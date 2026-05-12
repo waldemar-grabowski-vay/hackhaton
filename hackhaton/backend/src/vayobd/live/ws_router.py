@@ -11,6 +11,7 @@ Handshake order:
 from __future__ import annotations
 
 import logging
+import os
 import re
 from fastapi import APIRouter, Depends, Query, WebSocket
 from fastapi.websockets import WebSocketState
@@ -41,8 +42,17 @@ async def live_ws(  # noqa: PLR0913 — clarity over cohesion
     settings: Settings = Depends(get_settings),
 ) -> None:
 
-    # 1. X-Vay-User
+    # 1. Operator identity.
+    # Browsers can't set custom headers on WebSocket upgrades, so the
+    # X-Vay-User header that the HTTP shim relies on is missing on every
+    # browser-initiated WS connection. Fall back to VAYOBD_OPERATOR_USER
+    # (the same env var the .deb's `vayobd` launcher seeds for the HTTP
+    # auth shim — see api/auth.py). A real reverse proxy in front of
+    # uvicorn can still inject X-Vay-User via subprotocol negotiation;
+    # we read both.
     username = websocket.headers.get("x-vay-user", "").strip()
+    if not username:
+        username = (os.environ.get("VAYOBD_OPERATOR_USER") or "").strip()
     if not username:
         await websocket.close(code=1008, reason="unauthorized")
         return
@@ -67,9 +77,14 @@ async def live_ws(  # noqa: PLR0913 — clarity over cohesion
         return
 
     host_record = next((h for h in inventory.hosts if h.id == host_id), None)
-    if host_record is None or host_record.address is None:
+    if host_record is None:
         await websocket.close(code=1008, reason="host_out_of_scope")
         return
+    # When the inventory has no `ansible_host` (typical for telestations
+    # that are reachable via the operator's `~/.ssh/config` Host alias),
+    # pass the host_id itself to ssh and let the local config resolve
+    # it. This mirrors what the desktop tool does.
+    ssh_target = host_record.address or host_record.id
 
     # 5. Accept + run.
     await websocket.accept()
@@ -77,13 +92,15 @@ async def live_ws(  # noqa: PLR0913 — clarity over cohesion
     session = LiveDiagnosticSession(
         websocket=websocket,
         host_id=host_id,
-        host_address=host_record.address,
+        host_address=ssh_target,
         operator_slug=_operator_slug(username),
         errq_model=getattr(app_state, "errq_model", None),
         dbc_decoder=getattr(app_state, "dbc_decoder", None),
         server_build=getattr(app_state, "engine_version", None),
         user_override=user,
         port_override=port,
+        channel_a_pattern=settings.channel_a_pattern,
+        channel_b_pattern=settings.channel_b_pattern,
     )
     log.info(
         "live_ws_open",

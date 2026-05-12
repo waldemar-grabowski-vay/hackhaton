@@ -5,11 +5,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { AppHeader } from "@/components/chrome/AppHeader";
+import { AppFooter } from "@/components/chrome/AppFooter";
 import { Toaster } from "@/components/ui/toaster";
 import { ErrorBoundary } from "@/lib/ErrorBoundary";
+import { HostDetailPage } from "@/pages/HostDetailPage";
 import { LiveDiagnosticPage } from "@/pages/LiveDiagnostic/LiveDiagnosticPage";
 import { PickerPage } from "@/pages/PickerPage";
-import { RunResultPage } from "@/pages/RunResultPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,16 +30,17 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <BrowserRouter>
-          <div className="min-h-dvh">
+          <div className="flex min-h-dvh flex-col">
             <AppHeader />
-            <main className="container py-10 sm:py-16">
+            <main className="container flex-1 py-10 sm:py-16">
               <Routes>
                 <Route path="/" element={<PickerPage />} />
-                <Route path="/host/:hostId" element={<RunResultPage />} />
+                <Route path="/host/:hostId" element={<HostDetailPage />} />
                 <Route path="/live" element={<LiveDiagnosticPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
+            <AppFooter />
           </div>
         </BrowserRouter>
         <Toaster />

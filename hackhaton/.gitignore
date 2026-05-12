@@ -45,6 +45,10 @@ frontend/.playwright/
 # VayOBD local cache (created at runtime; never committed)
 .cache/vayobd/
 
+# 006 — .deb packaging build outputs and generated version stamp
+packaging/build/
+backend/src/vayobd/_version.py
+
 # Environment / secrets — never commit
 .env
 .env.*

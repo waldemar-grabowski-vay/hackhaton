@@ -62,6 +62,29 @@ export const strings = {
     },
     lastRefreshedPrefix: "Updated",
   },
+  // 007 host-detail surface — version pulls cross-checked against the manifest.
+  hostVersions: {
+    cardTitle: "Versions on this host",
+    refreshButton: "Refresh",
+    refreshing: "Refreshing…",
+    sourceLive: "Live from {host}",
+    sourceUnavailable: "Couldn't reach {host}",
+    asOfPrefix: "as of",
+    loadingHint: "Reading from {host}…",
+    verdict: {
+      match: "matches manifest",
+      drift: "drift vs manifest",
+      noManifest: "no manifest to compare",
+      unavailable: "couldn't read",
+    },
+    expectedPrefix: "manifest expects",
+    noManifestHint: "check ~/GitHub/system-release-deployment",
+    field: {
+      vdriveManifest: "vDrive manifest",
+      vreecuVersion: "vREECU",
+      secVersion: "SEC",
+    },
+  },
   runs: {
     runButton: "Run check",
     runAgainButton: "Run check again",

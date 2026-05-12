@@ -1,0 +1,58 @@
+# VayOBD — required-repos manifest (spec 006 / FR-006)
+#
+# Single source of truth for the private repositories VayOBD pulls onto the
+# user's machine at first launch. An upstream rename or repo move is fixed
+# here, the .deb version is bumped, and the package re-issued — no code
+# change anywhere else.
+#
+# Schema: specs/006-deb-package-distribution/contracts/manifest.md
+# Installed at:   /usr/share/vayobd/manifest.toml
+# Source in repo: packaging/manifest.toml
+#
+# IMPORTANT: every `target_path` MUST resolve under the invoking user's $HOME.
+# The application refuses to clone outside the home directory for safety.
+#
+# All four repos clone into `~/.cache/vayobd/` so the .deb owns its own
+# paths — nothing depends on the user already having `~/GitHub/<repo>/`
+# checkouts they manage independently.
+
+manifest_version = 1
+
+# Vehicle / telestation inventory. Drives the host list in the UI.
+[[repo]]
+id          = "ree-vehicle-configs"
+url         = "git@github.com:Reemote/ree-vehicle-configs.git"
+target_path = "~/.cache/vayobd/ree-vehicle-configs"
+branch      = "main"
+
+# REECU source tree — provides the errq catalogue (Python module under
+# `platform/tools/errq/` PLUS the TS errq CSVs under
+# `ts/6_tools/TS_Generators/Errq/`). The live page's `build_model('ts')`
+# needs both. Sparse-checkout keeps the on-disk footprint small.
+[[repo]]
+id          = "ree-reecu"
+url         = "git@github.com:Reemote/ree-reecu.git"
+target_path = "~/.cache/vayobd/ree-reecu"
+branch      = "main"
+sparse_paths = [
+    "platform/tools/errq",
+    "ts/6_tools/TS_Generators/Errq",
+    "ve/6_tools/CANoe_G4/dbcs",
+]
+
+# DBC repo — separate from ree-reecu by design. Live Diagnostic loads
+# `application_protocol.dbc` from here for CAN frame decoding.
+[[repo]]
+id          = "ree-reecu-dbc"
+url         = "git@github.com:Reemote/ree-reecu-dbc.git"
+target_path = "~/.cache/vayobd/ree-reecu-dbc"
+branch      = "main"
+
+# Release manifest — `release-configs.yaml` lists the expected vDrive / vREECU
+# / SEC versions for each host kind. The engine reads it for manifest drift
+# verdicts on the host-detail page.
+[[repo]]
+id          = "system-release-deployment"
+url         = "git@github.com:Reemote/system-release-deployment.git"
+target_path = "~/.cache/vayobd/system-release-deployment"
+branch      = "main"

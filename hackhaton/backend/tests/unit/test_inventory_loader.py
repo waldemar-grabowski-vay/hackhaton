@@ -26,6 +26,7 @@ def test_loader_returns_germany_fleet_only(synthetic_inventory: Path) -> None:
         "ve-de-thor",
         "ve-de-saturn-slow",
         "ts-de-ber-zeus",
+        "ts-de-ber-noaddr",
         "ts-de-ham-poseidon",
     }
 

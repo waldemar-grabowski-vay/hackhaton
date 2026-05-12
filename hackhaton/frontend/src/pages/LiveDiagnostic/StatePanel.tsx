@@ -12,12 +12,13 @@ import type { DecodedSignal } from "@/api/liveSession";
 
 interface StatePanelProps {
   signals: Map<string, DecodedSignal>;
+  channel?: "A" | "B" | "both";
   onFilterChange: (substring: string) => void;
 }
 
 const ROW_LIMIT = 500;
 
-export function StatePanel({ signals, onFilterChange }: StatePanelProps) {
+export function StatePanel({ signals, channel = "both", onFilterChange }: StatePanelProps) {
   const [filter, setFilter] = useState("");
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -37,9 +38,12 @@ export function StatePanel({ signals, onFilterChange }: StatePanelProps) {
   // "BRAKE" and still sees stale non-brake rows from before).
   const rows = useMemo(() => {
     const needle = filter.trim().toLowerCase();
-    const list = Array.from(signals.values()).filter((s) =>
-      needle ? s.name.toLowerCase().includes(needle) : true,
-    );
+    const list = Array.from(signals.values()).filter((s) => {
+      if (channel !== "both" && s.channel !== "unknown" && s.channel !== channel) {
+        return false;
+      }
+      return needle ? s.name.toLowerCase().includes(needle) : true;
+    });
     list.sort((a, b) => {
       if (a.channel !== b.channel) {
         if (a.channel === "A") return -1;
@@ -50,7 +54,7 @@ export function StatePanel({ signals, onFilterChange }: StatePanelProps) {
       return a.name.localeCompare(b.name);
     });
     return list.slice(0, ROW_LIMIT);
-  }, [signals, filter]);
+  }, [signals, filter, channel]);
 
   const total = signals.size;
 

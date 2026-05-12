@@ -27,6 +27,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 import uuid
 from contextlib import suppress
@@ -66,6 +67,33 @@ HEARTBEAT_TIMEOUT_S = 10.0        # FR-017 stall detection
 OUTBOUND_QUEUE_MAX = 512          # FR-018 newest-wins overflow
 RAW_FRAMES_RATE_LIMIT = 1000      # contracts/websocket.md, raw_frame
 SIGNAL_UPDATE_MAX_BATCH = 500     # cap envelope size at runaway rate
+
+# FR-026 — channel inference defaults. Used when (a) settings provide
+# no patterns or (b) operator-supplied patterns fail to compile.
+DEFAULT_CHANNEL_A_PATTERN = r"(?i)_CHA_|TS_CHA"
+DEFAULT_CHANNEL_B_PATTERN = r"(?i)_CHB_|TS_CHB"
+
+
+def _compile_channel_pattern(pattern: str, channel: str) -> re.Pattern[str]:
+    """Compile an operator-supplied channel-inference regex. On invalid
+    regex, log a warning and fall back to the default for that channel
+    rather than crashing the session (FR-026: surfaces are still
+    operable when operators typo a pattern).
+    """
+    try:
+        return re.compile(pattern)
+    except re.error as exc:
+        default = (
+            DEFAULT_CHANNEL_A_PATTERN if channel == "A" else DEFAULT_CHANNEL_B_PATTERN
+        )
+        log.warning(
+            "channel_pattern_invalid: channel=%s pattern=%r error=%s falling_back_to=%r",
+            channel,
+            pattern,
+            str(exc),
+            default,
+        )
+        return re.compile(default)
 
 # WebSocket close codes (contracts/websocket.md §"Close codes").
 CLOSE_OK = 1000
@@ -112,6 +140,8 @@ class LiveDiagnosticSession:
         user_override: str | None = None,
         port_override: int | None = None,
         iface: str = "can0",
+        channel_a_pattern: str = DEFAULT_CHANNEL_A_PATTERN,
+        channel_b_pattern: str = DEFAULT_CHANNEL_B_PATTERN,
     ) -> None:
         self.ws = websocket
         self.host_id = host_id
@@ -132,6 +162,11 @@ class LiveDiagnosticSession:
 
         self.aggregator = ErrqAggregator()
         self.state_tracker = ErrqStateTracker()
+
+        # FR-026 — compile regexes once; fall back to defaults on
+        # invalid patterns so the session still serves traffic.
+        self._channel_a_re = _compile_channel_pattern(channel_a_pattern, "A")
+        self._channel_b_re = _compile_channel_pattern(channel_b_pattern, "B")
 
         self.filter = LiveFilter()
         self.paused = False
@@ -266,12 +301,14 @@ class LiveDiagnosticSession:
             return False
         return True
 
-    @staticmethod
-    def _infer_channel(name: str) -> Literal["A", "B", "unknown"]:
-        u = name.upper()
-        if "_CHA_" in u or "TS_CHA" in u:
+    def _infer_channel(self, name: str) -> Literal["A", "B", "unknown"]:
+        """Classify a signal into Channel A / B / unknown using the
+        per-session compiled regexes. First match wins; signals
+        matching neither pattern fall through to `unknown`. FR-026.
+        """
+        if self._channel_a_re.search(name):
             return "A"
-        if "_CHB_" in u or "TS_CHB" in u:
+        if self._channel_b_re.search(name):
             return "B"
         return "unknown"
 
@@ -299,7 +336,6 @@ class LiveDiagnosticSession:
         # Track which (channel, byte, bit) keys we've reported as
         # appeared so we can compute disappear diffs locally.
         active_keys: set[tuple[str, int, int]] = set()
-        last_loop_at = time.monotonic()
 
         while True:
             await asyncio.sleep(COALESCE_INTERVAL_MS / 1000.0)
@@ -316,41 +352,52 @@ class LiveDiagnosticSession:
                 )
                 return
 
-            # Flush signals.
-            if not self.paused:
-                signals = self.coalesce.drain()
-                if signals:
-                    if len(signals) > SIGNAL_UPDATE_MAX_BATCH:
-                        signals = signals[:SIGNAL_UPDATE_MAX_BATCH]
-                    env = SignalUpdateEnvelope(
-                        payload=SignalUpdatePayload(at_ms=now_ms(), signals=signals)
-                    )
-                    self._enqueue(env.model_dump())
-            else:
-                # While paused: count how many signals we'd have sent.
-                self.pause_buffer_count = len(self.coalesce.items)
+            active_keys = self._emit_one_cycle(active_keys)
 
-            # Errq diff.
-            current = self._collect_active_errq()
-            current_keys = {(e.channel, e.byte, e.bit) for e in current}
-            appeared_keys = current_keys - active_keys
-            disappeared_keys = active_keys - current_keys
-            active_keys = current_keys
+    def _emit_one_cycle(
+        self, active_keys: set[tuple[str, int, int]]
+    ) -> set[tuple[str, int, int]]:
+        """One iteration of the emit pipeline: flush coalesced
+        signals then compute + enqueue the errq diff. Extracted from
+        `_emit_loop` so tests can drive a single cycle without the
+        100 ms `asyncio.sleep`.
 
-            if appeared_keys or disappeared_keys:
-                appeared = [e for e in current if (e.channel, e.byte, e.bit) in appeared_keys]
-                env = ErrqUpdateEnvelope(
-                    payload=ErrqUpdatePayload(
-                        appeared=appeared,
-                        disappeared=[
-                            ErrqDisappearedKey(channel=k[0], byte=k[1], bit=k[2])  # type: ignore[arg-type]
-                            for k in disappeared_keys
-                        ],
-                    )
+        Returns the new `active_keys` set for the next cycle.
+        """
+        # Flush signals.
+        if not self.paused:
+            signals = self.coalesce.drain()
+            if signals:
+                if len(signals) > SIGNAL_UPDATE_MAX_BATCH:
+                    signals = signals[:SIGNAL_UPDATE_MAX_BATCH]
+                env = SignalUpdateEnvelope(
+                    payload=SignalUpdatePayload(at_ms=now_ms(), signals=signals)
                 )
                 self._enqueue(env.model_dump())
+        else:
+            # While paused: count how many signals we'd have sent.
+            self.pause_buffer_count = len(self.coalesce.items)
 
-            last_loop_at = time.monotonic()
+        # Errq diff.
+        current = self._collect_active_errq()
+        current_keys = {(e.channel, e.byte, e.bit) for e in current}
+        appeared_keys = current_keys - active_keys
+        disappeared_keys = active_keys - current_keys
+
+        if appeared_keys or disappeared_keys:
+            appeared = [e for e in current if (e.channel, e.byte, e.bit) in appeared_keys]
+            env = ErrqUpdateEnvelope(
+                payload=ErrqUpdatePayload(
+                    appeared=appeared,
+                    disappeared=[
+                        ErrqDisappearedKey(channel=k[0], byte=k[1], bit=k[2])  # type: ignore[arg-type]
+                        for k in disappeared_keys
+                    ],
+                )
+            )
+            self._enqueue(env.model_dump())
+
+        return current_keys
 
     def _collect_active_errq(self) -> list[ErrqEntryEnvelope]:
         out: list[ErrqEntryEnvelope] = []

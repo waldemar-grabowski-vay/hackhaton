@@ -1,0 +1,32 @@
+{
+  "schema": "ree-debug-engine",
+  "version": "0.7.3+abcdef1",
+  "host_id": "ve-de-apollo",
+  "host_type": "vehicle",
+  "started_at": "2026-05-11T14:05:00Z",
+  "completed_at": "2026-05-11T14:05:04Z",
+  "outcome": "complete",
+  "checks": [
+    {
+      "id": "ssh_reachable",
+      "name": "SSH reachable",
+      "status": "Pass",
+      "raw_detail": null,
+      "duration_ms": 210
+    },
+    {
+      "id": "vdrive_package_vs_manifest",
+      "name": "vDrive package vs manifest",
+      "status": "Pass",
+      "raw_detail": "R12.4.0 (sha 0xdeadbee matches manifest)",
+      "duration_ms": 380
+    },
+    {
+      "id": "aurix_mcu_firmware",
+      "name": "Aurix MCU firmware",
+      "status": "Warn",
+      "raw_detail": "R 8.6.0 (manifest expects 8.5.3)",
+      "duration_ms": 590
+    }
+  ]
+}

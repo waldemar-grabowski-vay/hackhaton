@@ -158,7 +158,6 @@ export function TelestationDiagram({ focusTarget }: TelestationDiagramProps) {
       pendingConnectorScroll.current = true;
       setZoom(CONNECTOR_ZOOM);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusTarget]);
 
   useLayoutEffect(() => {

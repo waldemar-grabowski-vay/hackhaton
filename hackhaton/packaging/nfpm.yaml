@@ -1,0 +1,82 @@
+# nfpm config for the VayOBD .deb (spec 006).
+#
+# Build:  ./packaging/build.sh
+#   (sets VAYOBD_VERSION, stages files under packaging/build/dist/, then
+#    runs `nfpm package --packager deb -f packaging/nfpm.yaml --target dist/`)
+#
+# Schema: https://nfpm.goreleaser.com/configuration/
+
+name: vayobd
+arch: amd64
+platform: linux
+version: ${VAYOBD_VERSION}
+section: utils
+priority: optional
+maintainer: VayOBD Platform <platform@vay.io>
+description: |
+  VayOBD — Remote host diagnostics for the Vay fleet.
+  Bundles the backend, the pre-built frontend SPA, and the ree-debug-cli
+  engine. On first launch, clones the required configuration repos using
+  the invoking user's GitHub credentials (SSH / gh / system credential
+  helper, auto-detected).
+vendor: Vay
+homepage: https://github.com/Reemote/vayobd
+license: proprietary
+
+depends:
+  - git
+  # No python dependency — the .deb ships a self-contained CPython
+  # interpreter (python-build-standalone) under /usr/lib/vayobd/python/.
+  # This makes the package work on any glibc-based amd64 Linux
+  # regardless of which Python (if any) is installed system-wide.
+  - libfontconfig1
+
+recommends:
+  - gh
+
+contents:
+  # Pre-built SPA — served by uvicorn at /
+  - src: ./packaging/build/dist/usr/share/vayobd/spa
+    dst: /usr/share/vayobd/spa
+    type: tree
+
+  # Required-repos manifest — read by `vayobd run` and `vayobd refresh`
+  - src: ./packaging/manifest.toml
+    dst: /usr/share/vayobd/manifest.toml
+    file_info:
+      mode: 0644
+
+  # Bundled CPython interpreter (python-build-standalone) — installed by
+  # build.sh from uv's managed-python cache. Self-contained: depends only on
+  # glibc, libpthread, libm, libdl. No system python required on the target.
+  - src: ./packaging/build/dist/usr/lib/vayobd/python
+    dst: /usr/lib/vayobd/python
+    type: tree
+
+  # Python venv (relocatable wheels resolved by `uv pip sync`) — its
+  # bin/python3.X symlinks point at /usr/lib/vayobd/python/bin/python3.X.
+  - src: ./packaging/build/dist/usr/lib/vayobd/venv
+    dst: /usr/lib/vayobd/venv
+    type: tree
+
+  # Rust engine binary
+  - src: ./packaging/build/dist/usr/lib/vayobd/bin/ree-debug-cli
+    dst: /usr/lib/vayobd/bin/ree-debug-cli
+    file_info:
+      mode: 0755
+
+  # /usr/bin shim that launches the venv'd CLI
+  - src: ./packaging/usr-bin-vayobd.sh
+    dst: /usr/bin/vayobd
+    file_info:
+      mode: 0755
+
+  # Desktop launcher entry
+  - src: ./packaging/usr-share-applications-vayobd.desktop
+    dst: /usr/share/applications/vayobd.desktop
+    file_info:
+      mode: 0644
+
+scripts:
+  postinstall: ./packaging/postinst.sh
+  postremove: ./packaging/postrm.sh

@@ -1,35 +1,49 @@
 /**
- * LiveDiagnosticButton (T015 / FR-001).
+ * LiveDiagnosticButton — TS_diag entry point.
  *
- * Polls /api/health, renders the "Live diagnostic" entry point only
- * when `live_diagnostic.enabled` is true (Developer mode on). Clicking
- * navigates to /live.
+ * Renders the "Live diagnostic" entry point when Developer mode is on
+ * (read from the localStorage-backed `useDeveloperMode` store — the
+ * UI toggle is the source of truth). The `/api/health` flag is no
+ * longer the gate (it was indirectly driven by the backend's
+ * `settings.developer_mode` which the UI never updates); the /live
+ * page itself owns its own readiness UI for missing errq/DBC files.
  *
- * The visibility check is server-side authoritative — the on-disk
- * setting is what /api/health reports, so toggling Developer mode in
- * settings.toml and refreshing is enough to make the button appear.
+ * Two visual variants:
+ *  - "header" (default): outline + small — sits among other header
+ *    chrome (EngineModeBadge, Developer-mode switch).
+ *  - "main": primary-style + large — sits next to the picker's
+ *    Continue button on the main page (FR-001, FR-013).
  */
-import { useQuery } from "@tanstack/react-query";
 import { Activity } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import { healthSchema, type Health } from "@/api/schemas";
+import { useDeveloperMode } from "@/lib/developerMode";
 
-async function fetchHealth(): Promise<Health> {
-  const resp = await fetch("/api/health");
-  if (!resp.ok) throw new Error(`health: ${resp.status}`);
-  return healthSchema.parse(await resp.json());
+export interface LiveDiagnosticButtonProps {
+  variant?: "header" | "main";
 }
 
-export function LiveDiagnosticButton() {
-  const { data } = useQuery<Health>({
-    queryKey: ["health-live"],
-    queryFn: fetchHealth,
-    staleTime: 30_000,
-    retry: false,
-  });
-  if (!data?.live_diagnostic?.enabled) return null;
+export function LiveDiagnosticButton({ variant = "header" }: LiveDiagnosticButtonProps) {
+  const enabled = useDeveloperMode((s) => s.enabled);
+  if (!enabled) return null;
+
+  if (variant === "main") {
+    return (
+      <Button
+        asChild
+        size="lg"
+        variant="outline"
+        className="gap-2 border-primary/40 bg-card/60 text-foreground hover:bg-card"
+      >
+        <Link to="/live">
+          <Activity className="h-4 w-4" />
+          Live diagnostic
+        </Link>
+      </Button>
+    );
+  }
+
   return (
     <Button asChild variant="outline" size="sm">
       <Link to="/live" className="gap-2">
